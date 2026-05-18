@@ -40,13 +40,12 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Run tests
         env:
           DATABASE_URL: postgresql+asyncpg://stu:stu@localhost:5432/stu_test
           REDIS_URL: redis://localhost:6379/0
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SECRET_KEY: test-secret
         run: |
           pytest tests/ -v --tb=short --cov=app --cov-report=term-missing
