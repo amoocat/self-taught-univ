@@ -127,3 +127,4 @@ ALLOWED_ORIGINS=http://localhost:3000
 | GET | /metrics | Prometheus 메트릭 |
 | GET | /healthz | 헬스체크 |
 # PR-Agent Gemini 테스트
+
