@@ -16,10 +16,10 @@ jobs:
       - name: PR Agent
         uses: Codium-ai/pr-agent@main
         env:
-          GOOGLE_AI_STUDIO_KEY: ${{ secrets.GOOGLE_AI_STUDIO_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           config.ai_provider: "google"
-          config.model: "gemini-2.0-flash"
+          config.model: "gemini/gemini-2.0-flash"
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
           github_action_config.auto_improve: "true"
