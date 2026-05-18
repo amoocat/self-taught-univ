@@ -12,12 +12,9 @@
 - [ ] 노트 임베딩 생성 (pgvector) → 시맨틱 검색 (아래 Phase 3 참고)
 
 ### 크롤러 (Phase 1 잔여)
-- [x] YouTube API 키 발급 후 `.env`에 추가
 - [ ] YouTube Data API v3 연동 확인 — `POST /api/v1/crawl/youtube` 실제 실행 테스트 (서버 기동 후 직접 확인 필요)
 
 ### 형상 관리 (Phase 1 잔여)
-- [x] 기존 init 커밋 삭제 후 기능별 9개 커밋으로 히스토리 재작성 (orphan 브랜치 방식)
-- [x] 각 커밋 메시지에 기술적 동작 원리·설계 의도 초심자 수준으로 상세 기술
 - [ ] 각 커밋마다 TODO.md의 완료 기능 표시도 커밋 내용에 맞게 수정 필요
 
 ### 강의 구성 고도화
@@ -47,6 +44,7 @@
 - [ ] Jenkins CI 파이프라인 실제 실행 테스트
 - [ ] ArgoCD 설치 및 연동
 - [ ] API 키 사용량 대시보드
+- [ ] DB, 서버등을 로컬 말고 클라우드 환경으로 이관 
 
 ---
 
@@ -216,3 +214,4 @@
 - [x] GitHub Actions CI
 - [x] ArgoCD Application YAML
 - [x] Prometheus + Grafana 설정
+- [x] 루트 디렉토리 정리 — 레거시 프로토타입 파일·중복 YAML 삭제, `ci.yml` → `.github/workflows/`, `alerts/prometheus.yml` → `monitoring/`
