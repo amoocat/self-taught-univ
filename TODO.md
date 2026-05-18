@@ -16,9 +16,8 @@
 - [ ] YouTube Data API v3 연동 확인 — `POST /api/v1/crawl/youtube` 실제 실행 테스트 (서버 기동 후 직접 확인 필요)
 
 ### 형상 관리 (Phase 1 잔여)
-- [ ] 지금까지 개발한 프론트, 백엔드 작업들이 어떤 작업들인지 세부적으로 쪼개서 git commit, pr comment에 세세히 정리
-- [ ] 만약 지금 커밋된 로그 가 있다면 다  지우고 새로 작성
-- [ ] 각 기능이 어떻게 동작하는지에 대한 기술적인 정보를 초심자 입장에서 이해할 수 있도록 정리
+- [x] 기존 init 커밋 삭제 후 기능별 9개 커밋으로 히스토리 재작성 (orphan 브랜치 방식)
+- [x] 각 커밋 메시지에 기술적 동작 원리·설계 의도 초심자 수준으로 상세 기술
 - [ ] 각 커밋마다 TODO.md의 완료 기능 표시도 커밋 내용에 맞게 수정 필요
 
 ### 강의 구성 고도화
@@ -199,6 +198,7 @@
 - [x] 같이 논문 읽어주는 챗봇 — 논문 뷰어에 Q&A 패널 추가 (POST /chat/paper/{id}/stream, 논문 abstract·키워드 컨텍스트 주입)
 - [x] 시험볼때 힌트 챗봇 — 강의 노트 컨텍스트 기반 단계적 힌트 제공 (POST /chat/lecture/{id}/stream, 슬라이드인 패널)
 - [x] YouTube API 키 발급 — `.env`에 `YOUTUBE_API_KEY` / `YOUTUBE_OAUTH_CLIENT` 설정 완료, `.env.example`에 항목 추가
+- [x] 형상관리 — 기능별 9개 커밋으로 히스토리 재작성, 각 커밋 메시지에 기술적 동작 원리 상세 기술
 - [x] APScheduler 배치 크롤러
 - [x] YouTube / arXiv / 블로그 크롤러
 - [x] 크롤러 수동 테스트: `POST /api/v1/crawl/arxiv` (논문 23개 수집 확인)
