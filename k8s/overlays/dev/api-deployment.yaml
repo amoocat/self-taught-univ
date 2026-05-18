@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-deployment     # base와 동일한 이름 → patch 적용
+spec:
+  replicas: 1              # dev는 1개 replica (리소스 절약)
+  template:
+    spec:
+      containers:
+        - name: api
+          image: yourdockerhub/stu-api:dev-latest   # Jenkins가 커밋마다 태그 업데이트
+          env:
+            - name: DEBUG
+              value: "true"

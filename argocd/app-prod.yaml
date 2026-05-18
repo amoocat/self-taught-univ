@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stu-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/amoocat/self-taught-univ.git
+    targetRevision: main             # main 브랜치를 감시
+    path: k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: stu
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
