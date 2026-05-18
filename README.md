@@ -126,3 +126,4 @@ ALLOWED_ORIGINS=http://localhost:3000
 | GET | /api/v1/graph/ | 지식 그래프 노드+엣지 |
 | GET | /metrics | Prometheus 메트릭 |
 | GET | /healthz | 헬스체크 |
+# PR-Agent Gemini 테스트
