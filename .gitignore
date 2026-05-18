@@ -1,0 +1,19 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.DS_Store
+.claude/
+
+# 루트 레거시 파일 (리팩토링 전 초기 프로토타입)
+/chat.py
+/curriculum.py
+/main.py
+/models.py
+/notes.py
+/tasks.py
+/crawler/
+/storage.yaml
+/self_taught_university_2.html
