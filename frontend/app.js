@@ -848,6 +848,136 @@ async function initCurriculum() {
 }
 
 /* ────────────────────────────────────────
+   YOUTUBE 플레이리스트 연동
+──────────────────────────────────────── */
+
+async function initYoutubeSync() {
+  const label   = document.getElementById('ytAuthLabel');
+  const btn     = document.getElementById('ytAuthBtn');
+  const section = document.getElementById('ytPlaylistSection');
+  if (!label) return;
+
+  try {
+    const res  = await fetch('/api/v1/youtube/oauth/status');
+    const data = await res.json();
+    if (data.authenticated) {
+      label.textContent = '✓ YouTube 계정 연결됨';
+      label.style.color = '#2a7a2a';
+      section.style.display = 'block';
+    } else {
+      label.textContent = 'YouTube 계정 연결 안 됨';
+      btn.style.display = 'block';
+    }
+  } catch (e) {
+    label.textContent = '연결 상태 확인 실패';
+  }
+}
+
+function ytConnect() {
+  window.location.href = '/api/v1/youtube/oauth';
+}
+
+let _ytPlaylists = [];
+
+async function loadYoutubePlaylists() {
+  const btn      = document.querySelector('.yt-load-btn');
+  const listEl   = document.getElementById('ytPlaylistList');
+  const syncBtn  = document.getElementById('ytDoSyncBtn');
+  btn.disabled   = true;
+  btn.textContent = '불러오는 중...';
+  listEl.innerHTML = '';
+
+  try {
+    const res  = await fetch('/api/v1/youtube/playlists');
+    const data = await res.json();
+
+    if (data.error) {
+      listEl.innerHTML = `<div style="padding:12px;font-size:12px;color:var(--red)">${data.error}</div>`;
+      return;
+    }
+
+    _ytPlaylists = data.playlists || [];
+
+    if (_ytPlaylists.length === 0) {
+      listEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--gray2)">플레이리스트가 없습니다.</div>';
+      return;
+    }
+
+    listEl.innerHTML = _ytPlaylists.map((pl, i) => `
+      <div class="yt-pl-item" onclick="ytToggle(${i}, this)">
+        <input type="checkbox" id="ytPl${i}" onclick="event.stopPropagation();ytToggleCheck(${i})">
+        ${pl.thumbnail_url
+          ? `<img class="yt-pl-thumb" src="${pl.thumbnail_url}" alt="">`
+          : `<div class="yt-pl-thumb"></div>`}
+        <div class="yt-pl-info">
+          <div class="yt-pl-name">${pl.title}</div>
+          <div class="yt-pl-meta">${pl.video_count}개 영상${pl.description ? ' · ' + pl.description.slice(0, 40) : ''}</div>
+        </div>
+        <span class="yt-pl-badge">${pl.playlist_id.slice(0, 8)}...</span>
+      </div>
+    `).join('');
+
+    syncBtn.style.display = 'block';
+  } catch (e) {
+    listEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--red)">불러오기 실패</div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '내 플레이리스트 불러오기';
+  }
+}
+
+function ytToggle(idx, rowEl) {
+  const cb = document.getElementById(`ytPl${idx}`);
+  cb.checked = !cb.checked;
+  rowEl.style.background = cb.checked ? 'var(--cream2)' : '';
+}
+
+function ytToggleCheck(idx) {
+  const cb  = document.getElementById(`ytPl${idx}`);
+  const row = cb.closest('.yt-pl-item');
+  row.style.background = cb.checked ? 'var(--cream2)' : '';
+}
+
+async function syncSelectedPlaylists() {
+  const selected = _ytPlaylists
+    .filter((_, i) => document.getElementById(`ytPl${i}`)?.checked)
+    .map(pl => pl.playlist_id);
+
+  if (selected.length === 0) {
+    alert('동기화할 플레이리스트를 선택해주세요.');
+    return;
+  }
+
+  const btn    = document.getElementById('ytDoSyncBtn');
+  const result = document.getElementById('ytSyncResult');
+  btn.disabled = true;
+  btn.textContent = `${selected.length}개 동기화 중...`;
+  result.style.display = 'none';
+
+  try {
+    const res  = await fetch('/api/v1/youtube/playlists/sync', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(selected),
+    });
+    const data = await res.json();
+
+    const lines = Object.entries(data.result || {}).map(([pid, r]) => {
+      const name = _ytPlaylists.find(p => p.playlist_id === pid)?.title || pid;
+      return `${name}: ${r.fetched}개 수집 / ${r.saved}개 신규 저장`;
+    });
+    result.innerHTML = lines.join('<br>') || '완료';
+    result.style.display = 'block';
+  } catch (e) {
+    result.innerHTML = '동기화 실패';
+    result.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '선택한 플리 강의 저장';
+  }
+}
+
+/* ────────────────────────────────────────
    BLOG FEED — 동적 렌더링
 ──────────────────────────────────────── */
 let _blogLoaded = false;
@@ -1202,7 +1332,7 @@ function goto(page, pushState = true) {
   if (page === 'graph')      drawGraph();
   if (page === 'mynotes')    { if (!obsEditor) obsInit(); }
   if (page === 'blog')       initBlog();
-  if (page === 'curriculum') initCurriculum();
+  if (page === 'curriculum') { initCurriculum(); initYoutubeSync(); }
   if (page === 'lecture')    initLecture();
   if (page === 'papers')     initPapers();
   if (page === 'home')       initHome();

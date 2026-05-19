@@ -356,6 +356,26 @@
         <div class="curriculum-grid" id="curriculumGrid">
           <!-- 동적 렌더링 (initCurriculum) -->
         </div>
+
+        <!-- YouTube 플레이리스트 연동 -->
+        <div class="yt-sync-section">
+          <div class="yt-sync-head">
+            <div class="yt-sync-title">YouTube 강의 연동</div>
+            <div class="yt-sync-desc">내 YouTube 플레이리스트에서 AI/데이터 강의를 자동으로 가져옵니다.</div>
+          </div>
+          <div id="ytSyncBody">
+            <div class="yt-sync-status" id="ytAuthStatus">
+              <span id="ytAuthLabel">연결 확인 중...</span>
+              <button class="yt-auth-btn" id="ytAuthBtn" style="display:none" onclick="ytConnect()">YouTube 계정 연결</button>
+            </div>
+            <div id="ytPlaylistSection" style="display:none">
+              <button class="yt-load-btn" onclick="loadYoutubePlaylists()">내 플레이리스트 불러오기</button>
+              <div id="ytPlaylistList"></div>
+              <div id="ytSyncResult" class="yt-sync-result" style="display:none"></div>
+              <button class="yt-do-sync-btn" id="ytDoSyncBtn" onclick="syncSelectedPlaylists()" style="display:none">선택한 플리 강의 저장</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
