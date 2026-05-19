@@ -4,6 +4,7 @@ arXiv 논문 크롤러
 - AI/ML 관련 최신 논문 수집
 - Semantic Scholar API로 인용 수 보강 (선택)
 """
+import asyncio
 import httpx
 import logging
 import xml.etree.ElementTree as ET
@@ -80,6 +81,7 @@ class ArxivCrawler:
                 logger.info(f"[arXiv] {q['label']}: {len(new)}개 수집")
             except Exception as e:
                 logger.warning(f"[arXiv] {q['query']} 실패: {e}")
+            await asyncio.sleep(3)  # arXiv API rate limit: 3초 간격 권장
 
         return list(papers.values())
 

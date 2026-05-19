@@ -12,7 +12,7 @@
 > Phase 2 전에 먼저 고쳐야 앱이 실제로 쓸 수 있는 상태가 됨.
 
 ### 공통 / 환경
-- [ ] **CHATGPT_API_KEY 미설정 시 AI 기능 전부 500 에러** — `.env`에 `CHATGPT_API_KEY=sk-...` 설정 필요 (사용자 직접 입력)
+- [x] **CHATGPT_API_KEY 미설정 시 AI 기능 전부 500 에러** — `.env` 재생성 후 키 설정 완료
 - [x] **DB 초기 데이터 없음** — `app/db/seed.py` 작성, 앱 시작 시 자동 실행. 6개 과목 + 총 106개 강의 삽입. `POST /api/v1/crawl/seed-courses` 로 수동 실행도 가능
 
 ### 홈
@@ -30,7 +30,8 @@
 - [x] **노트 삭제 버튼 없음** → 노트 목록 아이템에 ✕ 버튼 추가 + `obsDelete()` 함수 구현
 
 ### 논문 읽기
-- [ ] **논문 추가 UI 없음** — arXiv ID 입력 폼 아직 미구현
+- [x] **논문 추가 UI 없음** → arXiv ID/URL 입력 폼 추가. `POST /api/v1/papers/` 엔드포인트가 arXiv API에서 메타데이터 자동 수집 후 저장
+- [x] **논문 자동 크롤링 없음** → arXiv 크롤러 존재 (cs.AI/LG/CV/CL + LLM/Transformer/Diffusion). 매일 새벽 2시 30분 자동 수집. rate limit 429 수정 완료
 - [x] **논문 검색 없음** → 논문 목록 상단에 검색 input 추가, `searchPapers()` 함수 구현
 
 ### 테크 블로그
