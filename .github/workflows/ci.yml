@@ -16,7 +16,7 @@ jobs:
         env:
           POSTGRES_USER: stu
           POSTGRES_PASSWORD: stu
-          POSTGRES_DB: stu_test
+          POSTGRES_DB: stu
         ports:
           - 5432:5432
         options: >-
@@ -44,7 +44,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql+asyncpg://stu:stu@localhost:5432/stu_test
+          DATABASE_URL: postgresql+asyncpg://stu:stu@localhost:5432/stu
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret
         run: |
