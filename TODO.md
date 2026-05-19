@@ -8,14 +8,8 @@
 
 ## 🔴 지금 (Phase 2 진행 중)
 
-### AI 기능
-- [ ] 노트 임베딩 생성 (pgvector) → 시맨틱 검색 (아래 Phase 3 참고)
-
 ### 크롤러 (Phase 1 잔여)
 - [ ] YouTube Data API v3 연동 확인 — `POST /api/v1/crawl/youtube` 실제 실행 테스트 (서버 기동 후 직접 확인 필요)
-
-### 형상 관리 (Phase 1 잔여)
-- [ ] 각 커밋마다 TODO.md의 완료 기능 표시도 커밋 내용에 맞게 수정 필요
 
 ### 강의 구성 고도화
 > ⚠️ YouTube API 키 발급 완료 후 진행 가능
@@ -27,6 +21,9 @@
 - [ ] 내 YouTube 플레이리스트 가져오기 (과목별 플리 URL 입력 → 강의 자동 import)
 - [ ] 신규 강좌 추가 — TED 행복 강좌 (wellbeing 카테고리 신설)
 - [ ] 신규 강좌 추가 — MLVU (바탕화면 폴더 영상 → 로컬 import 방식 결정 필요)
+
+### AI 기능
+- [ ] 노트 임베딩 생성 (pgvector) → 시맨틱 검색 (아래 Phase 3 참고)
 
 ### MCP 개발 (학습봇용) — 우선순위 순
 - [ ] **1순위** STU 자체 MCP — 진도·노트·취약점 DB 조회
@@ -215,3 +212,6 @@
 - [x] ArgoCD Application YAML
 - [x] Prometheus + Grafana 설정
 - [x] 루트 디렉토리 정리 — 레거시 프로토타입 파일·중복 YAML 삭제, `ci.yml` → `.github/workflows/`, `alerts/prometheus.yml` → `monitoring/`
+- [x] PR-Agent Gemini 자동 코드 리뷰 — `pr-agent.yml` 추가, PR 열릴 때 auto_review·auto_describe·auto_improve 자동 게시 (Google AI Studio 무료 tier)
+- [x] CI 테스트 환경 수정 — `pytest: command not found` 해결 (requirements-dev.txt 설치), `pytest-cov` 추가, TestClient 전환으로 라이브 서버 의존 제거, DB URL 하드코딩 → env 변수 적용
+- [x] 커밋별 스택 PR 13개 생성 — base 브랜치 기반 스택 구조, 각 PR에 설계 의도·기술적 배경·테스트 방법 상세 기술

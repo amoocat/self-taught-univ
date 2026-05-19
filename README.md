@@ -1,5 +1,26 @@
 # STU Backend — 로컬 실행 가이드
 
+## 브랜치 전략
+
+```
+develop ──► staging ──► main
+   │            │          │
+개발/기능    QA·통합      프로덕션
+  PR 대상   배포 검증    릴리스
+```
+
+| 브랜치 | 역할 | 배포 환경 |
+|--------|------|-----------|
+| `develop` | 기능 개발 기본 브랜치. 모든 feature PR은 여기로 머지 | dev |
+| `staging` | QA·통합 테스트 브랜치. `develop` → `staging` PR로 승격 | staging |
+| `main` | 프로덕션 브랜치. `staging` → `main` PR로 릴리스 | prod |
+
+- **feature 브랜치**: `feat/기능명` → `develop`으로 PR
+- **hotfix**: `hotfix/이슈명` → `main` + `develop` 동시 머지
+- CI는 `develop`, `staging`, `main` 세 브랜치 모두에서 실행
+
+---
+
 ## 1. 빠른 시작 (Docker Compose)
 
 ```bash
