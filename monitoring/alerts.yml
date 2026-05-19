@@ -1,0 +1,29 @@
+groups:
+  - name: stu-api
+    rules:
+      # API 응답 시간 > 1초
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 응답 느림 (p95 > 1s)"
+
+      # 에러율 > 5%
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "에러율 5% 초과"
+
+      # 파드 재시작 많음
+      - alert: PodRestartingTooOften
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "파드 재시작 감지: {{ $labels.pod }}"
