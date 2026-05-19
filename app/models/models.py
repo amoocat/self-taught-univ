@@ -33,6 +33,7 @@ class Lecture(Base):
     course_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("courses.id"))
     title: Mapped[str] = mapped_column(String(300))
     number: Mapped[int] = mapped_column(Integer)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
     youtube_url: Mapped[str | None] = mapped_column(String(500))
     duration_sec: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -90,6 +91,7 @@ class Paper(Base):
     venue: Mapped[str | None] = mapped_column(String(200))
     abstract: Mapped[str | None] = mapped_column(Text)
     arxiv_id: Mapped[str | None] = mapped_column(String(50), unique=True)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     annotations: Mapped[list["PaperAnnotation"]] = relationship(back_populates="paper")
@@ -117,6 +119,7 @@ class FeedItem(Base):
     url: Mapped[str] = mapped_column(String(1000), unique=True)
     summary: Mapped[str | None] = mapped_column(Text)
     tags: Mapped[list] = mapped_column(JSONB, default=list)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime)
     fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

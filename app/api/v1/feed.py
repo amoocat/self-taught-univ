@@ -51,6 +51,7 @@ def _to_out(item: FeedItem) -> dict:
         "url": item.url,
         "summary": item.summary or "",
         "keywords": tags,
+        "category": item.category or "etc",
         "courses": [],
         "related_paper": None,
         "color": _color(item.source_type),

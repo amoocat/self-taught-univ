@@ -23,6 +23,7 @@ class BlogPost:
     summary: str = ""
     tags: list[str] = field(default_factory=list)
     published_at: Optional[datetime] = None
+    category: str = "etc"     # "llm" | "cv" | "infra" | "rec" | "etc"
 
 
 # ── RSS 소스 목록 ────────────────────────────────────────────────
@@ -73,6 +74,41 @@ _ML_KEYWORDS = {
     "데이터 분석", "데이터베이스", "검색", "랭킹", "개인화", "클러스터링",
     "피처", "모델", "학습", "인공지능", "ai", "ml",
 }
+
+
+_CATEGORY_RULES: list[tuple[str, set[str]]] = [
+    ("llm", {
+        "llm", "gpt", "chatgpt", "claude", "gemini", "language model", "언어모델",
+        "transformer", "트랜스포머", "bert", "rag", "retrieval", "generative", "생성형",
+        "fine-tun", "finetun", "pretrain", "사전학습", "prompt", "프롬프트",
+        "instruction", "alignment", "rlhf", "inference", "추론",
+    }),
+    ("cv", {
+        "computer vision", "컴퓨터비전", "image", "이미지", "vision", "비전",
+        "detection", "segmentation", "diffusion", "gan", "vae", "stable diffusion",
+        "clip", "vit", "convolutional", "cnn", "object detection", "ocr",
+    }),
+    ("infra", {
+        "mlops", "infrastructure", "인프라", "kubernetes", "docker", "k8s",
+        "spark", "kafka", "flink", "airflow", "pipeline", "파이프라인",
+        "data platform", "데이터 플랫폼", "serving", "deploy", "배포",
+        "monitoring", "모니터링", "latency", "throughput", "gpu cluster",
+    }),
+    ("rec", {
+        "recommendation", "추천", "collaborative filtering", "협업 필터링",
+        "ranking", "랭킹", "personalization", "개인화", "item2vec",
+        "matrix factorization", "click-through", "ctr",
+    }),
+]
+
+
+def _classify_category(post: "BlogPost") -> str:
+    """제목 + 요약 키워드 매칭으로 카테고리 분류. 복수 매칭 시 가장 먼저 매칭된 규칙 적용."""
+    text = f"{post.title} {post.summary}".lower()
+    for category, keywords in _CATEGORY_RULES:
+        if any(kw in text for kw in keywords):
+            return category
+    return "etc"
 
 
 def _is_ml_related(post: "BlogPost") -> bool:
@@ -142,7 +178,7 @@ class BlogCrawler:
             if summary:
                 summary = BeautifulSoup(summary, "html.parser").get_text()[:500]
 
-            posts.append(BlogPost(
+            post = BlogPost(
                 source_name=source["name"],
                 source_type=source["type"],
                 title=entry.get("title", "").strip()[:500],
@@ -150,7 +186,9 @@ class BlogCrawler:
                 summary=summary,
                 tags=_extract_tags(entry),
                 published_at=published,
-            ))
+            )
+            post.category = _classify_category(post)
+            posts.append(post)
 
         return posts
 
@@ -180,13 +218,15 @@ class BlogCrawler:
             desc_el = el.find("p")
             summary = desc_el.get_text(strip=True)[:500] if desc_el else ""
 
-            posts.append(BlogPost(
+            post = BlogPost(
                 source_name=source["name"],
                 source_type=source["type"],
                 title=title_el.get_text(strip=True)[:500],
                 url=url[:1000],
                 summary=summary,
-            ))
+            )
+            post.category = _classify_category(post)
+            posts.append(post)
 
         return posts
 

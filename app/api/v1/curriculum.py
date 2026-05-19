@@ -26,6 +26,7 @@ class LectureOut(BaseModel):
     id: str
     title: str
     number: int
+    category: Optional[str] = None
     youtube_url: Optional[str]
     duration_sec: Optional[int]
     completed: bool = False
@@ -38,6 +39,7 @@ class LectureDetailOut(BaseModel):
     id: str
     title: str
     number: int
+    category: Optional[str] = None
     youtube_url: Optional[str]
     duration_sec: Optional[int]
     content: str = ""

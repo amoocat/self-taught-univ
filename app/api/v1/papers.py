@@ -49,6 +49,7 @@ class PaperOut(BaseModel):
     venue: Optional[str]
     abstract: Optional[str]
     arxiv_id: Optional[str]
+    category: Optional[str] = None
     created_at: datetime
     annotations: list[AnnotationOut] = []
 

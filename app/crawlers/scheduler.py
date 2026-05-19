@@ -153,6 +153,7 @@ async def _save_feed_items(posts) -> int:
                     url=post.url,
                     summary=post.summary,
                     tags=post.tags,
+                    category=getattr(post, "category", "etc"),
                     published_at=post.published_at,
                 ))
                 saved += 1
@@ -209,11 +210,13 @@ async def _save_lectures(videos, category: str) -> int:
             if exists:
                 exists.youtube_url  = f"https://youtube.com/watch?v={v.video_id}"
                 exists.duration_sec = v.duration_sec
+                exists.category     = category
             else:
                 db.add(Lecture(
                     course_id=course.id,
                     title=v.title,
                     number=lecture_number,
+                    category=category,
                     youtube_url=f"https://youtube.com/watch?v={v.video_id}",
                     duration_sec=v.duration_sec,
                 ))
