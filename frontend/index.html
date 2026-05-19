@@ -489,8 +489,14 @@
           <input type="text" placeholder="제목·저자 검색..."
             style="width:100%;box-sizing:border-box;padding:6px 8px;margin-bottom:8px;font-size:12px;border:1px solid var(--border);background:var(--cream)"
             oninput="searchPapers(this.value)">
+          <div class="paper-add-row">
+            <input id="arxivInput" type="text" placeholder="arXiv ID 또는 URL 붙여넣기..."
+              class="paper-add-input"
+              onkeydown="if(event.key==='Enter')addPaper()">
+            <button class="paper-add-btn" onclick="addPaper()">+ 추가</button>
+          </div>
+          <div id="paperAddMsg" class="paper-add-msg" style="display:none"></div>
           <div id="paperListItems"><!-- 동적 렌더링 --></div>
-          <div style="display:none"></div>
         </div>
 
         <div class="paper-reader">

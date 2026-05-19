@@ -1453,6 +1453,49 @@ async function initPapers() {
   }
 }
 
+async function addPaper() {
+  const input = document.getElementById('arxivInput');
+  const btn = document.querySelector('.paper-add-btn');
+  const msg = document.getElementById('paperAddMsg');
+  const arxivId = (input?.value || '').trim();
+  if (!arxivId) return;
+
+  btn.disabled = true;
+  btn.textContent = '추가 중...';
+  msg.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/v1/papers/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ arxiv_id: arxivId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showPaperMsg(msg, 'err', data.detail || '추가 실패');
+      return;
+    }
+    _allPapers.unshift(data);
+    _papersLoaded = true;
+    renderPaperList(_allPapers);
+    loadPaper(data.id);
+    input.value = '';
+    showPaperMsg(msg, 'ok', `"${data.title.slice(0, 40)}..." 추가됨`);
+  } catch (e) {
+    showPaperMsg(msg, 'err', '서버에 연결할 수 없습니다');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '+ 추가';
+  }
+}
+
+function showPaperMsg(el, type, text) {
+  el.className = `paper-add-msg ${type}`;
+  el.textContent = text;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
 function renderPaperList(papers) {
   const listEl = document.getElementById('paperListItems');
   if (!listEl) return;

@@ -5,12 +5,15 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import openai
+import httpx
 import json
+import re
 import logging
+import xml.etree.ElementTree as ET
 
 from app.db.session import get_db
 from app.models.models import Paper, PaperAnnotation
-from app.core.errors import get_or_404, BadRequestError
+from app.core.errors import get_or_404, BadRequestError, ConflictError
 from app.core.config import settings
 
 router = APIRouter()
@@ -55,6 +58,95 @@ class PaperOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+_ARXIV_NS = "http://www.w3.org/2005/Atom"
+
+
+def _normalize_arxiv_id(raw: str) -> str:
+    """URL이나 앞뒤 공백 포함한 입력에서 arXiv ID만 추출."""
+    raw = raw.strip()
+    # https://arxiv.org/abs/2312.12345 또는 https://arxiv.org/pdf/2312.12345
+    m = re.search(r"arxiv\.org/(?:abs|pdf)/([^\s?#]+)", raw)
+    if m:
+        return m.group(1).removesuffix(".pdf")
+    return raw
+
+
+class AddPaperIn(BaseModel):
+    arxiv_id: str
+
+
+@router.post("/", response_model=PaperOut, status_code=201)
+async def add_paper(body: AddPaperIn, db: AsyncSession = Depends(get_db)):
+    arxiv_id = _normalize_arxiv_id(body.arxiv_id)
+    if not arxiv_id:
+        raise BadRequestError("arXiv ID를 입력해주세요.")
+
+    # 중복 체크
+    existing = (await db.execute(
+        select(Paper).where(Paper.arxiv_id == arxiv_id)
+    )).scalar_one_or_none()
+    if existing:
+        raise ConflictError(f"이미 추가된 논문입니다: {arxiv_id}")
+
+    # arXiv Atom API 호출
+    url = f"https://export.arxiv.org/api/query?id_list={arxiv_id}&max_results=1"
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.get(url)
+            resp.raise_for_status()
+        except httpx.HTTPError as e:
+            logger.error("arXiv API error: %s", e)
+            raise BadRequestError("arXiv 서버에 연결할 수 없습니다.")
+
+    root = ET.fromstring(resp.text)
+    entry = root.find(f"{{{_ARXIV_NS}}}entry")
+    if entry is None:
+        raise BadRequestError(f"arXiv에서 논문을 찾을 수 없습니다: {arxiv_id}")
+
+    title_el = entry.find(f"{{{_ARXIV_NS}}}title")
+    abstract_el = entry.find(f"{{{_ARXIV_NS}}}summary")
+    published_el = entry.find(f"{{{_ARXIV_NS}}}published")
+
+    title = " ".join((title_el.text or "").split()) if title_el is not None else "Unknown"
+    abstract = (abstract_el.text or "").strip() if abstract_el is not None else None
+    year = int(published_el.text[:4]) if published_el is not None and published_el.text else 0
+
+    # 저자 목록
+    authors = ", ".join(
+        (a.find(f"{{{_ARXIV_NS}}}name").text or "").strip()
+        for a in entry.findall(f"{{{_ARXIV_NS}}}author")
+        if a.find(f"{{{_ARXIV_NS}}}name") is not None
+    )
+
+    # 카테고리 (arXiv primary_category)
+    cat_ns = "http://arxiv.org/schemas/atom"
+    cat_el = entry.find(f"{{{cat_ns}}}primary_category")
+    venue = cat_el.attrib.get("term") if cat_el is not None else None
+
+    paper = Paper(
+        title=title,
+        authors=authors or "Unknown",
+        year=year,
+        venue=venue,
+        abstract=abstract,
+        arxiv_id=arxiv_id,
+    )
+    db.add(paper)
+    await db.commit()
+    await db.refresh(paper)
+
+    out = PaperOut.model_validate(paper)
+    out.annotations = []
+    return out
+
+
+@router.delete("/{paper_id}", status_code=204)
+async def delete_paper(paper_id: str, db: AsyncSession = Depends(get_db)):
+    paper = await get_or_404(db, Paper, paper_id, "Paper")
+    await db.delete(paper)
+    await db.commit()
 
 
 @router.get("/", response_model=list[PaperOut])

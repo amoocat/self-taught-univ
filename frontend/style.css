@@ -1397,6 +1397,47 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   font-style: italic;
 }
 
+.paper-add-row {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--cream);
+}
+.paper-add-input {
+  flex: 1;
+  padding: 5px 7px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  color: var(--navy);
+  font-family: var(--font-mono);
+  min-width: 0;
+}
+.paper-add-input:focus { outline: none; border-color: var(--gold); }
+.paper-add-btn {
+  padding: 5px 9px;
+  font-size: 11px;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  background: var(--navy);
+  color: var(--gold2);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.paper-add-btn:hover { background: var(--red); }
+.paper-add-btn:disabled { opacity: 0.5; cursor: default; }
+.paper-add-msg {
+  padding: 5px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  border-bottom: 1px solid var(--border);
+}
+.paper-add-msg.ok { color: #2a7a2a; background: #f0fff0; }
+.paper-add-msg.err { color: var(--red); background: #fff5f5; }
+
 .paper-item {
   padding: 10px 14px;
   border-bottom: 1px solid var(--cream3);
