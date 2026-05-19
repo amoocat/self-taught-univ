@@ -108,8 +108,10 @@ async def job_crawl_youtube():
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     try:
         for playlist in YOUTUBE_PLAYLISTS:
-            videos = await crawler.fetch_playlist_videos(playlist["playlist_id"])
-            saved  = await _save_lectures(videos, playlist["category"])
+            videos = await crawler.fetch_playlist_videos(
+                playlist["playlist_id"], filter_ai=True
+            )
+            saved = await _save_lectures(videos)
             logger.info(f"[Job] YouTube {playlist['name']}: {saved}개 저장")
     finally:
         await crawler.close()
@@ -186,19 +188,21 @@ async def _save_papers(papers) -> int:
     return saved
 
 
-async def _save_lectures(videos, category: str) -> int:
-    """category로 course 조회 후 position+1 기준 upsert (YouTube는 0-indexed)"""
+async def _save_lectures(videos) -> int:
+    """video.category로 course 조회 후 youtube_url/duration upsert"""
     saved = 0
     async with AsyncSessionLocal() as db:
-        course = (await db.execute(
-            select(Course).where(Course.category == category)
-        )).scalar_one_or_none()
-
-        if not course:
-            logger.warning(f"[YouTube] category '{category}' 과목 없음 — 스킵")
-            return 0
-
         for v in videos:
+            category = v.category or "misc"
+
+            course = (await db.execute(
+                select(Course).where(Course.category == category)
+            )).scalar_one_or_none()
+
+            if not course:
+                logger.debug(f"[YouTube] category '{category}' 과목 없음 — 스킵: {v.title[:50]}")
+                continue
+
             lecture_number = v.position + 1
             exists = (await db.execute(
                 select(Lecture).where(
@@ -207,8 +211,9 @@ async def _save_lectures(videos, category: str) -> int:
                 )
             )).scalar_one_or_none()
 
+            yt_url = f"https://youtube.com/watch?v={v.video_id}"
             if exists:
-                exists.youtube_url  = f"https://youtube.com/watch?v={v.video_id}"
+                exists.youtube_url  = yt_url
                 exists.duration_sec = v.duration_sec
                 exists.category     = category
             else:
@@ -217,7 +222,7 @@ async def _save_lectures(videos, category: str) -> int:
                     title=v.title,
                     number=lecture_number,
                     category=category,
-                    youtube_url=f"https://youtube.com/watch?v={v.video_id}",
+                    youtube_url=yt_url,
                     duration_sec=v.duration_sec,
                 ))
                 saved += 1

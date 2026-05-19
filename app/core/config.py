@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     CHATGPT_API_KEY: str = ""
     YOUTUBE_API_KEY: str = ""
     YOUTUBE_OAUTH_CLIENT: str = ""
+    YOUTUBE_OAUTH_SECRET: str = ""
+    YOUTUBE_OAUTH_REDIRECT: str = "http://localhost:8000/api/v1/youtube/oauth/callback"
 
     model_config = {"env_file": ".env", "extra": "allow"}
 
