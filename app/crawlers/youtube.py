@@ -141,7 +141,7 @@ class YouTubeCrawler:
 def _iso8601_to_sec(duration: str) -> int:
     """PT1H2M3S → 3723"""
     import re
-    h = int(m := re.search(r"(\d+)H", duration)) and int(m.group(1)) if re.search(r"(\d+)H", duration) else 0
+    h = int(re.search(r"(\d+)H", duration).group(1)) if re.search(r"(\d+)H", duration) else 0
     m = int(re.search(r"(\d+)M", duration).group(1)) if re.search(r"(\d+)M", duration) else 0
     s = int(re.search(r"(\d+)S", duration).group(1)) if re.search(r"(\d+)S", duration) else 0
     return h * 3600 + m * 60 + s

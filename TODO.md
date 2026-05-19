@@ -8,9 +8,6 @@
 
 ## 🔴 지금 (Phase 2 진행 중)
 
-### 크롤러 (Phase 1 잔여)
-- [ ] YouTube Data API v3 연동 확인 — `POST /api/v1/crawl/youtube` 실제 실행 테스트 (서버 기동 후 직접 확인 필요)
-
 ### 강의 구성 고도화
 > ⚠️ YouTube API 키 발급 완료 후 진행 가능
 - [ ] `lectures` 테이블에 YouTube 필드 추가 — `youtube_video_id`, `thumbnail_url`, `playlist_id`, `order_index`, `is_available`
@@ -199,6 +196,8 @@
 - [x] 크롤러 수동 테스트: `POST /api/v1/crawl/arxiv` (논문 23개 수집 확인)
 - [x] 크롤러 수동 테스트: `POST /api/v1/crawl/blogs` (132개 피드 수집 확인)
 - [x] 블로그 크롤러 ML/data 필터링 (개인·빅테크 전체 수집, 한국 테크 블로그는 키워드 필터)
+- [x] YouTube 크롤러 버그 수정 — `_iso8601_to_sec` walrus 연산자 오용 → TypeError 발생, 단순 조건식으로 교체
+- [x] 크롤러 테스트 — `test_crawlers.py` 추가 (`_iso8601_to_sec` 파라미터화 6케이스, crawl 엔드포인트 smoke test 3개)
 - [x] Docker Compose 로컬 환경
 - [x] alembic 마이그레이션
 - [x] 저명 논문 8개 seed 완료
