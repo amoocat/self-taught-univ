@@ -64,10 +64,12 @@
 
 ### 내 YouTube 계정 연동 (OAuth 플레이리스트 동기화)
 > 공개 플레이리스트 URL 입력 방식이 아니라, 내 YouTube 계정에 저장된 플레이리스트를 직접 가져오는 방식
-- [ ] YouTube OAuth 2.0 인증 플로우 구현 — `YOUTUBE_OAUTH_CLIENT` 사용, Google 로그인 → access token 발급
-- [ ] `GET /api/v1/youtube/playlists` — 내 계정의 플레이리스트 목록 조회
-- [ ] 플레이리스트 선택 → 과목(Course)에 매핑 UI — "이 플레이리스트를 어느 과목으로 등록할까요?"
-- [ ] 선택된 플레이리스트 영상 일괄 import → `Lecture` 행 생성
+- [x] YouTube OAuth 2.0 인증 플로우 구현 — Google 로그인 → token 저장 → 자동 갱신
+- [x] `GET /api/v1/youtube/playlists` — 내 계정의 플레이리스트 목록 조회
+- [x] 플레이리스트 체크박스 선택 UI — 커리큘럼 탭 하단 'YouTube 강의 연동' 섹션
+- [x] 선택된 플레이리스트 영상 일괄 import → `Lecture` 행 생성
+- [x] AI/데이터 관련 영상만 키워드 필터링 + 카테고리 자동 분류 (9개 카테고리)
+- [ ] **플레이리스트 수가 너무 많을 때 LLM으로 AI/데이터 관련 플리 자동 하이라이팅** — 플리 제목+설명을 GPT에게 넘겨서 관련도 점수 매기고, 관련 플리는 자동 체크 + 상단 정렬
 - [ ] 배치: 주 1회 동기화 — 새 영상 추가/삭제 자동 반영 (APScheduler 기존 youtube job 활용)
 
 ### AI 기능
