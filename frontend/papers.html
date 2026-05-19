@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>논문 — STU</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+      --accent: #7c6af7; --text: #e2e4f0; --muted: #7b7f96;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    nav { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    nav a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 4px 10px; border-radius: 6px; transition: color .15s, background .15s; }
+    nav a:hover { color: var(--text); background: rgba(255,255,255,.05); }
+    nav a.active { color: var(--accent); }
+    .nav-logo { font-weight: 700; color: var(--accent); font-size: 15px; margin-right: 8px; text-decoration: none; }
+
+    .toolbar { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .search-box { flex: 1; max-width: 400px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 13px; outline: none; }
+    .search-box:focus { border-color: var(--accent); }
+    .search-box::placeholder { color: var(--muted); }
+    .count-label { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+    .crawl-btn { padding: 7px 14px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; font-size: 12px; cursor: pointer; transition: all .15s; }
+    .crawl-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .content { padding: 24px; max-width: 960px; margin: 0 auto; }
+
+    .paper-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 18px 20px; margin-bottom: 12px; cursor: pointer;
+      transition: border-color .15s;
+    }
+    .paper-card:hover { border-color: var(--accent); }
+    .paper-card.open { border-color: var(--accent); }
+
+    .paper-header { display: flex; align-items: flex-start; gap: 12px; }
+    .paper-year { min-width: 42px; font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(124,106,247,.15); padding: 3px 7px; border-radius: 5px; text-align: center; flex-shrink: 0; margin-top: 2px; }
+    .paper-title { font-size: 14px; font-weight: 600; line-height: 1.4; flex: 1; }
+    .paper-authors { font-size: 12px; color: var(--muted); margin-top: 5px; }
+    .paper-venue { font-size: 11px; color: var(--accent); margin-top: 4px; }
+    .paper-abstract {
+      margin-top: 14px; font-size: 13px; color: #b0b4c8; line-height: 1.65;
+      display: none; border-top: 1px solid var(--border); padding-top: 12px;
+    }
+    .paper-card.open .paper-abstract { display: block; }
+    .paper-footer { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-arxiv { padding: 5px 12px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 7px; font-size: 11px; text-decoration: none; transition: all .15s; }
+    .btn-arxiv:hover { border-color: var(--accent); color: var(--accent); }
+
+    .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; margin: 60px auto; display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { padding: 60px; text-align: center; color: var(--muted); font-size: 14px; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/index.html">STU</a>
+  <a href="/notes.html">📝 노트</a>
+  <a href="/curriculum.html">🎓 커리큘럼</a>
+  <a href="/chat.html">💬 AI 튜터</a>
+  <a href="/papers.html" class="active">📄 논문</a>
+  <a href="/feed.html">📰 피드</a>
+</nav>
+
+<div class="toolbar">
+  <input class="search-box" id="searchInput" type="text" placeholder="제목, 저자, 내용으로 검색…" />
+  <span class="count-label" id="countLabel"></span>
+  <button class="crawl-btn" id="crawlBtn">arXiv 수집</button>
+  <button class="crawl-btn" id="seedBtn">저명 논문 seed</button>
+</div>
+
+<div class="content">
+  <div id="paperList"><span class="spinner"></span></div>
+</div>
+
+<script>
+let papers = [];
+let searchTimer = null;
+
+async function loadPapers(q = '') {
+  const list = document.getElementById('paperList');
+  list.innerHTML = '<span class="spinner"></span>';
+  try {
+    const params = q ? `?q=${encodeURIComponent(q)}` : '';
+    papers = await fetch(`/api/v1/papers/${params}`).then(r => r.json());
+    renderPapers();
+  } catch (e) {
+    list.innerHTML = `<div class="empty">로드 실패: ${e.message}</div>`;
+  }
+}
+
+function renderPapers() {
+  const list = document.getElementById('paperList');
+  document.getElementById('countLabel').textContent = `${papers.length}개`;
+
+  if (!papers.length) {
+    list.innerHTML = '<div class="empty">논문이 없습니다.<br>"arXiv 수집" 또는 "저명 논문 seed"를 실행해 보세요.</div>';
+    return;
+  }
+
+  list.innerHTML = papers.map(p => `
+    <div class="paper-card" data-id="${p.id}">
+      <div class="paper-header">
+        <div class="paper-year">${p.year}</div>
+        <div>
+          <div class="paper-title">${esc(p.title)}</div>
+          <div class="paper-authors">${esc(p.authors)}</div>
+          ${p.venue ? `<div class="paper-venue">${esc(p.venue)}</div>` : ''}
+        </div>
+      </div>
+      ${p.abstract ? `<div class="paper-abstract">${esc(p.abstract)}</div>` : ''}
+      <div class="paper-footer" style="display:none">
+        ${p.arxiv_id ? `<a class="btn-arxiv" href="https://arxiv.org/abs/${p.arxiv_id}" target="_blank">arXiv ↗</a>
+                        <a class="btn-arxiv" href="https://arxiv.org/pdf/${p.arxiv_id}" target="_blank">PDF ↗</a>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.paper-card').forEach(card => {
+    card.addEventListener('click', () => {
+      card.classList.toggle('open');
+      const footer = card.querySelector('.paper-footer');
+      footer.style.display = card.classList.contains('open') ? 'flex' : 'none';
+    });
+  });
+}
+
+// search
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadPapers(e.target.value), 300);
+});
+
+// crawl triggers
+async function triggerCrawl(endpoint, label) {
+  const btn = endpoint === 'arxiv' ? document.getElementById('crawlBtn') : document.getElementById('seedBtn');
+  btn.disabled = true;
+  btn.textContent = '실행 중…';
+  try {
+    await fetch(`/api/v1/crawl/${endpoint}`, { method: 'POST' });
+    btn.textContent = '시작됨 ✓';
+    setTimeout(() => { btn.textContent = label; btn.disabled = false; loadPapers(); }, 3000);
+  } catch (e) {
+    btn.textContent = '실패';
+    setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 2000);
+  }
+}
+document.getElementById('crawlBtn').addEventListener('click', () => triggerCrawl('arxiv', 'arXiv 수집'));
+document.getElementById('seedBtn').addEventListener('click', () => triggerCrawl('seed', '저명 논문 seed'));
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+loadPapers();
+</script>
+</body>
+</html>
