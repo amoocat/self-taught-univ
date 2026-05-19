@@ -6,43 +6,14 @@
 
 ---
 
-## 🚨 Phase 0 — 지금 당장 깨져있는 것들 (탭별)
-
-> 실제 페이지를 돌아보니 아래 항목들이 동작하지 않거나 하드코딩된 상태.
-> Phase 2 전에 먼저 고쳐야 앱이 실제로 쓸 수 있는 상태가 됨.
-
-### 공통 / 환경
-- [x] **CHATGPT_API_KEY 미설정 시 AI 기능 전부 500 에러** — `.env` 재생성 후 키 설정 완료
-- [x] **DB 초기 데이터 없음** — `app/db/seed.py` 작성, 앱 시작 시 자동 실행. 6개 과목 + 총 106개 강의 삽입. `POST /api/v1/crawl/seed-courses` 로 수동 실행도 가능
-
-### 홈
-- [x] **학기 진도 현황 하드코딩** → `initHome()` 함수로 API 데이터 동적 렌더링 (`#homeProgressList`)
-- [x] **사이드바 과목 % 하드코딩** → `initHome()`에서 API 데이터로 `#sbSubjectList` 동적 렌더링
-- [x] **사이드바 과목 클릭 → 강의 페이지 이동 안 됨** → `selectSubject(id, courseId)` 에 `gotoLecture(courseId)` 추가
-- [x] **프로필 드롭다운 수치 하드코딩** → `#pdCourses`, `#pdProgress` id 추가, `initHome()`에서 실제 값 주입
-- [x] **상단 "학사 포털", "진도 현황" 링크 무반응** → `onclick="goto('about')"`, `onclick="goto('curriculum')"` 추가
+## 🚨 Phase 0 — 남은 항목
 
 ### 렉쳐 노트
 - [ ] **렉쳐 노트 내용 전부 비어있음** — DB에 `LectureNote` 데이터 없음. 최소한 선형대수 몇 강 분 수동 입력 필요
-- [ ] **YouTube 영상 전부 "동영상 없음"** — YouTube 크롤러 1회 실행 후 해결됨
-
-### 내 노트
-- [x] **노트 삭제 버튼 없음** → 노트 목록 아이템에 ✕ 버튼 추가 + `obsDelete()` 함수 구현
-
-### 논문 읽기
-- [x] **논문 추가 UI 없음** → arXiv ID/URL 입력 폼 추가. `POST /api/v1/papers/` 엔드포인트가 arXiv API에서 메타데이터 자동 수집 후 저장
-- [x] **논문 자동 크롤링 없음** → arXiv 크롤러 존재 (cs.AI/LG/CV/CL + LLM/Transformer/Diffusion). 매일 새벽 2시 30분 자동 수집. rate limit 429 수정 완료
-- [x] **논문 검색 없음** → 논문 목록 상단에 검색 input 추가, `searchPapers()` 함수 구현
-
-### 테크 블로그
-- [x] **소스 필터 클릭 → 피드 필터링 안 됨** → `_blogSourceFilter` 상태 + `_renderBlogFeed()` 구현
-- [x] **카테고리 탭 (LLM/비전/인프라/추천시스템) 동작 안 함** → `_blogTabFilter` 상태 + `_renderBlogFeed()` 연결
-- [x] **피드 검색 input 동작 안 함** → `oninput="searchBlog(this.value)"` 연결, `searchBlog()` 구현
-- [x] **아티클 뷰어에 "원문 보기" 링크 없음** → `selectPost()`에 `🔗 원문 보기` 버튼 추가
+- [ ] **YouTube 영상 전부 "동영상 없음"** — YouTube OAuth 인증 후 플레이리스트 sync 필요
 
 ### 지식 그래프
-- [x] **노드 클릭 → 연결된 노트 없으면 아무 반응 없음** → "관련 노트 없음" 시 툴팁에 `+ 새 노트 작성` 버튼 표시
-- [ ] **그래프 데이터 항상 fallback** — CHATGPT_API_KEY 설정 + 노트 저장 후 자동 해결됨
+- [ ] **그래프 데이터 항상 fallback** — CHATGPT_API_KEY 설정 완료됨, 노트 저장 후 자동 해결됨
 
 ### AI 챗봇
 - [ ] **컨텍스트 바 하드코딩** — 실제 강의 상태 반영 미구현
@@ -50,25 +21,17 @@
 
 ---
 
-## 🔴 지금 (Phase 2 진행 중)
+## 🔴 Phase 2 — 진행 중
 
 ### 강의 구성 고도화
-> ⚠️ YouTube API 키 발급 완료 후 진행 가능
 - [ ] `lectures` 테이블에 YouTube 필드 추가 — `youtube_video_id`, `thumbnail_url`, `playlist_id`, `order_index`, `is_available`
-- [ ] YouTube Data API v3로 플레이리스트 일괄 import — video_id·title·duration·thumbnail 저장
 - [ ] 프론트: `ll-item` 클릭 시 YouTube iframe embed로 재생 (`youtube_video_id` 기반)
 - [ ] 배치: 주기적으로 영상 유효성 체크 → 삭제·비공개 시 `is_available = false` 처리
 - [ ] 최신 동향 자동 크롤링 → 피드 페이지 통합 (Naver D2, 당근 테크, 테크 유튜브)
 - [ ] 신규 강좌 추가 — TED 행복 강좌 (wellbeing 카테고리 신설)
 - [ ] 신규 강좌 추가 — MLVU (바탕화면 폴더 영상 → 로컬 import 방식 결정 필요)
 
-### 내 YouTube 계정 연동 (OAuth 플레이리스트 동기화)
-> 공개 플레이리스트 URL 입력 방식이 아니라, 내 YouTube 계정에 저장된 플레이리스트를 직접 가져오는 방식
-- [x] YouTube OAuth 2.0 인증 플로우 구현 — Google 로그인 → token 저장 → 자동 갱신
-- [x] `GET /api/v1/youtube/playlists` — 내 계정의 플레이리스트 목록 조회
-- [x] 플레이리스트 체크박스 선택 UI — 커리큘럼 탭 하단 'YouTube 강의 연동' 섹션
-- [x] 선택된 플레이리스트 영상 일괄 import → `Lecture` 행 생성
-- [x] AI/데이터 관련 영상만 키워드 필터링 + 카테고리 자동 분류 (9개 카테고리)
+### 내 YouTube 계정 연동
 - [ ] **플레이리스트 수가 너무 많을 때 LLM으로 AI/데이터 관련 플리 자동 하이라이팅** — 플리 제목+설명을 GPT에게 넘겨서 관련도 점수 매기고, 관련 플리는 자동 체크 + 상단 정렬
 - [ ] 배치: 주 1회 동기화 — 새 영상 추가/삭제 자동 반영 (APScheduler 기존 youtube job 활용)
 
@@ -91,7 +54,7 @@
 - [ ] Jenkins CI 파이프라인 실제 실행 테스트
 - [ ] ArgoCD 설치 및 연동
 - [ ] API 키 사용량 대시보드
-- [ ] DB, 서버등을 로컬 말고 클라우드 환경으로 이관 
+- [ ] DB, 서버등을 로컬 말고 클라우드 환경으로 이관
 
 ---
 
@@ -117,44 +80,29 @@
 - [ ] 배치 재임베딩 스크립트 (기존 데이터 소급 처리)
 
 ### 3-3. 그래프 노드 임베딩 (Graph Embedding)
-> 지식 그래프의 노드(개념)를 텍스트로 변환해 임베딩 → 개념 간 유사도 계산
-
 - [ ] 노드 텍스트화 전략 결정
   - 노드명 + 연결된 노드명들 + 해당 노트 요약을 합쳐서 임베딩
-  - 예: `"Transformer: attention, self-attention, BERT, GPT, position encoding. 내 노트 요약: ..."`
 - [ ] 그래프 노드 임베딩 생성: `app/services/graph_embedding_service.py`
 - [ ] 노드 추가/수정 시 임베딩 자동 갱신
 - [ ] (선택) Node2Vec / GraphSAGE 같은 그래프 전용 임베딩 도입 검토
-  - 텍스트 임베딩으로 충분하면 스킵. 그래프 구조 자체를 학습시키고 싶을 때 도입.
 
 ### 3-4. 시맨틱 서치 API
 - [ ] `GET /api/v1/search?q=&type=` — 통합 시맨틱 검색 엔드포인트
   - `type`: `all` / `notes` / `papers` / `lectures` / `concepts`
   - 쿼리 텍스트 → 임베딩 → pgvector cosine similarity 검색
-  - 결과에 `similarity_score` 포함
-- [ ] 하이브리드 서치 (선택): 키워드 검색(PostgreSQL FTS) + 시맨틱 검색 결과 RRF(Reciprocal Rank Fusion)로 합산
+- [ ] 하이브리드 서치 (선택): 키워드 검색 + 시맨틱 검색 결과 RRF로 합산
 - [ ] 검색 결과를 프론트 검색바에 연결
 
 ### 3-5. RAG 기반 챗봇 고도화
-> 현재 챗봇: Claude에게 질문만 던짐
-> 목표: "내가 공부한 내용" 기반으로 Claude가 답변하도록
-
 - [ ] 챗봇 질문 → 임베딩 → 유사 노트/논문/렉쳐 top-k 검색
-- [ ] 검색된 문서를 Claude 프롬프트 컨텍스트에 주입
-  ```
-  [시스템]: 아래는 학생이 직접 작성한 노트와 논문 요약입니다.
-  이를 참고해서 질문에 답하되, 학생이 아직 공부하지 않은 내용은
-  "아직 이 부분은 공부 안 하셨네요" 라고 알려주세요.
-  [컨텍스트]: {retrieved_docs}
-  [질문]: {user_question}
-  ```
+- [ ] 검색된 문서를 GPT 프롬프트 컨텍스트에 주입
 - [ ] 답변에 출처 표시 (어떤 노트/논문에서 가져온 내용인지)
 - [ ] 테스트 모드: "이 개념 설명해봐" → 내 노트와 대조해서 채점
 
 ### 3-6. 프론트 연결
 - [ ] 통합 검색바 → 시맨틱 서치 API 연결
-- [ ] 지식 그래프: 노드 클릭 시 "유사한 개념" 사이드패널 표시 (그래프 임베딩 유사도 활용)
-- [ ] 노트 에디터: 작성 중 유사 노트/논문 자동 추천 (실시간 임베딩 유사도)
+- [ ] 지식 그래프: 노드 클릭 시 "유사한 개념" 사이드패널 표시
+- [ ] 노트 에디터: 작성 중 유사 노트/논문 자동 추천
 - [ ] 챗봇: 답변에 참조 노트 링크 표시
 
 ---
@@ -181,7 +129,7 @@
 
 ## 🟣 Phase 7 — 기타 사이드 프로젝트 & 실험
 
-- [ ] 사주 챗봇 — 생년월일 입력 → 사주 해석 + Claude 대화 ("작년에 학업운이 좋았는데 맞죠?" 이런 느낌, 대답듣고 답변 수정및 고도화)
+- [ ] 사주 챗봇 — 생년월일 입력 → 사주 해석 + GPT 대화
 - [ ] 멘탈케어 MCP — 블로그 일기 읽고 페르소나 학습 → 맞춤형 멘탈케어 챗봇
 - [ ] ETL 그래프 MCP — 데이터 파이프라인 구조 자동 시각화
 - [ ] 포트폴리오 MCP — Obsidian 회사 기록 정리 → 포트폴리오 자동 구성
@@ -201,7 +149,38 @@
 
 ## ✅ 완료된 것들
 
+### Phase 0 — 깨져있던 것들 수정
+
+- [x] **CHATGPT_API_KEY 미설정** — `.env` 재생성 후 키 설정 완료
+- [x] **DB 초기 데이터 없음** — `app/db/seed.py` 작성, 앱 시작 시 자동 실행. 6개 과목 + 106개 강의 삽입
+- [x] **홈 학기 진도 현황 하드코딩** → `initHome()` 함수로 API 데이터 동적 렌더링
+- [x] **홈 사이드바 과목 % 하드코딩** → `initHome()`에서 API 데이터로 동적 렌더링
+- [x] **홈 사이드바 과목 클릭 → 강의 페이지 이동 안 됨** → `gotoLecture(courseId)` 연결
+- [x] **홈 프로필 드롭다운 수치 하드코딩** → 실제 API 값 주입
+- [x] **홈 상단 링크 무반응** → `goto('about')`, `goto('curriculum')` 연결
+- [x] **노트 삭제 버튼 없음** → ✕ 버튼 + `obsDelete()` 함수 구현
+- [x] **논문 추가 UI 없음** → arXiv ID/URL 입력 폼 + `POST /api/v1/papers/` 엔드포인트 (arXiv API 메타데이터 자동 수집)
+- [x] **논문 자동 크롤링 없음** → arXiv 크롤러 (cs.AI/LG/CV/CL 등) 매일 새벽 2시 30분 자동 수집. rate limit 429 수정
+- [x] **논문 검색 없음** → 검색 input + `searchPapers()` 구현
+- [x] **블로그 소스 필터 동작 안 함** → `_blogSourceFilter` 상태 + `_renderBlogFeed()` 구현
+- [x] **블로그 카테고리 탭 동작 안 함** → `_blogTabFilter` 상태 연결
+- [x] **블로그 검색 동작 안 함** → `searchBlog()` 구현
+- [x] **블로그 아티클 "원문 보기" 링크 없음** → `🔗 원문 보기` 버튼 추가
+- [x] **지식 그래프 노드 클릭 → 노트 없으면 무반응** → "관련 노트 없음 + 새 노트 작성" 툴팁 표시
+
+### Phase 2 — YouTube 연동
+
+- [x] YouTube OAuth 2.0 인증 플로우 구현 — Google 로그인 → token 저장 → 자동 갱신 (`oauth_tokens/youtube.json`)
+- [x] `GET /api/v1/youtube/playlists` — 내 계정 플레이리스트 목록 조회
+- [x] `GET /api/v1/youtube/preview/{id}` — 저장 전 필터 결과 미리보기
+- [x] `POST /api/v1/youtube/playlists/sync` — 선택한 플리 크롤링 → DB 저장
+- [x] 플레이리스트 체크박스 선택 UI — 커리큘럼 탭 하단 'YouTube 강의 연동' 섹션
+- [x] AI/데이터 관련 영상만 키워드 필터링 (math/ml/dl/nlp/cv/llm/data/stat/infra 9개 카테고리, 무관 영상 자동 스킵)
+- [x] feed_items·lectures·papers `category` 칼럼 추가 + alembic 마이그레이션
+- [x] 블로그 크롤러 자동 카테고리 분류 (키워드 매칭)
+
 ### 프론트엔드
+
 - [x] 백엔드 API 응답 스펙 정렬 (notes/graph/feed/curriculum/lectures)
 - [x] `GET /api/v1/notes` 응답 → `{ id, title, content, tags[], updated }` 수정
 - [x] `GET /api/v1/graph` 신규 엔드포인트 생성
@@ -230,6 +209,7 @@
 - [x] 학생 프로필 드롭다운
 
 ### 백엔드
+
 - [x] 논문 주석 자동 생성 — `POST /api/v1/papers/{id}/annotate` (GPT-4o, 키워드·설명 추출)
 - [x] 노트 저장 시 키워드 자동 추출 → GraphNode/GraphEdge 자동 생성 (gpt-4o-mini 백그라운드)
 - [x] 강의 페이지 과목별 분리 (커리큘럼 카드 클릭 → 해당 과목, 과목 선택기, 완료 표시, 강의별 노트 패널)
@@ -240,28 +220,26 @@
 - [x] CRUD API (notes, curriculum, chat, papers, feed, graph)
 - [x] ChatGPT API 챗봇 스트리밍 (gpt-4o, SSE 스트리밍, 학습/테스트 모드)
 - [x] 챗봇 — 프론트 실제 GPT 스트리밍 연결 (SSE ReadableStream, 토큰 단위 렌더링, 대화 히스토리 DB 저장, 세션 관리)
-- [x] 같이 논문 읽어주는 챗봇 — 논문 뷰어에 Q&A 패널 추가 (POST /chat/paper/{id}/stream, 논문 abstract·키워드 컨텍스트 주입)
-- [x] 시험볼때 힌트 챗봇 — 강의 노트 컨텍스트 기반 단계적 힌트 제공 (POST /chat/lecture/{id}/stream, 슬라이드인 패널)
-- [x] YouTube API 키 발급 — `.env`에 `YOUTUBE_API_KEY` / `YOUTUBE_OAUTH_CLIENT` 설정 완료, `.env.example`에 항목 추가
-- [x] 형상관리 — 기능별 9개 커밋으로 히스토리 재작성, 각 커밋 메시지에 기술적 동작 원리 상세 기술
+- [x] 같이 논문 읽어주는 챗봇 — 논문 뷰어에 Q&A 패널 추가
+- [x] 시험볼때 힌트 챗봇 — 강의 노트 컨텍스트 기반 단계적 힌트 제공
+- [x] YouTube API 키 발급 + OAuth 설정 완료
 - [x] APScheduler 배치 크롤러
 - [x] YouTube / arXiv / 블로그 크롤러
-- [x] 크롤러 수동 테스트: `POST /api/v1/crawl/arxiv` (논문 23개 수집 확인)
-- [x] 크롤러 수동 테스트: `POST /api/v1/crawl/blogs` (132개 피드 수집 확인)
-- [x] 블로그 크롤러 ML/data 필터링 (개인·빅테크 전체 수집, 한국 테크 블로그는 키워드 필터)
+- [x] 블로그 크롤러 ML/data 필터링
 - [x] Docker Compose 로컬 환경
 - [x] alembic 마이그레이션
-- [x] 저명 논문 8개 seed 완료
+- [x] 저명 논문 8개 seed
 - [x] Dockerfile entrypoint에 `alembic upgrade head` 자동화
 - [x] `.env.example` 파일 작성
 
 ### 인프라
+
 - [x] K8s YAML (Deployment, Ingress, Storage)
 - [x] Jenkinsfile CI 파이프라인
-- [x] GitHub Actions CI
+- [x] GitHub Actions CI (develop·staging·main 브랜치 트리거 포함)
 - [x] ArgoCD Application YAML
 - [x] Prometheus + Grafana 설정
-- [x] 루트 디렉토리 정리 — 레거시 프로토타입 파일·중복 YAML 삭제, `ci.yml` → `.github/workflows/`, `alerts/prometheus.yml` → `monitoring/`
-- [x] PR-Agent Gemini 자동 코드 리뷰 — `pr-agent.yml` 추가, PR 열릴 때 auto_review·auto_describe·auto_improve 자동 게시 (Google AI Studio 무료 tier)
-- [x] CI 테스트 환경 수정 — `pytest: command not found` 해결 (requirements-dev.txt 설치), `pytest-cov` 추가, TestClient 전환으로 라이브 서버 의존 제거, DB URL 하드코딩 → env 변수 적용
-- [x] 커밋별 스택 PR 13개 생성 — base 브랜치 기반 스택 구조, 각 PR에 설계 의도·기술적 배경·테스트 방법 상세 기술
+- [x] PR-Agent Gemini 자동 코드 리뷰
+- [x] CI 테스트 환경 수정 (TestClient 전환, DB URL env 변수)
+- [x] 브랜치 전략 README 반영 (develop → staging → main)
+- [x] 커밋별 스택 PR 13개 생성
