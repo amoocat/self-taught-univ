@@ -10,6 +10,8 @@ from app.crawlers.scheduler import (
     job_crawl_youtube,
     job_seed_papers,
 )
+from app.db.session import AsyncSessionLocal
+from app.db.seed import seed_courses
 
 router = APIRouter()
 
@@ -40,3 +42,11 @@ async def trigger_seed(bg: BackgroundTasks):
     """저명 논문 초기 데이터 수집"""
     bg.add_task(job_seed_papers)
     return {"message": "논문 seed 시작됨 (백그라운드)"}
+
+
+@router.post("/seed-courses", status_code=200)
+async def trigger_seed_courses():
+    """Course/Lecture 초기 데이터 삽입 (이미 있으면 스킵)"""
+    async with AsyncSessionLocal() as db:
+        result = await seed_courses(db)
+    return {"message": f"Course {result['courses']}개, Lecture {result['lectures']}개 삽입 완료"}

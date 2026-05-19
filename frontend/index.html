@@ -31,9 +31,9 @@
       </div>
     </div>
     <div class="topbar-upper-right">
-      <span class="top-util-link">학사 포털</span>
+      <span class="top-util-link" onclick="goto('about')">학사 포털</span>
       <span class="top-util-divider">|</span>
-      <span class="top-util-link">진도 현황</span>
+      <span class="top-util-link" onclick="goto('curriculum')">진도 현황</span>
       <span class="top-util-divider">|</span>
       <span class="top-util-link" onclick="chatToggle()">AI 학습봇</span>
       <span class="top-util-divider">|</span>
@@ -75,11 +75,11 @@
             </div>
             <div class="pd-row">
               <span class="pd-label">이수 학점</span>
-              <span class="pd-value">진행 중 (3과목)</span>
+              <span class="pd-value" id="pdCourses">진행 중 (—과목)</span>
             </div>
             <div class="pd-row">
               <span class="pd-label">전체 진도</span>
-              <span class="pd-value">23% 완료</span>
+              <span class="pd-value" id="pdProgress">— 완료</span>
             </div>
             <div class="pd-row">
               <span class="pd-label">최근 활동</span>
@@ -122,12 +122,9 @@
       </div>
 
       <div class="sb-section">과목 목록</div>
-      <div class="sb-item active" id="si-linear" onclick="selectSubject('linear')">📐 선형대수학 <span class="sb-pct">42%</span></div>
-      <div class="sb-item" id="si-stats"  onclick="selectSubject('stats')">📊 확률·통계 <span class="sb-pct">18%</span></div>
-      <div class="sb-item" id="si-ml"     onclick="selectSubject('ml')">🤖 머신러닝 <span class="sb-pct">5%</span></div>
-      <div class="sb-item" id="si-dl"     onclick="selectSubject('dl')">🧠 딥러닝 <span class="sb-pct">—</span></div>
-      <div class="sb-item" id="si-cv"     onclick="selectSubject('cv')">👁 컴퓨터 비전 <span class="sb-pct">—</span></div>
-      <div class="sb-item" id="si-nlp"    onclick="selectSubject('nlp')">💬 NLP <span class="sb-pct">—</span></div>
+      <div id="sbSubjectList">
+        <div class="sb-item active" id="si-linear">📐 선형대수학 <span class="sb-pct">—</span></div>
+      </div>
 
       <div class="sb-chatbot" onclick="chatToggle()">★ AI 학습봇 열기</div>
     </div>
@@ -172,27 +169,13 @@
         <div class="home-section">
           <div class="home-section-title">
             학기 진도 현황
-            <span class="home-section-more">자세히 »</span>
+            <span class="home-section-more" onclick="goto('curriculum')" style="cursor:pointer">자세히 »</span>
           </div>
-          <div class="progress-item">
-            <div class="pi-head"><span class="pi-name">선형대수학</span><span class="pi-pct">42%</span></div>
-            <div class="pi-bar"><div class="pi-fill" style="width:42%"></div></div>
-          </div>
-          <div class="progress-item">
-            <div class="pi-head"><span class="pi-name">확률·통계</span><span class="pi-pct">18%</span></div>
-            <div class="pi-bar"><div class="pi-fill" style="width:18%"></div></div>
-          </div>
-          <div class="progress-item">
-            <div class="pi-head"><span class="pi-name">머신러닝 기초</span><span class="pi-pct">5%</span></div>
-            <div class="pi-bar"><div class="pi-fill" style="width:5%"></div></div>
-          </div>
-          <div class="progress-item">
-            <div class="pi-head"><span class="pi-name">딥러닝</span><span class="pi-pct">예정</span></div>
-            <div class="pi-bar"><div class="pi-fill" style="width:0%"></div></div>
-          </div>
-          <div class="progress-item">
-            <div class="pi-head"><span class="pi-name">컴퓨터 비전</span><span class="pi-pct">예정</span></div>
-            <div class="pi-bar"><div class="pi-fill" style="width:0%"></div></div>
+          <div id="homeProgressList">
+            <div class="progress-item">
+              <div class="pi-head"><span class="pi-name">불러오는 중...</span><span class="pi-pct">—</span></div>
+              <div class="pi-bar"><div class="pi-fill" style="width:0%"></div></div>
+            </div>
           </div>
         </div>
 
@@ -503,6 +486,9 @@
       <div class="papers-layout">
         <div class="paper-list">
           <div class="paper-list-head">논문 목록</div>
+          <input type="text" placeholder="제목·저자 검색..."
+            style="width:100%;box-sizing:border-box;padding:6px 8px;margin-bottom:8px;font-size:12px;border:1px solid var(--border);background:var(--cream)"
+            oninput="searchPapers(this.value)">
           <div id="paperListItems"><!-- 동적 렌더링 --></div>
           <div style="display:none"></div>
         </div>
@@ -535,98 +521,98 @@
           <div class="blog-src-head">구독 소스</div>
 
           <div class="src-category">전체</div>
-          <div class="src-item active" onclick="filterBlog('all')">
+          <div class="src-item active" onclick="filterBlog('all',this)">
             <span class="src-dot" style="background:#0a1628"></span>
             <span class="src-name">모든 소스</span>
             <span class="src-count">18</span>
           </div>
 
           <div class="src-category">개인 연구자</div>
-          <div class="src-item" onclick="filterBlog('personal')">
+          <div class="src-item" onclick="filterBlog('personal',this)">
             <span class="src-dot" style="background:#8b1a1a"></span>
             <span class="src-name">Andrej Karpathy</span>
             <span class="src-count">4</span>
           </div>
-          <div class="src-item" onclick="filterBlog('personal')">
+          <div class="src-item" onclick="filterBlog('personal',this)">
             <span class="src-dot" style="background:#8b1a1a"></span>
             <span class="src-name">Sebastian Ruder</span>
             <span class="src-count">3</span>
           </div>
-          <div class="src-item" onclick="filterBlog('personal')">
+          <div class="src-item" onclick="filterBlog('personal',this)">
             <span class="src-dot" style="background:#8b1a1a"></span>
             <span class="src-name">Chip Huyen</span>
             <span class="src-count">3</span>
           </div>
-          <div class="src-item" onclick="filterBlog('personal')">
+          <div class="src-item" onclick="filterBlog('personal',this)">
             <span class="src-dot" style="background:#8b1a1a"></span>
             <span class="src-name">Lilian Weng (OpenAI)</span>
             <span class="src-count">2</span>
           </div>
-          <div class="src-item" onclick="filterBlog('personal')">
+          <div class="src-item" onclick="filterBlog('personal',this)">
             <span class="src-dot" style="background:#8b1a1a"></span>
             <span class="src-name">Jay Alammar</span>
             <span class="src-count">3</span>
           </div>
 
           <div class="src-category">빅테크</div>
-          <div class="src-item" onclick="filterBlog('bigtech')">
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
             <span class="src-dot" style="background:#0a1628"></span>
             <span class="src-name">Google AI Blog</span>
             <span class="src-count">5</span>
           </div>
-          <div class="src-item" onclick="filterBlog('bigtech')">
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
             <span class="src-dot" style="background:#0a1628"></span>
             <span class="src-name">OpenAI Blog</span>
             <span class="src-count">4</span>
           </div>
-          <div class="src-item" onclick="filterBlog('bigtech')">
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
             <span class="src-dot" style="background:#0a1628"></span>
             <span class="src-name">DeepMind Blog</span>
             <span class="src-count">3</span>
           </div>
-          <div class="src-item" onclick="filterBlog('bigtech')">
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
             <span class="src-dot" style="background:#0a1628"></span>
             <span class="src-name">Uber Engineering</span>
             <span class="src-count">2</span>
           </div>
-          <div class="src-item" onclick="filterBlog('bigtech')">
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
             <span class="src-dot" style="background:#0a1628"></span>
             <span class="src-name">Airbnb Tech</span>
             <span class="src-count">2</span>
           </div>
 
           <div class="src-category">국내 기업</div>
-          <div class="src-item" onclick="filterBlog('korean')">
+          <div class="src-item" onclick="filterBlog('korean',this)">
             <span class="src-dot" style="background:#2a5a2a"></span>
             <span class="src-name">당근 Tech</span>
             <span class="src-count">3</span>
           </div>
-          <div class="src-item" onclick="filterBlog('korean')">
+          <div class="src-item" onclick="filterBlog('korean',this)">
             <span class="src-dot" style="background:#2a5a2a"></span>
             <span class="src-name">버즈빌 Tech</span>
             <span class="src-count">2</span>
           </div>
-          <div class="src-item" onclick="filterBlog('korean')">
+          <div class="src-item" onclick="filterBlog('korean',this)">
             <span class="src-dot" style="background:#2a5a2a"></span>
             <span class="src-name">카카오 Tech</span>
             <span class="src-count">4</span>
           </div>
-          <div class="src-item" onclick="filterBlog('korean')">
+          <div class="src-item" onclick="filterBlog('korean',this)">
             <span class="src-dot" style="background:#2a5a2a"></span>
             <span class="src-name">네이버 Tech</span>
             <span class="src-count">3</span>
           </div>
-          <div class="src-item" onclick="filterBlog('korean')">
+          <div class="src-item" onclick="filterBlog('korean',this)">
             <span class="src-dot" style="background:#2a5a2a"></span>
             <span class="src-name">LINE Engineering</span>
             <span class="src-count">2</span>
           </div>
-          <div class="src-item" onclick="filterBlog('korean')">
+          <div class="src-item" onclick="filterBlog('korean',this)">
             <span class="src-dot" style="background:#884400"></span>
             <span class="src-name">토스 Tech</span>
             <span class="src-count">2</span>
           </div>
-          <div class="src-item" onclick="filterBlog('korean')">
+          <div class="src-item" onclick="filterBlog('korean',this)">
             <span class="src-dot" style="background:#884400"></span>
             <span class="src-name">쏘카 Tech</span>
             <span class="src-count">1</span>
@@ -641,7 +627,7 @@
             <button class="feed-filter-btn" onclick="setBlogTab(this,'cv')">비전</button>
             <button class="feed-filter-btn" onclick="setBlogTab(this,'infra')">인프라</button>
             <button class="feed-filter-btn" onclick="setBlogTab(this,'rec')">추천시스템</button>
-            <input class="feed-search" type="text" placeholder="포스트 검색...">
+            <input class="feed-search" type="text" placeholder="포스트 검색..." oninput="searchBlog(this.value)">
           </div>
 
           <div class="feed-list" id="feedList">

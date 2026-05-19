@@ -10,10 +10,14 @@ from app.api.v1 import router as api_router
 from app.core.config import settings
 from app.core.errors import STUError, stu_error_handler
 from app.crawlers.scheduler import init_scheduler, shutdown_scheduler
+from app.db.seed import seed_courses
+from app.db.session import AsyncSessionLocal
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    async with AsyncSessionLocal() as db:
+        await seed_courses(db)
     init_scheduler()
     yield
     shutdown_scheduler()

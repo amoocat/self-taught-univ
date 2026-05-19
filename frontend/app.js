@@ -332,10 +332,30 @@ function obsRenderList(notes) {
       <div class="obs-note-item-meta">
         <span>${n.tags.map(t=>'#'+t).join(' ')}</span>
         <span>${n.updated}</span>
+        <button class="obs-delete-btn" title="삭제" onclick="event.stopPropagation();obsDelete('${n.id}')">✕</button>
       </div>`;
     el.onclick = () => obsOpen(n.id);
     list.appendChild(el);
   });
+}
+
+async function obsDelete(id) {
+  if (!confirm('이 노트를 삭제할까요?')) return;
+  try {
+    const res = await fetch(`/api/v1/notes/${id}`, { method: 'DELETE' });
+    if (res.ok || res.status === 204) {
+      OBS_NOTES = OBS_NOTES.filter(n => n.id !== id);
+      if (obsCurrentId === id) {
+        obsCurrentId = null;
+        document.getElementById('obsEmpty').style.display = 'flex';
+        document.getElementById('obsEditorHead').style.display = 'none';
+        document.getElementById('obsEditorWrap').style.display = 'none';
+      }
+      obsRenderList(OBS_NOTES);
+    }
+  } catch (e) {
+    console.warn('Delete note failed', e);
+  }
 }
 
 function obsOpen(id) {
@@ -708,12 +728,26 @@ async function drawGraph() {
     tooltip.classList.remove('show');
   })
   .on('click', (e, d) => {
-    // 연결된 내 노트 열기
     const linked = OBS_NOTES.find(n =>
       n.title.toLowerCase().includes(d.label.toLowerCase()) ||
-      n.content.toLowerCase().includes(d.label.toLowerCase())
+      (n.content || '').toLowerCase().includes(d.label.toLowerCase())
     );
-    if (linked) { goto('mynotes'); setTimeout(() => obsOpen(linked.id), 100); }
+    if (linked) {
+      goto('mynotes');
+      setTimeout(() => obsOpen(linked.id), 100);
+    } else {
+      const tt = document.getElementById('tooltip');
+      const existing = tt.querySelector('.tt-no-note');
+      if (!existing) {
+        const msg = document.createElement('div');
+        msg.className = 'tt-no-note';
+        msg.style.cssText = 'font-size:11px;color:#884400;margin-top:4px;cursor:pointer';
+        msg.textContent = '+ 새 노트 작성';
+        msg.onclick = () => { goto('mynotes'); setTimeout(() => obsNewNote(), 100); };
+        tt.appendChild(msg);
+        setTimeout(() => msg.remove(), 2000);
+      }
+    }
   });
 
   // force simulation
@@ -1171,6 +1205,7 @@ function goto(page, pushState = true) {
   if (page === 'curriculum') initCurriculum();
   if (page === 'lecture')    initLecture();
   if (page === 'papers')     initPapers();
+  if (page === 'home')       initHome();
 
   // SPA 라우팅 — path 업데이트
   if (pushState) {
@@ -1194,20 +1229,137 @@ window.addEventListener('popstate', () => {
 /* init sidebar hidden for home */
 document.querySelector('.sidebar').style.display = 'none';
 
-function selectSubject(id) {
+/* ════════════════════════════════════════
+   HOME — 동적 렌더링
+════════════════════════════════════════ */
+const _SUBJECT_ID_MAP = {
+  math: 'linear', stats: 'stats', ml: 'ml', dl: 'dl', cv: 'cv', nlp: 'nlp',
+};
+
+async function initHome() {
+  try {
+    const res = await fetch('/api/v1/curriculum/');
+    if (!res.ok) return;
+    const courses = await res.json();
+    _allCourses = courses;
+
+    // 학기 진도 현황
+    const progressSection = document.getElementById('homeProgressList');
+    if (progressSection) {
+      progressSection.innerHTML = courses.map(c => {
+        const pct = Math.round(c.progress_pct);
+        return `<div class="progress-item">
+          <div class="pi-head">
+            <span class="pi-name">${c.title.split(' (')[0]}</span>
+            <span class="pi-pct">${pct > 0 ? pct + '%' : '예정'}</span>
+          </div>
+          <div class="pi-bar"><div class="pi-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    // 사이드바 과목 목록
+    const sbList = document.getElementById('sbSubjectList');
+    if (sbList) {
+      sbList.innerHTML = courses.map((c, i) => {
+        const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
+        const pct  = Math.round(c.progress_pct);
+        const sid  = _SUBJECT_ID_MAP[c.category] || c.category;
+        return `<div class="sb-item${i===0?' active':''}" id="si-${sid}"
+          onclick="selectSubject('${sid}', '${c.id}')"
+          >${icon} ${c.title.split(' (')[0]} <span class="sb-pct">${pct > 0 ? pct+'%' : '—'}</span></div>`;
+      }).join('');
+    }
+
+    // 프로필 드롭다운
+    const totalPct = courses.length
+      ? Math.round(courses.reduce((s, c) => s + c.progress_pct, 0) / courses.length)
+      : 0;
+    const activeCourses = courses.filter(c => c.status === 'active');
+    const pdProgress = document.getElementById('pdProgress');
+    if (pdProgress) pdProgress.textContent = totalPct + '% 완료';
+    const pdCourses = document.getElementById('pdCourses');
+    if (pdCourses) pdCourses.textContent = `진행 중 (${activeCourses.length}과목)`;
+  } catch (e) {
+    console.warn('initHome failed', e);
+  }
+}
+
+function selectSubject(id, courseId) {
   document.querySelectorAll('[id^="si-"]').forEach(el => el.classList.remove('active'));
   const el = document.getElementById('si-'+id);
   if (el) el.classList.add('active');
+  if (courseId) gotoLecture(courseId);
 }
 
-function filterBlog(type) {
-  document.querySelectorAll('.src-item').forEach(el => el.classList.remove('active'));
-  event.currentTarget.classList.add('active');
+let _blogSourceFilter = 'all';
+let _blogTabFilter    = 'all';
+let _blogSearchQuery  = '';
+
+function _renderBlogFeed() {
+  const list = document.getElementById('feedList');
+  if (!list) return;
+  let posts = BLOG_POSTS;
+
+  if (_blogSourceFilter !== 'all') {
+    posts = posts.filter(p => (p.badge || '').includes(_blogSourceFilter) ||
+      (p.source || '').toLowerCase().includes(_blogSourceFilter));
+  }
+  if (_blogTabFilter !== 'all') {
+    posts = posts.filter(p => (p.category || 'etc') === _blogTabFilter);
+  }
+  if (_blogSearchQuery) {
+    const q = _blogSearchQuery.toLowerCase();
+    posts = posts.filter(p =>
+      p.title.toLowerCase().includes(q) ||
+      (p.summary || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (!posts.length) {
+    list.innerHTML = '<div style="padding:24px;color:var(--ink2);font-size:13px">검색 결과가 없습니다.</div>';
+    return;
+  }
+
+  list.innerHTML = posts.map((p, i) => {
+    const kw1 = (p.keywords || [])[0] || '';
+    const kw2 = (p.keywords || [])[1] || '';
+    return `<div class="feed-item${i===0?' active':''}" onclick="selectPost(this,${BLOG_POSTS.indexOf(p)})">
+      <div class="feed-item-meta">
+        <span class="feed-source-badge ${p.badge}">${p.source}</span>
+        <span class="feed-date">${p.date}</span>
+        ${kw1 ? `<span class="feed-tag">${kw1}</span>` : ''}
+        ${kw2 ? `<span class="feed-tag">${kw2}</span>` : ''}
+      </div>
+      <div class="feed-title">${p.title}</div>
+      <div class="feed-preview">${p.summary || ''}</div>
+      <div class="feed-item-foot">
+        <button class="feed-related-btn" onclick="event.stopPropagation();goto('lecture')">→ 렉쳐와 연결</button>
+        <button class="feed-note-btn" onclick="event.stopPropagation();goto('mynotes')">✎ 내 노트에 저장</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (posts.length > 0) selectPost(list.querySelector('.feed-item'), BLOG_POSTS.indexOf(posts[0]));
+}
+
+function filterBlog(type, el) {
+  document.querySelectorAll('.src-item').forEach(e => e.classList.remove('active'));
+  if (el) el.classList.add('active');
+  _blogSourceFilter = type;
+  _renderBlogFeed();
 }
 
 function setBlogTab(btn, tab) {
   document.querySelectorAll('.feed-filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  _blogTabFilter = tab;
+  _renderBlogFeed();
+}
+
+function searchBlog(q) {
+  _blogSearchQuery = q;
+  _renderBlogFeed();
 }
 
 function selectPost(el, idx) {
@@ -1229,6 +1381,7 @@ function selectPost(el, idx) {
     <div class="ra-kw-section"><div class="ra-kw-label">핵심 키워드</div><div class="ra-kw-chips">${kws}</div></div>
     ${courses ? `<div class="ra-kw-section"><div class="ra-kw-label">연관 과목</div><div class="ra-kw-chips">${courses}</div></div>` : ''}
     <div class="ra-actions">
+      ${p.url ? `<button class="ra-action-btn" onclick="window.open('${p.url}','_blank')">🔗 원문 보기</button>` : ''}
       <button class="ra-action-btn gold" onclick="goto('mynotes')">✎ 내 노트에 정리하기</button>
       ${paperBtn}
       <button class="ra-action-btn" onclick="goto('chatbot')">★ AI 학습봇에서 질문하기</button>
@@ -1272,6 +1425,16 @@ window.addEventListener('resize', () => {
 ════════════════════════════════════════ */
 let _papersLoaded = false;
 let _allPapers = [];
+
+function searchPapers(q) {
+  const filtered = q
+    ? _allPapers.filter(p =>
+        p.title.toLowerCase().includes(q.toLowerCase()) ||
+        (p.authors || '').toLowerCase().includes(q.toLowerCase())
+      )
+    : _allPapers;
+  renderPaperList(filtered);
+}
 
 async function initPapers() {
   if (_papersLoaded) return;
