@@ -42,6 +42,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://stu:stu@localhost:5432/stu
+        run: alembic upgrade head
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql+asyncpg://stu:stu@localhost:5432/stu
