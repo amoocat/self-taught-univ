@@ -864,6 +864,7 @@ async function initYoutubeSync() {
       label.textContent = '✓ YouTube 계정 연결됨';
       label.style.color = '#2a7a2a';
       section.style.display = 'block';
+      loadYoutubePlaylists();
     } else {
       label.textContent = 'YouTube 계정 연결 안 됨';
       btn.style.display = 'block';
