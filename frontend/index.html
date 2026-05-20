@@ -364,6 +364,52 @@
       </div>
     </div>
 
+    <!-- ══ 과목 상세 모달 ══ -->
+    <div id="courseDetailModal" class="cd-overlay" style="display:none" onclick="cdOverlayClick(event)">
+      <div class="cd-modal">
+        <div class="cd-header">
+          <div class="cd-header-left">
+            <span id="cdCode" class="course-tag">CODE</span>
+            <span id="cdTitle" class="cd-title"></span>
+          </div>
+          <div class="cd-header-right">
+            <button class="cd-edit-btn" id="cdEditBtn" onclick="cdToggleEdit()">편집</button>
+            <button class="cd-close" onclick="cdClose()">✕</button>
+          </div>
+        </div>
+        <div class="cd-body">
+          <div class="cd-meta">
+            <span id="cdSource" class="cd-source"></span>
+            <div class="cd-progress-row">
+              <div class="cd-bar"><div id="cdFill" class="cd-fill" style="width:0%"></div></div>
+              <span id="cdPct" class="cd-pct"></span>
+            </div>
+          </div>
+          <div class="cd-section">
+            <div class="cd-section-label">과목 개요</div>
+            <div id="cdDescView" class="cd-desc-text">—</div>
+            <textarea id="cdDescEdit" class="cd-textarea" style="display:none" rows="4" placeholder="과목 개요를 입력하세요..."></textarea>
+          </div>
+          <div class="cd-section">
+            <div class="cd-section-label">학습 목표</div>
+            <ul id="cdObjView" class="cd-obj-list"></ul>
+            <textarea id="cdObjEdit" class="cd-textarea" style="display:none" rows="5" placeholder="학습 목표를 줄바꿈으로 구분해 입력하세요..."></textarea>
+          </div>
+          <div class="cd-section">
+            <div class="cd-section-label">강의 목록 <span id="cdLecCount" class="cd-lec-count"></span></div>
+            <div id="cdLecList" class="cd-lec-list"></div>
+          </div>
+        </div>
+        <div class="cd-footer">
+          <div id="cdEditActions" class="cd-edit-actions" style="display:none">
+            <button class="cd-save-btn" onclick="cdSave()">저장</button>
+            <button class="cd-cancel-btn" onclick="cdToggleEdit()">취소</button>
+          </div>
+          <button class="cd-goto-btn" onclick="cdGoto()">강의 페이지로 이동 →</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ YouTube 플리 가져오기 모달 ══ -->
     <div id="ytImportModal" class="yt-modal-overlay" style="display:none" onclick="ytModalOverlayClick(event)">
       <div class="yt-modal">

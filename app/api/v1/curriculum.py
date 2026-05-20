@@ -66,6 +66,8 @@ class CourseOut(BaseModel):
     source: str
     category: str
     order_index: int
+    description: Optional[str] = None
+    objectives: list[str] = []
     lecture_count: int = 0
     completed_count: int = 0
     progress_pct: float = 0.0
@@ -73,6 +75,11 @@ class CourseOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CourseUpdateIn(BaseModel):
+    description: Optional[str] = None
+    objectives: Optional[list[str]] = None
 
 
 @router.get("/", response_model=list[CourseOut])
@@ -96,6 +103,7 @@ async def list_courses(db: AsyncSession = Depends(get_db)):
         result.append(CourseOut(
             id=c.id, code=code, title=c.title, source=c.source,
             category=c.category, order_index=c.order_index,
+            description=c.description, objectives=c.objectives or [],
             lecture_count=lec_count, completed_count=done_count,
             progress_pct=pct, status=status,
         ))
@@ -161,3 +169,14 @@ async def get_lecture_detail(lecture_id: str, db: AsyncSession = Depends(get_db)
         duration_sec=lecture.duration_sec,
         content=note.content_md if note else "",
     )
+
+
+@router.patch("/{course_id}", status_code=200)
+async def update_course(course_id: str, body: CourseUpdateIn, db: AsyncSession = Depends(get_db)):
+    course = await get_or_404(db, Course, course_id, "Course")
+    if body.description is not None:
+        course.description = body.description
+    if body.objectives is not None:
+        course.objectives = body.objectives
+    await db.commit()
+    return {"ok": True}

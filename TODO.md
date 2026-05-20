@@ -9,7 +9,7 @@
 ## 🚨 Phase 0 — 남은 항목
 
 ### 렉쳐 노트
-- [ ] **렉쳐 노트 내용 전부 비어있음** — DB에 `LectureNote` 데이터 없음. 최소한 선형대수 몇 강 분 수동 입력 필요
+- [ ] **렉쳐 노트 내용 전부 비어있음** — DB에 `LectureNote` 데이터 없음. 최소한 선형대수 몇 강 분 수동 입력 필요 -> 나중에는 AI를 통해 생성
 - [ ] **YouTube 영상 전부 "동영상 없음"** — YouTube OAuth 인증 후 플레이리스트 sync 필요
 
 ### 지식 그래프
@@ -33,7 +33,7 @@
 
 ### 내 YouTube 계정 연동
 - [ ] **플레이리스트 안의 영상의 수가 너무 많을 때 LLM으로 AI/데이터 관련 영상 자동 추가** — 플리 제목+설명을 GPT에게 넘겨서 관련도 점수 매기고, 관련 플리는 자동 체크 + 상단 정렬
-- [ ] 배치: 주 1회 동기화 — 새 영상 추가/삭제 자동 반영 (APScheduler 기존 youtube job 활용)
+- [ ] 배치: 일 1회 동기화 — 새 영상 추가/삭제 자동 반영 (APScheduler 기존 youtube job 활용)
 
 ### AI 기능
 - [ ] 노트 임베딩 생성 (pgvector) → 시맨틱 검색 (아래 Phase 3 참고)
@@ -48,6 +48,7 @@
 - [ ] **7순위** Obsidian 링크 자동정리 MCP — 링크 붙여넣으면 요약·태그·노트 자동 생성
 - [ ] **8순위** Gemini 파이프라인 MCP — 회사 Gemini로 논문·자료 요약 → Obsidian → STU
 - [ ] **9순위** YouTube 시청기록 MCP — 시청 기록 기반 강의 진도율 자동 반영
+- [ ] **10순위** 강의, 논문, 테크블로그 기반으로 지식베이스 구축, RAG를 통해 테스트용 챗봇 고도화
 
 ### 인프라 — Jenkins + ArgoCD CD 파이프라인 구축
 
@@ -219,6 +220,19 @@
 - [x] **블로그 검색 동작 안 함** → `searchBlog()` 구현
 - [x] **블로그 아티클 "원문 보기" 링크 없음** → `🔗 원문 보기` 버튼 추가
 - [x] **지식 그래프 노드 클릭 → 노트 없으면 무반응** → "관련 노트 없음 + 새 노트 작성" 툴팁 표시
+
+### Phase 2 — 강의/과목 고도화
+
+- [x] `lectures` 스키마에 `tags`, `subtitle`, `prerequisites` 필드 추가 (JSONB) + alembic 마이그레이션 0003–0004
+- [x] `courses` 스키마에 `description`, `objectives` 필드 추가 + alembic 마이그레이션 0005
+- [x] `app/services/tag_service.py` — GPT-4o-mini 기반 강의 태그·선수지식 자동 추출
+- [x] `_CATEGORY_RULES` 13개 카테고리로 확장 (llm, rl, actuary, ie 신설, infra→mlops, stats→stat)
+- [x] 신규 과목 6개 시드 추가 (llm, rl, data, mlops, actuary, ie)
+- [x] YouTube 플리 가져오기 팝업 모달로 개편 (2-step: 플리 선택 → 필터 미리보기 → 저장)
+- [x] `POST /api/v1/youtube/playlists/filter` — 저장 없이 필터 결과만 미리보기
+- [x] `PATCH /api/v1/curriculum/{course_id}` — description·objectives DB 직접 편집
+- [x] 커리큘럼 카드 클릭 → 과목 상세 팝업 (강의 목록·진도·설명·학습목표 + 편집 기능)
+- [x] seed.py에서 description/objectives 하드코딩 제거 (DB에서 관리)
 
 ### Phase 2 — YouTube 연동
 

@@ -26,7 +26,7 @@ def upgrade() -> None:
     )
     op.add_column(
         "lectures",
-        sa.Column("prerequisites", postgresql.JSONB(), nullable=True, server_default="'[]'::jsonb"),
+        sa.Column("prerequisites", postgresql.JSONB(), nullable=True, server_default=sa.text("'[]'::jsonb")),
     )
 
 

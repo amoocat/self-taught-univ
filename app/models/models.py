@@ -20,6 +20,8 @@ class Course(Base):
     source: Mapped[str] = mapped_column(String(200))
     category: Mapped[str] = mapped_column(String(50))
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    objectives: Mapped[list] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     lectures: Mapped[list["Lecture"]] = relationship(back_populates="course")

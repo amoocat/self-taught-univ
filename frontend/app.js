@@ -225,7 +225,10 @@ function chatClear() {
 
 // ESC로 닫기
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && chatOpen) chatToggle();
+  if (e.key === 'Escape') {
+    if (document.getElementById('courseDetailModal')?.style.display === 'flex') cdClose();
+    else if (chatOpen) chatToggle();
+  }
 });
 let OBS_NOTES = [];
 
@@ -823,7 +826,7 @@ async function initCurriculum() {
             : c.status === 'active'
               ? `<span class="s-active">● 진행 중</span>`
               : `<span class="s-todo">○ 예정</span>`;
-          return `<div class="course-card" onclick="gotoLecture('${c.id}')" style="cursor:pointer">
+          return `<div class="course-card" onclick="courseModalOpen('${c.id}')" style="cursor:pointer">
             <span class="course-tag ${tagCls}">${c.code}</span>
             <div class="course-title">${c.title}</div>
             <div class="course-source">${c.source}</div>
@@ -1020,6 +1023,141 @@ function _esc(s) {
 function _fmtDur(sec) {
   const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
   return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+}
+
+/* ────────────────────────────────────────
+   COURSE DETAIL MODAL
+──────────────────────────────────────── */
+let _cdCourseId = null;
+let _cdEditing  = false;
+let _cdOrigDesc = '';
+let _cdOrigObj  = [];
+
+async function courseModalOpen(courseId) {
+  _cdCourseId = courseId;
+  _cdEditing  = false;
+
+  const modal = document.getElementById('courseDetailModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  if (_allCourses.length === 0) {
+    try {
+      const r = await fetch('/api/v1/curriculum/');
+      if (r.ok) _allCourses = await r.json();
+    } catch(e) {}
+  }
+
+  const course = _allCourses.find(c => c.id === courseId);
+  if (!course) return;
+
+  const prefix = course.code.split('-')[0];
+  const tagCls = _CODE_TAG_COLOR[prefix] || 't-gray';
+  const codeEl = document.getElementById('cdCode');
+  codeEl.textContent = course.code;
+  codeEl.className = `course-tag ${tagCls}`;
+  document.getElementById('cdTitle').textContent = course.title;
+  document.getElementById('cdSource').textContent = course.source;
+
+  const pct = Math.round(course.progress_pct);
+  document.getElementById('cdFill').style.width = pct + '%';
+  document.getElementById('cdPct').textContent = `${course.completed_count}/${course.lecture_count} 강의 완료`;
+
+  _cdOrigDesc = course.description || '';
+  _cdOrigObj  = course.objectives  || [];
+  _cdRenderView();
+
+  document.getElementById('cdEditBtn').textContent = '편집';
+  document.getElementById('cdEditActions').style.display = 'none';
+  document.getElementById('cdDescEdit').style.display = 'none';
+  document.getElementById('cdObjEdit').style.display  = 'none';
+  document.getElementById('cdDescView').style.display = '';
+  document.getElementById('cdObjView').style.display  = '';
+
+  document.getElementById('cdLecList').innerHTML = '<div class="cd-loading">불러오는 중...</div>';
+  try {
+    const res = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
+    if (res.ok) {
+      const lectures = await res.json();
+      const done = lectures.filter(l => l.completed).length;
+      document.getElementById('cdLecCount').textContent = `(${done}/${lectures.length})`;
+      document.getElementById('cdLecList').innerHTML = lectures.map(l => `
+        <div class="cd-lec-item${l.completed ? ' done' : ''}">
+          <span class="cd-lec-num">${l.number}</span>
+          <span class="cd-lec-check">${l.completed ? '✓' : '○'}</span>
+          <span class="cd-lec-title">${_esc(l.title)}</span>
+          ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+        </div>`).join('');
+    }
+  } catch(e) {
+    document.getElementById('cdLecList').innerHTML = '<div class="cd-loading">불러오기 실패</div>';
+  }
+}
+
+function _cdRenderView() {
+  document.getElementById('cdDescView').textContent = _cdOrigDesc || '—';
+  const ol = document.getElementById('cdObjView');
+  ol.innerHTML = _cdOrigObj.length
+    ? _cdOrigObj.map(o => `<li>${_esc(o)}</li>`).join('')
+    : '<li class="cd-empty">—</li>';
+}
+
+function cdClose() {
+  document.getElementById('courseDetailModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function cdOverlayClick(e) {
+  if (e.target === document.getElementById('courseDetailModal')) cdClose();
+}
+
+function cdToggleEdit() {
+  _cdEditing = !_cdEditing;
+  document.getElementById('cdEditBtn').textContent = _cdEditing ? '보기' : '편집';
+  document.getElementById('cdEditActions').style.display = _cdEditing ? 'flex' : 'none';
+
+  if (_cdEditing) {
+    document.getElementById('cdDescView').style.display = 'none';
+    document.getElementById('cdObjView').style.display  = 'none';
+    document.getElementById('cdDescEdit').style.display = '';
+    document.getElementById('cdObjEdit').style.display  = '';
+    document.getElementById('cdDescEdit').value = _cdOrigDesc;
+    document.getElementById('cdObjEdit').value  = _cdOrigObj.join('\n');
+  } else {
+    document.getElementById('cdDescView').style.display = '';
+    document.getElementById('cdObjView').style.display  = '';
+    document.getElementById('cdDescEdit').style.display = 'none';
+    document.getElementById('cdObjEdit').style.display  = 'none';
+  }
+}
+
+async function cdSave() {
+  const desc = document.getElementById('cdDescEdit').value.trim();
+  const objectives = document.getElementById('cdObjEdit').value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch(`/api/v1/curriculum/${_cdCourseId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: desc || null, objectives }),
+    });
+    if (res.ok) {
+      _cdOrigDesc = desc;
+      _cdOrigObj  = objectives;
+      const c = _allCourses.find(c => c.id === _cdCourseId);
+      if (c) { c.description = desc || null; c.objectives = objectives; }
+      _cdRenderView();
+      cdToggleEdit();
+    }
+  } catch(e) {
+    console.warn('Course save failed', e);
+  }
+}
+
+function cdGoto() {
+  cdClose();
+  gotoLecture(_cdCourseId);
 }
 
 /* ────────────────────────────────────────

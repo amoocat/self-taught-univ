@@ -23,7 +23,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.add_column(
         "lectures",
-        sa.Column("tags", postgresql.JSONB(), nullable=True, server_default="'[]'::jsonb"),
+        sa.Column("tags", postgresql.JSONB(), nullable=True, server_default=sa.text("'[]'::jsonb"))
     )
 
     # stats → stat 통일
