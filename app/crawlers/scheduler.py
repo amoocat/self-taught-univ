@@ -17,7 +17,7 @@ from app.crawlers.youtube import YouTubeCrawler, YOUTUBE_PLAYLISTS
 from app.crawlers.blog import BlogCrawler
 from app.crawlers.arxiv import ArxivCrawler
 from app.models.models import FeedItem, Paper, Lecture, Course
-from app.services.tag_service import extract_tags
+from app.services.tag_service import extract_all
 
 logger = logging.getLogger(__name__)
 
@@ -166,12 +166,13 @@ async def job_tag_lectures():
     async with AsyncSessionLocal() as db:
         for lec in rows:
             try:
-                tags = await extract_tags(lec.title, category=lec.category or "")
+                meta = await extract_all(lec.title, category=lec.category or "")
                 lec_db = (await db.execute(
                     select(Lecture).where(Lecture.id == lec.id)
                 )).scalar_one_or_none()
                 if lec_db:
-                    lec_db.tags = tags
+                    lec_db.tags         = meta["tags"]
+                    lec_db.prerequisites = meta["prerequisites"]
                     tagged += 1
             except Exception as e:
                 logger.warning(f"[Job] 태그 실패 ({lec.title[:40]}): {e}")
@@ -256,22 +257,25 @@ async def _save_lectures(videos) -> int:
                 )
             )).scalar_one_or_none()
 
-            yt_url = f"https://youtube.com/watch?v={v.video_id}"
-            tags   = await extract_tags(v.title, v.description, category)
+            yt_url  = f"https://youtube.com/watch?v={v.video_id}"
+            meta    = await extract_all(v.title, v.description, category)
 
             if exists:
                 exists.youtube_url  = yt_url
                 exists.duration_sec = v.duration_sec
                 exists.category     = category
                 if not exists.tags:
-                    exists.tags = tags
+                    exists.tags = meta["tags"]
+                if not exists.prerequisites:
+                    exists.prerequisites = meta["prerequisites"]
             else:
                 db.add(Lecture(
                     course_id=course.id,
                     title=v.title,
                     number=lecture_number,
                     category=category,
-                    tags=tags,
+                    tags=meta["tags"],
+                    prerequisites=meta["prerequisites"],
                     youtube_url=yt_url,
                     duration_sec=v.duration_sec,
                 ))

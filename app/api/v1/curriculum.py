@@ -28,9 +28,11 @@ _CATEGORY_CODE = {
 class LectureOut(BaseModel):
     id: str
     title: str
+    subtitle: Optional[str] = None
     number: int
     category: Optional[str] = None
     tags: list[str] = []
+    prerequisites: list[str] = []
     youtube_url: Optional[str]
     duration_sec: Optional[int]
     completed: bool = False
@@ -42,9 +44,11 @@ class LectureOut(BaseModel):
 class LectureDetailOut(BaseModel):
     id: str
     title: str
+    subtitle: Optional[str] = None
     number: int
     category: Optional[str] = None
     tags: list[str] = []
+    prerequisites: list[str] = []
     youtube_url: Optional[str]
     duration_sec: Optional[int]
     content: str = ""
@@ -110,8 +114,8 @@ async def list_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
 
     return [
         LectureOut(
-            id=l.id, title=l.title, number=l.number,
-            category=l.category, tags=l.tags or [],
+            id=l.id, title=l.title, subtitle=l.subtitle, number=l.number,
+            category=l.category, tags=l.tags or [], prerequisites=l.prerequisites or [],
             youtube_url=l.youtube_url, duration_sec=l.duration_sec,
             completed=l.id in completed_ids,
         )
@@ -146,9 +150,11 @@ async def get_lecture_detail(lecture_id: str, db: AsyncSession = Depends(get_db)
     return LectureDetailOut(
         id=lecture.id,
         title=lecture.title,
+        subtitle=lecture.subtitle,
         number=lecture.number,
         category=lecture.category,
         tags=lecture.tags or [],
+        prerequisites=lecture.prerequisites or [],
         youtube_url=lecture.youtube_url,
         duration_sec=lecture.duration_sec,
         content=note.content_md if note else "",
