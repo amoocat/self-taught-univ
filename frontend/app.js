@@ -848,134 +848,178 @@ async function initCurriculum() {
 }
 
 /* ────────────────────────────────────────
-   YOUTUBE 플레이리스트 연동
+   YOUTUBE 플레이리스트 모달
 ──────────────────────────────────────── */
 
-async function initYoutubeSync() {
-  const label   = document.getElementById('ytAuthLabel');
-  const btn     = document.getElementById('ytAuthBtn');
-  const section = document.getElementById('ytPlaylistSection');
-  if (!label) return;
+let _ytPlaylists    = [];
+let _ytSelected     = new Set();   // 선택된 playlist_id 집합
+let _ytFilterData   = null;        // filter 결과 캐시
 
-  try {
-    const res  = await fetch('/api/v1/youtube/oauth/status');
-    const data = await res.json();
-    if (data.authenticated) {
-      label.textContent = '✓ YouTube 계정 연결됨';
-      label.style.color = '#2a7a2a';
-      section.style.display = 'block';
-      loadYoutubePlaylists();
-    } else {
-      label.textContent = 'YouTube 계정 연결 안 됨';
-      btn.style.display = 'block';
-    }
-  } catch (e) {
-    label.textContent = '연결 상태 확인 실패';
-  }
+async function ytModalOpen() {
+  const modal = document.getElementById('ytImportModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  _ytSelected.clear();
+  _ytFilterData = null;
+  _showStep1();
+  await _ytLoadPlaylists();
 }
 
-function ytConnect() {
-  window.location.href = '/api/v1/youtube/oauth';
+function ytModalClose() {
+  document.getElementById('ytImportModal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
-let _ytPlaylists = [];
+function ytModalOverlayClick(e) {
+  if (e.target === document.getElementById('ytImportModal')) ytModalClose();
+}
 
-async function loadYoutubePlaylists() {
-  const btn      = document.querySelector('.yt-load-btn');
-  const listEl   = document.getElementById('ytPlaylistList');
-  const syncBtn  = document.getElementById('ytDoSyncBtn');
-  btn.disabled   = true;
-  btn.textContent = '불러오는 중...';
+function _showStep1() {
+  document.getElementById('ytStep1').style.display = '';
+  document.getElementById('ytStep2').style.display = 'none';
+}
+
+function _showStep2() {
+  document.getElementById('ytStep1').style.display = 'none';
+  document.getElementById('ytStep2').style.display = '';
+}
+
+async function _ytLoadPlaylists() {
+  const listEl = document.getElementById('ytModalPlaylists');
+  const desc   = document.getElementById('ytStep1Desc');
+  desc.textContent = '플레이리스트 불러오는 중...';
   listEl.innerHTML = '';
 
   try {
-    const res  = await fetch('/api/v1/youtube/playlists');
-    const data = await res.json();
-
-    if (data.error) {
-      listEl.innerHTML = `<div style="padding:12px;font-size:12px;color:var(--red)">${data.error}</div>`;
+    const res  = await fetch('/api/v1/youtube/oauth/status');
+    const auth = await res.json();
+    if (!auth.authenticated) {
+      desc.innerHTML = 'YouTube 계정이 연결되지 않았습니다. '
+        + '<a style="color:var(--red);cursor:pointer" onclick="window.location.href=\'/api/v1/youtube/oauth\'">계정 연결하기 →</a>';
       return;
     }
+
+    const r    = await fetch('/api/v1/youtube/playlists');
+    const data = await r.json();
+    if (data.error) { desc.textContent = data.error; return; }
 
     _ytPlaylists = data.playlists || [];
-
-    if (_ytPlaylists.length === 0) {
-      listEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--gray2)">플레이리스트가 없습니다.</div>';
-      return;
-    }
+    desc.textContent = `${_ytPlaylists.length}개 플레이리스트 · 가져올 항목을 선택하세요`;
 
     listEl.innerHTML = _ytPlaylists.map((pl, i) => `
-      <div class="yt-pl-item" onclick="ytToggle(${i}, this)">
-        <input type="checkbox" id="ytPl${i}" onclick="event.stopPropagation();ytToggleCheck(${i})">
+      <div class="yt-pl-item" id="ytRow${i}" onclick="ytTogglePl(${i})">
+        <input type="checkbox" id="ytCb${i}" onclick="event.stopPropagation();ytTogglePl(${i})">
         ${pl.thumbnail_url
           ? `<img class="yt-pl-thumb" src="${pl.thumbnail_url}" alt="">`
           : `<div class="yt-pl-thumb"></div>`}
         <div class="yt-pl-info">
-          <div class="yt-pl-name">${pl.title}</div>
-          <div class="yt-pl-meta">${pl.video_count}개 영상${pl.description ? ' · ' + pl.description.slice(0, 40) : ''}</div>
+          <div class="yt-pl-name">${_esc(pl.title)}</div>
+          <div class="yt-pl-meta">${pl.video_count}개 영상${pl.description ? ' · ' + pl.description.slice(0,50) : ''}</div>
         </div>
-        <span class="yt-pl-badge">${pl.playlist_id.slice(0, 8)}...</span>
       </div>
     `).join('');
-
-    syncBtn.style.display = 'block';
   } catch (e) {
-    listEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--red)">불러오기 실패</div>';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '내 플레이리스트 불러오기';
+    desc.textContent = '불러오기 실패';
   }
 }
 
-function ytToggle(idx, rowEl) {
-  const cb = document.getElementById(`ytPl${idx}`);
+function ytTogglePl(idx) {
+  const cb  = document.getElementById(`ytCb${idx}`);
+  const row = document.getElementById(`ytRow${idx}`);
   cb.checked = !cb.checked;
-  rowEl.style.background = cb.checked ? 'var(--cream2)' : '';
+  const pid = _ytPlaylists[idx]?.playlist_id;
+  if (cb.checked) { _ytSelected.add(pid); row.classList.add('selected'); }
+  else            { _ytSelected.delete(pid); row.classList.remove('selected'); }
+
+  const count = _ytSelected.size;
+  document.getElementById('ytSelectedCount').textContent = `${count}개 선택`;
+  document.getElementById('ytFilterBtn').disabled = count === 0;
 }
 
-function ytToggleCheck(idx) {
-  const cb  = document.getElementById(`ytPl${idx}`);
-  const row = cb.closest('.yt-pl-item');
-  row.style.background = cb.checked ? 'var(--cream2)' : '';
+async function ytFilterSelected() {
+  if (_ytSelected.size === 0) return;
+  const btn = document.getElementById('ytFilterBtn');
+  btn.disabled = true;
+  btn.textContent = '필터링 중...';
+
+  try {
+    const res  = await fetch('/api/v1/youtube/playlists/filter', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify([..._ytSelected]),
+    });
+    _ytFilterData = await res.json();
+    _renderStep2();
+    _showStep2();
+  } catch (e) {
+    alert('필터링 실패. 다시 시도해주세요.');
+  } finally {
+    btn.disabled = _ytSelected.size === 0;
+    btn.textContent = '필터링 미리보기 →';
+  }
 }
 
-async function syncSelectedPlaylists() {
-  const selected = _ytPlaylists
-    .filter((_, i) => document.getElementById(`ytPl${i}`)?.checked)
-    .map(pl => pl.playlist_id);
+function _renderStep2() {
+  const { total, playlists } = _ytFilterData;
+  document.getElementById('ytStep2Summary').textContent =
+    `${playlists.length}개 플리에서 학습 영상 ${total}개 발견`;
+  document.getElementById('ytSaveCount').textContent = `${total}개 강의로 저장`;
 
-  if (selected.length === 0) {
-    alert('동기화할 플레이리스트를 선택해주세요.');
+  const listEl = document.getElementById('ytFilterResults');
+  if (total === 0) {
+    listEl.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--gray2);font-family:var(--font-mono)">학습 관련 영상이 없습니다.</div>';
+    document.getElementById('ytSaveBtn').disabled = true;
     return;
   }
 
-  const btn    = document.getElementById('ytDoSyncBtn');
-  const result = document.getElementById('ytSyncResult');
+  listEl.innerHTML = playlists.map(pl => {
+    if (!pl.videos.length) return '';
+    const rows = pl.videos.map(v => `
+      <div class="yt-pl-item">
+        ${v.thumbnail_url ? `<img class="yt-pl-thumb" src="${v.thumbnail_url}" alt="">` : '<div class="yt-pl-thumb"></div>'}
+        <div class="yt-pl-info">
+          <div class="yt-pl-name">${_esc(v.title)}</div>
+          <div class="yt-pl-meta">${v.duration_sec ? _fmtDur(v.duration_sec) : ''}</div>
+        </div>
+        <span class="yt-cat-badge ${v.category}">${v.category}</span>
+      </div>
+    `).join('');
+    return `<div class="yt-pl-group-header">${_esc(pl.playlist_title)} · ${pl.total_filtered}개</div>${rows}`;
+  }).join('');
+}
+
+function ytBackToStep1() { _showStep1(); }
+
+async function ytSaveFiltered() {
+  if (!_ytFilterData || !_ytFilterData.total) return;
+  const btn = document.getElementById('ytSaveBtn');
   btn.disabled = true;
-  btn.textContent = `${selected.length}개 동기화 중...`;
-  result.style.display = 'none';
+  btn.textContent = '저장 중...';
 
   try {
     const res  = await fetch('/api/v1/youtube/playlists/sync', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(selected),
+      body:    JSON.stringify([..._ytSelected]),
     });
     const data = await res.json();
-
-    const lines = Object.entries(data.result || {}).map(([pid, r]) => {
-      const name = _ytPlaylists.find(p => p.playlist_id === pid)?.title || pid;
-      return `${name}: ${r.fetched}개 수집 / ${r.saved}개 신규 저장`;
-    });
-    result.innerHTML = lines.join('<br>') || '완료';
-    result.style.display = 'block';
+    const total = Object.values(data.result || {}).reduce((s, r) => s + r.saved, 0);
+    ytModalClose();
+    alert(`완료! ${total}개 강의가 저장되었습니다.`);
+    initCurriculum();
   } catch (e) {
-    result.innerHTML = '동기화 실패';
-    result.style.display = 'block';
-  } finally {
+    alert('저장 실패. 다시 시도해주세요.');
     btn.disabled = false;
-    btn.textContent = '선택한 플리 강의 저장';
+    btn.textContent = '강의로 저장';
   }
+}
+
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _fmtDur(sec) {
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
 }
 
 /* ────────────────────────────────────────
@@ -1333,7 +1377,7 @@ function goto(page, pushState = true) {
   if (page === 'graph')      drawGraph();
   if (page === 'mynotes')    { if (!obsEditor) obsInit(); }
   if (page === 'blog')       initBlog();
-  if (page === 'curriculum') { initCurriculum(); initYoutubeSync(); }
+  if (page === 'curriculum') { initCurriculum(); }
   if (page === 'lecture')    initLecture();
   if (page === 'papers')     initPapers();
   if (page === 'home')       initHome();

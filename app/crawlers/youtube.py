@@ -114,6 +114,25 @@ _CATEGORY_RULES: list[tuple[str, set[str]]] = [
         "kubeflow", "bentoml", "triton", "model versioning",
         "쿠버네티스", "도커", "모델 배포",
     }),
+    # ── 보험계리 / 계리학 (SOA, CAS)
+    ("actuary", {
+        "actuarial", "actuary", "soa exam", "exam fm", "exam p", "exam mfe",
+        "exam stam", "exam ltam", "exam mas", "ifrs 17", "ifrs17",
+        "life insurance mathematics", "mortality table", "life table",
+        "credibility theory", "risk theory", "loss models", "annuity",
+        "보험계리", "보험수리", "계리", "생명보험수학", "손해보험수리",
+        "재보험", "보험료", "준비금",
+    }),
+    # ── 산업공학 / 운영과학
+    ("ie", {
+        "industrial engineering", "operations research", "supply chain management",
+        "logistics", "quality management", "six sigma", "lean manufacturing",
+        "queuing theory", "inventory management", "linear programming",
+        "integer programming", "simulation modeling", "scheduling",
+        "facility layout", "work measurement", "ergonomics",
+        "산업공학", "운영관리", "물류관리", "품질관리", "공정관리",
+        "수요예측", "재고관리", "대기이론",
+    }),
 ]
 
 
@@ -221,6 +240,34 @@ class YouTubeCrawler:
         await self._fill_durations(videos, access_token=access_token)
         logger.info(f"[YouTube] {playlist_id}: {len(videos)}개 수집 (필터 후)")
         return videos
+
+    async def get_playlist_meta(
+        self,
+        playlist_id: str,
+        access_token: str | None = None,
+    ) -> dict:
+        """단일 플레이리스트 메타(제목, 썸네일) 조회"""
+        params  = {"part": "snippet", "id": playlist_id}
+        headers = {}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        else:
+            params["key"] = self.api_key
+        try:
+            resp = await self.client.get(
+                f"{self.BASE_URL}/playlists", params=params, headers=headers,
+            )
+            resp.raise_for_status()
+            items = resp.json().get("items", [])
+            if items:
+                sn = items[0]["snippet"]
+                return {
+                    "title":         sn.get("title", playlist_id),
+                    "thumbnail_url": sn.get("thumbnails", {}).get("medium", {}).get("url", ""),
+                }
+        except Exception as e:
+            logger.warning(f"[YouTube] playlist meta 조회 실패 {playlist_id}: {e}")
+        return {"title": playlist_id, "thumbnail_url": ""}
 
     async def fetch_user_playlists(self, access_token: str) -> list[dict]:
         """OAuth 토큰으로 내 계정의 플레이리스트 목록 조회"""

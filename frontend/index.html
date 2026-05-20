@@ -349,31 +349,49 @@
     <div class="page" id="page-curriculum">
       <div class="page-head">
         <div class="page-crumb"><a onclick="goto('home')">홈</a> › 커리큘럼</div>
-        <h1 class="page-title">나의 AI 커리큘럼</h1>
-        <p class="page-sub">서울대 · KAIST · MIT · Stanford 강의 기반으로 직접 설계한 인공지능 커리큘럼</p>
+        <div class="page-head-row">
+          <div>
+            <h1 class="page-title">나의 AI 커리큘럼</h1>
+            <p class="page-sub">서울대 · KAIST · MIT · Stanford 강의 기반으로 직접 설계한 인공지능 커리큘럼</p>
+          </div>
+          <button class="yt-import-trigger" onclick="ytModalOpen()">▶ YouTube 플리 가져오기</button>
+        </div>
       </div>
       <div class="pad">
         <div class="curriculum-grid" id="curriculumGrid">
           <!-- 동적 렌더링 (initCurriculum) -->
         </div>
+      </div>
+    </div>
 
-        <!-- YouTube 플레이리스트 연동 -->
-        <div class="yt-sync-section">
-          <div class="yt-sync-head">
-            <div class="yt-sync-title">YouTube 강의 연동</div>
-            <div class="yt-sync-desc">내 YouTube 플레이리스트에서 AI/데이터 강의를 자동으로 가져옵니다.</div>
+    <!-- ══ YouTube 플리 가져오기 모달 ══ -->
+    <div id="ytImportModal" class="yt-modal-overlay" style="display:none" onclick="ytModalOverlayClick(event)">
+      <div class="yt-modal">
+        <div class="yt-modal-header">
+          <span class="yt-modal-title">YouTube 플레이리스트 가져오기</span>
+          <button class="yt-modal-close" onclick="ytModalClose()">✕</button>
+        </div>
+
+        <!-- Step 1: 플레이리스트 선택 -->
+        <div id="ytStep1">
+          <div class="yt-modal-desc" id="ytStep1Desc">불러오는 중...</div>
+          <div id="ytModalPlaylists" class="yt-modal-list"></div>
+          <div class="yt-modal-footer">
+            <span id="ytSelectedCount" class="yt-sel-count">0개 선택</span>
+            <button id="ytFilterBtn" class="yt-modal-btn-primary" onclick="ytFilterSelected()" disabled>필터링 미리보기 →</button>
           </div>
-          <div id="ytSyncBody">
-            <div class="yt-sync-status" id="ytAuthStatus">
-              <span id="ytAuthLabel">연결 확인 중...</span>
-              <button class="yt-auth-btn" id="ytAuthBtn" style="display:none" onclick="ytConnect()">YouTube 계정 연결</button>
-            </div>
-            <div id="ytPlaylistSection" style="display:none">
-              <button class="yt-load-btn" onclick="loadYoutubePlaylists()">새로고침</button>
-              <div id="ytPlaylistList"></div>
-              <div id="ytSyncResult" class="yt-sync-result" style="display:none"></div>
-              <button class="yt-do-sync-btn" id="ytDoSyncBtn" onclick="syncSelectedPlaylists()" style="display:none">선택한 플리 강의 저장</button>
-            </div>
+        </div>
+
+        <!-- Step 2: 필터링 결과 -->
+        <div id="ytStep2" style="display:none">
+          <div class="yt-step2-bar">
+            <button class="yt-back-btn" onclick="ytBackToStep1()">← 뒤로</button>
+            <span id="ytStep2Summary" class="yt-step2-summary"></span>
+          </div>
+          <div id="ytFilterResults" class="yt-modal-list yt-results-list"></div>
+          <div class="yt-modal-footer">
+            <span id="ytSaveCount" class="yt-sel-count"></span>
+            <button id="ytSaveBtn" class="yt-modal-btn-primary" onclick="ytSaveFiltered()">강의로 저장</button>
           </div>
         </div>
       </div>

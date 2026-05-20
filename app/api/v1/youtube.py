@@ -176,6 +176,48 @@ async def preview_playlist(
     }
 
 
+@router.post("/playlists/filter")
+async def filter_playlists(playlist_ids: list[str]):
+    """
+    선택한 플레이리스트의 영상을 가져와서 학습 관련 영상만 필터링해 반환.
+    저장은 하지 않음 — 미리보기 전용.
+    body: ["PLxxxxxx", "PLyyyyyy"]
+    """
+    access_token = await _get_access_token()
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+
+    results = []
+    total_videos = 0
+
+    try:
+        for pid in playlist_ids:
+            pl_meta = await crawler.get_playlist_meta(pid, access_token=access_token)
+            videos  = await crawler.fetch_playlist_videos(
+                pid, filter_ai=True, access_token=access_token,
+            )
+            total_videos += len(videos)
+            results.append({
+                "playlist_id":   pid,
+                "playlist_title": pl_meta.get("title", pid),
+                "total_filtered": len(videos),
+                "videos": [
+                    {
+                        "video_id":     v.video_id,
+                        "title":        v.title,
+                        "category":     v.category,
+                        "duration_sec": v.duration_sec,
+                        "thumbnail_url": v.thumbnail_url,
+                        "position":     v.position,
+                    }
+                    for v in videos
+                ],
+            })
+    finally:
+        await crawler.close()
+
+    return {"total": total_videos, "playlists": results}
+
+
 @router.post("/playlists/sync")
 async def sync_playlists(playlist_ids: list[str]):
     """

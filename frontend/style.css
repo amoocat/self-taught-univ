@@ -3323,103 +3323,202 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 .tt-link-chip:hover { background: var(--navy); color: var(--gold2); }
 
 /* ── YouTube 플레이리스트 연동 ── */
-.yt-sync-section {
-  margin-top: 32px;
-  border: 1px solid var(--border);
-  background: var(--white);
+/* ── YouTube 플리 가져오기 트리거 버튼 ── */
+.page-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
-.yt-sync-head {
+.yt-import-trigger {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 8px 18px;
+  background: var(--navy);
+  color: var(--gold2);
+  border: 1px solid var(--gold);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.yt-import-trigger:hover { background: #ff0000; border-color: #ff0000; color: #fff; }
+
+/* ── YouTube 모달 ── */
+.yt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.yt-modal {
+  background: var(--white);
+  width: 560px;
+  max-width: 94vw;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+.yt-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 14px 18px;
   background: var(--navy);
   border-bottom: 2px solid var(--gold);
+  flex-shrink: 0;
 }
-.yt-sync-title {
+.yt-modal-title {
   font-family: var(--font-serif);
   font-size: 14px;
   font-weight: 700;
   color: var(--gold2);
   font-style: italic;
-  margin-bottom: 2px;
 }
-.yt-sync-desc { font-size: 11px; color: #aaa; font-family: var(--font-mono); }
-
-.yt-sync-status {
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--cream);
-}
-#ytAuthLabel { font-size: 12px; font-family: var(--font-mono); color: var(--gray2); }
-.yt-auth-btn {
-  padding: 6px 14px;
-  background: #ff0000;
-  color: #fff;
+.yt-modal-close {
+  background: none;
   border: none;
-  font-size: 12px;
-  font-family: var(--font-serif);
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.yt-auth-btn:hover { background: #cc0000; }
-
-.yt-load-btn {
-  margin: 12px 18px;
-  padding: 7px 16px;
-  background: var(--navy);
   color: var(--gold2);
-  border: none;
-  font-size: 12px;
-  font-family: var(--font-serif);
-  font-weight: 700;
+  font-size: 16px;
   cursor: pointer;
-  transition: background 0.15s;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.15s;
 }
-.yt-load-btn:hover { background: var(--red); }
-.yt-load-btn:disabled { opacity: 0.5; cursor: default; }
+.yt-modal-close:hover { opacity: 1; }
 
-#ytPlaylistList { padding: 0 18px 8px; }
+.yt-modal-desc {
+  padding: 10px 18px 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--gray2);
+  flex-shrink: 0;
+}
+
+/* 모달 목록 (step1 플리 / step2 영상 공통) */
+.yt-modal-list {
+  flex: 1;
+  overflow-y: auto;
+  border-top: 1px solid var(--cream3);
+}
 .yt-pl-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 9px 14px;
   border-bottom: 1px solid var(--cream3);
   cursor: pointer;
   transition: background 0.1s;
+  user-select: none;
 }
 .yt-pl-item:hover { background: var(--cream2); }
+.yt-pl-item.selected { background: var(--cream2); }
 .yt-pl-item input[type=checkbox] { accent-color: var(--red); flex-shrink: 0; }
-.yt-pl-thumb { width: 56px; height: 36px; object-fit: cover; flex-shrink: 0; background: var(--cream3); }
+.yt-pl-thumb { width: 64px; height: 40px; object-fit: cover; flex-shrink: 0; background: var(--cream3); }
 .yt-pl-info { flex: 1; min-width: 0; }
 .yt-pl-name { font-size: 12px; font-family: var(--font-serif); font-weight: 700; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.yt-pl-meta { font-size: 10px; color: var(--gray2); font-family: var(--font-mono); margin-top: 1px; }
-.yt-pl-badge { font-size: 10px; font-family: var(--font-mono); color: var(--gold); background: var(--navy); padding: 2px 6px; flex-shrink: 0; }
+.yt-pl-meta { font-size: 10px; color: var(--gray2); font-family: var(--font-mono); margin-top: 2px; }
 
-.yt-do-sync-btn {
-  display: block;
-  margin: 10px 18px 16px;
-  padding: 8px 20px;
-  background: var(--red);
-  color: #fff;
-  border: none;
-  font-size: 13px;
+/* Step 2 — 영상 결과 아이템 */
+.yt-results-list .yt-pl-item { cursor: default; }
+.yt-results-list .yt-pl-item:hover { background: none; }
+.yt-cat-badge {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 2px 6px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.yt-cat-badge.math   { background: #1a3a5c; color: #d4af37; }
+.yt-cat-badge.stat   { background: #2d4a1e; color: #a8d08d; }
+.yt-cat-badge.ml     { background: #3d1a5c; color: #c9a8e8; }
+.yt-cat-badge.dl     { background: #1a3a5c; color: #7bb8f5; }
+.yt-cat-badge.cv     { background: #5c1a1a; color: #f5a07b; }
+.yt-cat-badge.nlp    { background: #1a4a3a; color: #7bf5c9; }
+.yt-cat-badge.llm    { background: #4a3a1a; color: #f5d07b; }
+.yt-cat-badge.rl     { background: #3a1a4a; color: #d07bf5; }
+.yt-cat-badge.data   { background: #1a4a4a; color: #7be8f5; }
+.yt-cat-badge.mlops  { background: #3a3a1a; color: #e8f57b; }
+.yt-cat-badge.actuary { background: #4a1a2a; color: #f57bb8; }
+.yt-cat-badge.ie     { background: #1a4a1a; color: #7bf57b; }
+.yt-pl-group-header {
+  padding: 6px 14px 4px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--gray2);
+  background: var(--cream);
+  border-bottom: 1px solid var(--cream3);
+  position: sticky;
+  top: 0;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Step 2 bar */
+.yt-step2-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--cream3);
+  background: var(--cream);
+  flex-shrink: 0;
+}
+.yt-back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  color: var(--navy);
+  transition: background 0.1s;
+}
+.yt-back-btn:hover { background: var(--cream3); }
+.yt-step2-summary {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--gray2);
+}
+
+/* 모달 푸터 */
+.yt-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--cream3);
+  background: var(--cream);
+  flex-shrink: 0;
+}
+.yt-sel-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--gray2);
+}
+.yt-modal-btn-primary {
+  padding: 7px 18px;
+  background: var(--navy);
+  color: var(--gold2);
+  border: 1px solid var(--gold);
   font-family: var(--font-serif);
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
 }
-.yt-do-sync-btn:hover { background: #8b0000; }
-.yt-do-sync-btn:disabled { opacity: 0.5; cursor: default; }
-
-.yt-sync-result {
-  margin: 0 18px 8px;
-  padding: 8px 12px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  border-left: 3px solid var(--gold);
-  background: var(--cream);
-}
+.yt-modal-btn-primary:hover:not(:disabled) { background: var(--red); border-color: var(--red); color: #fff; }
+.yt-modal-btn-primary:disabled { opacity: 0.4; cursor: default; }
 </style>

@@ -21,7 +21,9 @@ _CATEGORY_CODE = {
     "llm":   "LLM-501",
     "rl":    "RL-502",
     "data":  "DATA-601",
-    "mlops": "OPS-602",
+    "mlops":   "OPS-602",
+    "actuary": "ACT-701",
+    "ie":      "IE-702",
 }
 
 
