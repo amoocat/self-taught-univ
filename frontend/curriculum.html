@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>커리큘럼 — STU</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+      --accent: #7c6af7; --accent-dim: #4e46a0; --text: #e2e4f0; --muted: #7b7f96;
+      --green: #4caf7d; --green-bg: #1a2e22;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    /* nav */
+    nav { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    nav a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 4px 10px; border-radius: 6px; transition: color .15s, background .15s; }
+    nav a:hover { color: var(--text); background: rgba(255,255,255,.05); }
+    nav a.active { color: var(--accent); }
+    .nav-logo { font-weight: 700; color: var(--accent); font-size: 15px; margin-right: 8px; text-decoration: none; }
+
+    .app { display: flex; height: calc(100vh - 45px); overflow: hidden; }
+
+    /* sidebar — course list */
+    .sidebar { width: 300px; min-width: 300px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+    .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--accent); }
+
+    .course-item { padding: 14px 16px; cursor: pointer; border-left: 3px solid transparent; transition: background .1s, border-color .1s; }
+    .course-item:hover { background: rgba(124,106,247,.08); }
+    .course-item.active { background: rgba(124,106,247,.14); border-left-color: var(--accent); }
+    .course-title { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    .course-source { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+    .progress-label { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* main — lecture list + embed */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .lecture-panel { flex: 1; overflow-y: auto; padding: 20px; }
+    .lecture-panel::-webkit-scrollbar { width: 4px; }
+    .lecture-panel::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .panel-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .panel-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+    .lecture-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: 10px; margin-bottom: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      cursor: pointer; transition: border-color .15s;
+    }
+    .lecture-item:hover { border-color: var(--accent); }
+    .lecture-item.done { background: var(--green-bg); border-color: var(--green); }
+
+    .lec-num { min-width: 28px; height: 28px; background: var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--muted); }
+    .lecture-item.done .lec-num { background: var(--green); color: #fff; }
+
+    .lec-info { flex: 1; }
+    .lec-title { font-size: 13px; font-weight: 500; }
+    .lec-dur { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .lec-actions { display: flex; gap: 6px; }
+    .btn-watch { padding: 5px 10px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-size: 11px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-watch:hover { background: var(--accent-dim); }
+    .btn-complete { padding: 5px 10px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; cursor: pointer; }
+    .btn-complete:hover { border-color: var(--green); color: var(--green); }
+    .lecture-item.done .btn-complete { border-color: var(--green); color: var(--green); }
+
+    /* YouTube embed */
+    .embed-panel { background: #000; border-top: 1px solid var(--border); }
+    .embed-panel iframe { width: 100%; display: block; aspect-ratio: 16/9; max-height: 300px; border: none; }
+    .embed-close { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface); }
+    .embed-close-btn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+
+    .welcome-msg { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--muted); font-size: 14px; }
+
+    .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; margin: 40px auto; display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+    .category-badge { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: rgba(124,106,247,.2); color: var(--accent); margin-left: 6px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/index.html">STU</a>
+  <a href="/notes.html">📝 노트</a>
+  <a href="/curriculum.html" class="active">🎓 커리큘럼</a>
+  <a href="/chat.html">💬 AI 튜터</a>
+  <a href="/papers.html">📄 논문</a>
+  <a href="/feed.html">📰 피드</a>
+</nav>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">🎓 커리큘럼</div>
+    <div id="courseList"><span class="spinner"></span></div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="lecture-panel" id="lecturePanel">
+      <div class="welcome-msg">
+        <span style="font-size:40px">🎓</span>
+        <p>왼쪽에서 코스를 선택하세요</p>
+      </div>
+    </div>
+    <div class="embed-panel" id="embedPanel" style="display:none">
+      <div class="embed-close">
+        <span id="embedTitle" style="font-size:12px;color:var(--muted)"></span>
+        <button class="embed-close-btn" id="embedCloseBtn">✕</button>
+      </div>
+      <iframe id="ytEmbed" src="" allowfullscreen allow="autoplay"></iframe>
+    </div>
+  </main>
+</div>
+
+<script>
+const API_COURSES = '/api/v1/courses';
+let activeCourseId = null;
+
+// ── Load courses ──────────────────────────────────────────────────
+async function loadCourses() {
+  try {
+    const courses = await fetch(API_COURSES + '/').then(r => r.json());
+    const el = document.getElementById('courseList');
+    if (!courses.length) { el.innerHTML = '<div class="empty">코스가 없습니다.<br>YouTube 크롤러를 실행해 주세요.</div>'; return; }
+
+    el.innerHTML = courses.map(c => `
+      <div class="course-item" data-id="${c.id}">
+        <div class="course-title">${esc(c.title)}<span class="category-badge">${esc(c.category)}</span></div>
+        <div class="course-source">${esc(c.source)}</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${c.progress_pct}%"></div></div>
+        <div class="progress-label">${c.completed_count} / ${c.lecture_count}강 완료 (${c.progress_pct}%)</div>
+      </div>
+    `).join('');
+
+    el.querySelectorAll('.course-item').forEach(el => {
+      el.addEventListener('click', () => loadLectures(el.dataset.id, courses.find(c => c.id === el.dataset.id)));
+    });
+  } catch (e) {
+    document.getElementById('courseList').innerHTML = `<div class="empty">로드 실패: ${e.message}</div>`;
+  }
+}
+
+// ── Load lectures ─────────────────────────────────────────────────
+async function loadLectures(courseId, course) {
+  activeCourseId = courseId;
+  document.querySelectorAll('.course-item').forEach(el => el.classList.toggle('active', el.dataset.id === courseId));
+  closeEmbed();
+
+  const panel = document.getElementById('lecturePanel');
+  panel.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    const lectures = await fetch(`${API_COURSES}/${courseId}/lectures`).then(r => r.json());
+    panel.innerHTML = `
+      <div class="panel-title">${esc(course.title)}</div>
+      <div class="panel-subtitle">${esc(course.source)} · ${lectures.length}강</div>
+      ${lectures.length ? '' : '<div class="empty">강의가 없습니다.</div>'}
+      ${lectures.map(l => `
+        <div class="lecture-item ${l.completed ? 'done' : ''}" id="lec-${l.id}">
+          <div class="lec-num">${l.completed ? '✓' : l.number}</div>
+          <div class="lec-info">
+            <div class="lec-title">${esc(l.title)}</div>
+            ${l.duration_sec ? `<div class="lec-dur">${fmtDur(l.duration_sec)}</div>` : ''}
+          </div>
+          <div class="lec-actions">
+            ${l.youtube_url ? `<a class="btn-watch" href="#" data-url="${esc(l.youtube_url)}" data-title="${esc(l.title)}">▶ 시청</a>` : ''}
+            <button class="btn-complete" data-id="${l.id}" data-done="${l.completed}">${l.completed ? '✓ 완료' : '완료'}</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+
+    panel.querySelectorAll('.btn-watch').forEach(btn => {
+      btn.addEventListener('click', e => { e.preventDefault(); openEmbed(btn.dataset.url, btn.dataset.title); });
+    });
+
+    panel.querySelectorAll('.btn-complete').forEach(btn => {
+      btn.addEventListener('click', () => toggleComplete(courseId, btn.dataset.id, btn.dataset.done === 'true'));
+    });
+  } catch (e) {
+    panel.innerHTML = `<div class="empty">로드 실패: ${e.message}</div>`;
+  }
+}
+
+// ── Mark complete ─────────────────────────────────────────────────
+async function toggleComplete(courseId, lectureId, isDone) {
+  if (isDone) return; // un-complete not supported by API
+  try {
+    await fetch(`${API_COURSES}/${courseId}/lectures/${lectureId}/complete`, { method: 'POST' });
+    const item = document.getElementById(`lec-${lectureId}`);
+    item.classList.add('done');
+    item.querySelector('.lec-num').textContent = '✓';
+    item.querySelector('.btn-complete').textContent = '✓ 완료';
+    item.querySelector('.btn-complete').dataset.done = 'true';
+    // refresh sidebar progress
+    loadCourses();
+  } catch (e) { alert('저장 실패: ' + e.message); }
+}
+
+// ── YouTube embed ─────────────────────────────────────────────────
+function openEmbed(url, title) {
+  const videoId = extractYtId(url);
+  if (!videoId) { window.open(url, '_blank'); return; }
+  document.getElementById('ytEmbed').src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+  document.getElementById('embedTitle').textContent = title;
+  document.getElementById('embedPanel').style.display = 'block';
+}
+function closeEmbed() {
+  document.getElementById('ytEmbed').src = '';
+  document.getElementById('embedPanel').style.display = 'none';
+}
+document.getElementById('embedCloseBtn').addEventListener('click', closeEmbed);
+
+function extractYtId(url) {
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function fmtDur(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+loadCourses();
+</script>
+</body>
+</html>

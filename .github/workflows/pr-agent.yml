@@ -15,11 +15,12 @@ jobs:
     steps:
       - name: PR Agent
         uses: Codium-ai/pr-agent@main
+        continue-on-error: true
         env:
-          GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_KEY }}
+          GOOGLE_AI_STUDIO_KEY: ${{ secrets.GOOGLE_AI_STUDIO_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           config.ai_provider: "google"
           config.model: "gemini/gemini-2.0-flash"
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
-          github_action_config.auto_improve: "true"
+          github_action_config.auto_improve: "false"

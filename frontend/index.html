@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Self-Taught University</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,700;1,400;1,700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- CodeMirror -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/base16-light.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+<!-- D3.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<!-- marked (마크다운 렌더러) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══════════════ TOPBAR ══════════════ -->
+<div class="topbar">
+  <div class="topbar-upper">
+    <div class="topbar-logo" onclick="goto('home')">
+      <div class="logo-seal">STU</div>
+      <div class="logo-text-wrap">
+        <div class="logo-main">Self-Taught University</div>
+        <div class="logo-sub">Est. 2025 &nbsp;·&nbsp; Founded by Myself</div>
+      </div>
+    </div>
+    <div class="topbar-upper-right">
+      <span class="top-util-link" onclick="goto('about')">학사 포털</span>
+      <span class="top-util-divider">|</span>
+      <span class="top-util-link" onclick="goto('curriculum')">진도 현황</span>
+      <span class="top-util-divider">|</span>
+      <span class="top-util-link" onclick="chatToggle()">AI 학습봇</span>
+      <span class="top-util-divider">|</span>
+      <div class="top-search">
+        <input type="text" placeholder="개념 검색...">
+        <button class="top-search-btn">검색</button>
+      </div>
+
+      <!-- 학생 프로필 -->
+      <div class="student-profile" tabindex="0">
+        <div class="student-avatar">🎓</div>
+        <div class="student-info">
+          <div class="student-name">나, 직접</div>
+          <div class="student-id">STU-2025-0001</div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--gray3);margin-left:4px">▾</span>
+
+        <!-- 드롭다운 -->
+        <div class="profile-dropdown">
+          <div class="pd-header">
+            <div class="pd-avatar-large">🎓</div>
+            <div>
+              <div class="pd-name">나, 직접</div>
+              <div class="pd-major">Dept. of Artificial Intelligence</div>
+            </div>
+          </div>
+          <div class="pd-body">
+            <div class="pd-row">
+              <span class="pd-label">학번</span>
+              <span class="pd-value">STU-2025-0001</span>
+            </div>
+            <div class="pd-row">
+              <span class="pd-label">전공</span>
+              <span class="pd-value">인공지능학과</span>
+            </div>
+            <div class="pd-row">
+              <span class="pd-label">학기</span>
+              <span class="pd-value">2025년 1학기</span>
+            </div>
+            <div class="pd-row">
+              <span class="pd-label">이수 학점</span>
+              <span class="pd-value" id="pdCourses">진행 중 (—과목)</span>
+            </div>
+            <div class="pd-row">
+              <span class="pd-label">전체 진도</span>
+              <span class="pd-value" id="pdProgress">— 완료</span>
+            </div>
+            <div class="pd-row">
+              <span class="pd-label">최근 활동</span>
+              <span class="pd-value">선형대수 Lec.03 학습</span>
+            </div>
+            <div class="pd-row">
+              <span class="pd-label">AI 테스트 점수</span>
+              <span class="pd-value">7 / 10 (지난 회차)</span>
+            </div>
+          </div>
+          <div class="pd-footer">
+            <button class="pd-btn gold" onclick="goto('curriculum')">내 커리큘럼</button>
+            <button class="pd-btn" onclick="goto('mynotes')">내 노트</button>
+            <button class="pd-btn" onclick="chatToggle()">학습봇</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <nav class="topbar-nav">
+    <a id="nav-home"       class="active" onclick="goto('home')">홈</a>
+    <a id="nav-about"      onclick="goto('about')">STU 소개</a>
+    <a id="nav-curriculum" onclick="goto('curriculum')">커리큘럼</a>
+    <a id="nav-lecture"    onclick="goto('lecture')">렉쳐 노트</a>
+    <a id="nav-mynotes"   onclick="goto('mynotes')">내 노트</a>
+    <a id="nav-papers"    onclick="goto('papers')">논문 읽기</a>
+    <a id="nav-blog"      onclick="goto('blog')">테크 블로그</a>
+    <a id="nav-graph"     onclick="goto('graph')">지식 그래프</a>
+  </nav>
+</div>
+
+<div class="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+      <div class="sb-head">
+        <div class="sb-head-title">나의 전공</div>
+        <div class="sb-head-sub">Artificial Intelligence</div>
+      </div>
+
+      <div class="sb-section">과목 목록</div>
+      <div id="sbSubjectList">
+        <div class="sb-item active" id="si-linear">📐 선형대수학 <span class="sb-pct">—</span></div>
+      </div>
+
+      <div class="sb-chatbot" onclick="chatToggle()">★ AI 학습봇 열기</div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- ══ P0: HOME ══ -->
+    <div class="page active" id="page-home">
+      <div class="home-body">
+        <!-- 공지사항 -->
+        <div class="home-section">
+          <div class="home-section-title">
+            학습 공지
+            <span class="home-section-more">전체보기 »</span>
+          </div>
+          <div class="notice-item">
+            <span class="notice-badge">NEW</span>
+            <div class="notice-date">2025.05.11</div>
+            <div class="notice-title">Chip Huyen 블로그 — LLM 프로덕션 포스트 추가</div>
+          </div>
+          <div class="notice-item">
+            <div class="notice-date">2025.05.09</div>
+            <div class="notice-title">선형대수학 Lecture 06 렉쳐 노트 업데이트</div>
+          </div>
+          <div class="notice-item">
+            <div class="notice-date">2025.05.07</div>
+            <div class="notice-title">지식 그래프에 Attention 노드 연결 완료</div>
+          </div>
+          <div class="notice-item">
+            <div class="notice-date">2025.05.04</div>
+            <div class="notice-title">확률·통계 과목 18% 달성</div>
+          </div>
+          <div class="notice-item">
+            <div class="notice-date">2025.04.28</div>
+            <div class="notice-title">머신러닝 CS229 커리큘럼 개설</div>
+          </div>
+        </div>
+
+        <!-- 진도 현황 -->
+        <div class="home-section">
+          <div class="home-section-title">
+            학기 진도 현황
+            <span class="home-section-more" onclick="goto('curriculum')" style="cursor:pointer">자세히 »</span>
+          </div>
+          <div id="homeProgressList">
+            <div class="progress-item">
+              <div class="pi-head"><span class="pi-name">불러오는 중...</span><span class="pi-pct">—</span></div>
+              <div class="pi-bar"><div class="pi-fill" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 바로가기 -->
+        <div class="home-section">
+          <div class="home-section-title">바로가기</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+            <div class="sb-item" style="border:1px solid var(--border);background:var(--white)" onclick="goto('lecture')">📖 오늘 렉쳐 이어서 보기</div>
+            <div class="sb-item" style="border:1px solid var(--border);background:var(--white)" onclick="goto('blog')">📰 테크 블로그 피드</div>
+            <div class="sb-item" style="border:1px solid var(--border);background:var(--white)" onclick="goto('chatbot')">★ AI 학습봇으로 복습</div>
+            <div class="sb-item" style="border:1px solid var(--border);background:var(--white)" onclick="goto('graph')">◎ 지식 그래프 탐색</div>
+            <div class="sb-item" style="border:1px solid var(--border);background:var(--white)" onclick="goto('mynotes')">✎ 새 노트 작성</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ P-ABOUT: STU 소개 ══ -->
+    <div class="page" id="page-about">
+      <div class="page-head">
+        <div class="page-crumb"><a onclick="goto('home')">홈</a> › STU 소개 › 설립자 인사말</div>
+        <h1 class="page-title">설립자 인사말</h1>
+        <p class="page-sub">Self-Taught University · Founded 2025</p>
+      </div>
+      <div class="about-layout">
+
+        <!-- 서브 네비 -->
+        <div class="about-subnav">
+          <div class="about-subnav-head">STU 소개</div>
+          <div class="about-subnav-item active">설립자 인사말</div>
+          <div class="about-subnav-item">건학 이념</div>
+          <div class="about-subnav-item">커리큘럼 철학</div>
+          <div class="about-subnav-item" onclick="goto('curriculum')">개설 과목</div>
+          <div class="about-subnav-item">학습 현황</div>
+          <div class="about-subnav-item">향후 계획</div>
+        </div>
+
+        <!-- 본문 -->
+        <div class="about-body">
+
+          <!-- 인사말 섹션 -->
+          <div class="about-greeting-layout">
+            <div>
+              <div class="about-greeting-sub">Founder's Greetings · 설립자 인사말</div>
+              <h2 class="about-greeting-title">
+                "돈이 없어도, 학교가 없어도<br>
+                지식은 스스로 만들어가는 것이다."
+              </h2>
+              <div class="about-gold-bar"></div>
+
+              <p class="about-text">
+                안녕하십니까.
+              </p>
+              <p class="about-text">
+                저는 인공지능 대학원에 진학하고 싶었습니다. 그러나 현실의 벽은 높았습니다. 등록금, 입시, 그리고 시간. 하지만 저는 생각했습니다. <strong>배움은 제도 안에만 있는 것이 아니다</strong>라고.
+              </p>
+              <p class="about-text">
+                Self-Taught University는 그런 믿음에서 시작되었습니다. 서울대, KAIST, MIT, Stanford의 강의가 유튜브에 있고, 세계 최고의 연구자들이 블로그에 글을 씁니다. 최신 논문은 arXiv에 무료로 올라옵니다. <strong>재료는 이미 모두 인터넷에 있습니다.</strong>
+              </p>
+              <p class="about-text">
+                부족한 것은 체계였습니다. 어떤 순서로 공부할 것인가, 어떻게 내 것으로 만들 것인가, 내가 진짜 이해했는지 어떻게 확인할 것인가. STU는 바로 그 체계를 위해 만들어졌습니다.
+              </p>
+              <p class="about-text">
+                렉쳐 노트로 강의를 정리하고, 내 노트로 진짜 이해를 기록하며, AI 학습봇으로 스스로를 테스트합니다. 논문을 읽고, 테크 블로그로 현장의 언어를 배웁니다. 그리고 지식 그래프로 모든 개념이 어떻게 연결되는지 봅니다.
+              </p>
+              <p class="about-text">
+                이것이 <strong>나만의 대학원</strong>입니다. 학위는 없지만, 지식은 진짜입니다.
+              </p>
+
+              <div class="about-signature">
+                <div class="about-sig-title">Self-Taught University 설립자</div>
+                <div class="about-sig-name">나, 직접</div>
+                <div class="about-sig-role">Founder · Rector · Student · Class of 2025–</div>
+              </div>
+            </div>
+
+            <div class="about-photo-wrap">
+              <div class="about-photo">
+                <div class="about-photo-placeholder">🎓</div>
+                <div style="font-family:var(--font-mono);font-size:9px;color:var(--gray2);text-align:center;padding:0 8px">사진을<br>여기에</div>
+              </div>
+              <div class="about-photo-name">설립자</div>
+              <div class="about-photo-role">Founder & Rector<br>Self-Taught University<br>Est. 2025</div>
+            </div>
+          </div>
+
+          <hr class="about-divider">
+
+          <!-- 대학 현황 -->
+          <div class="about-section-title">STU 현황</div>
+          <div class="about-info-grid">
+            <div class="about-info-card">
+              <div class="aic-label">개설 과목</div>
+              <div class="aic-value">6개 과목</div>
+              <div class="aic-sub">선형대수 · 확률통계 · ML · DL · CV · NLP</div>
+            </div>
+            <div class="about-info-card">
+              <div class="aic-label">전체 진도율</div>
+              <div class="aic-value">23%</div>
+              <div class="aic-sub">선형대수학 42% 선도 중</div>
+            </div>
+            <div class="about-info-card">
+              <div class="aic-label">참고 기관</div>
+              <div class="aic-value">4개 대학</div>
+              <div class="aic-sub">MIT · Stanford · 서울대 · KAIST</div>
+            </div>
+            <div class="about-info-card">
+              <div class="aic-label">논문 아카이브</div>
+              <div class="aic-value">5편</div>
+              <div class="aic-sub">Transformer · GPT-3 · ViT · DDPM · Llama 2</div>
+            </div>
+            <div class="about-info-card">
+              <div class="aic-label">테크 블로그 소스</div>
+              <div class="aic-value">17개 채널</div>
+              <div class="aic-sub">Karpathy · Chip Huyen · Google · 당근 외</div>
+            </div>
+            <div class="about-info-card">
+              <div class="aic-label">내 공부 노트</div>
+              <div class="aic-value">3편</div>
+              <div class="aic-sub">계속 업데이트 중</div>
+            </div>
+          </div>
+
+          <hr class="about-divider">
+
+          <!-- 비전 -->
+          <div class="about-section-title">학습 비전 — 5대 목표</div>
+          <div class="about-vision-list">
+            <div class="avl-item">
+              <div class="avl-num">I</div>
+              <div>
+                <div class="avl-title">이론의 내면화</div>
+                <div class="avl-desc">MIT·Stanford 강의를 단순히 보는 것에 그치지 않고, 수식을 직접 유도하고 코드로 구현하며 진짜 이해를 추구합니다.</div>
+              </div>
+            </div>
+            <div class="avl-item">
+              <div class="avl-num">II</div>
+              <div>
+                <div class="avl-title">최신 논문 독해력</div>
+                <div class="avl-desc">저명한 AI 논문을 AI 주석의 도움을 받아 스스로 읽고 요약하는 능력을 기릅니다. Transformer에서 시작해 최신 연구까지.</div>
+              </div>
+            </div>
+            <div class="avl-item">
+              <div class="avl-num">III</div>
+              <div>
+                <div class="avl-title">현장 언어 습득</div>
+                <div class="avl-desc">빅테크와 국내 선도 기업의 테크 블로그를 통해 실무에서 AI가 어떻게 적용되는지 꾸준히 팔로우합니다.</div>
+              </div>
+            </div>
+            <div class="avl-item">
+              <div class="avl-num">IV</div>
+              <div>
+                <div class="avl-title">개념 연결 사고</div>
+                <div class="avl-desc">지식 그래프를 통해 선형대수 → Attention → Transformer → LLM으로 이어지는 개념의 연결 구조를 명확히 이해합니다.</div>
+              </div>
+            </div>
+            <div class="avl-item">
+              <div class="avl-num">V</div>
+              <div>
+                <div class="avl-title">자기 주도 검증</div>
+                <div class="avl-desc">AI 학습봇의 테스트 모드를 통해 스스로 얼마나 이해했는지 정기적으로 점검하고 취약 개념을 보완합니다.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ P1: CURRICULUM (사이드바 없음) ══ -->
+    <div class="page" id="page-curriculum">
+      <div class="page-head">
+        <div class="page-crumb"><a onclick="goto('home')">홈</a> › 커리큘럼</div>
+        <h1 class="page-title">나의 AI 커리큘럼</h1>
+        <p class="page-sub">서울대 · KAIST · MIT · Stanford 강의 기반으로 직접 설계한 인공지능 커리큘럼</p>
+      </div>
+      <div class="pad">
+        <div class="curriculum-grid" id="curriculumGrid">
+          <!-- 동적 렌더링 (initCurriculum) -->
+        </div>
+
+        <!-- YouTube 플레이리스트 연동 -->
+        <div class="yt-sync-section">
+          <div class="yt-sync-head">
+            <div class="yt-sync-title">YouTube 강의 연동</div>
+            <div class="yt-sync-desc">내 YouTube 플레이리스트에서 AI/데이터 강의를 자동으로 가져옵니다.</div>
+          </div>
+          <div id="ytSyncBody">
+            <div class="yt-sync-status" id="ytAuthStatus">
+              <span id="ytAuthLabel">연결 확인 중...</span>
+              <button class="yt-auth-btn" id="ytAuthBtn" style="display:none" onclick="ytConnect()">YouTube 계정 연결</button>
+            </div>
+            <div id="ytPlaylistSection" style="display:none">
+              <button class="yt-load-btn" onclick="loadYoutubePlaylists()">내 플레이리스트 불러오기</button>
+              <div id="ytPlaylistList"></div>
+              <div id="ytSyncResult" class="yt-sync-result" style="display:none"></div>
+              <button class="yt-do-sync-btn" id="ytDoSyncBtn" onclick="syncSelectedPlaylists()" style="display:none">선택한 플리 강의 저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ P2: LECTURE + MY NOTES (반반) ══ -->
+    <div class="page" id="page-lecture">
+      <div class="lecture-layout" id="lectureLayout">
+        <!-- 강의 목록 -->
+        <div class="lecture-list" id="lectureList">
+          <!-- 동적 렌더링 (initLecture) -->
+        </div>
+
+        <div class="resizer" data-target="--lec-c1" data-min="120" data-max="400"></div>
+
+        <!-- 렉쳐 노트 패널 -->
+        <div class="lecture-content">
+          <div class="pane-header">
+            <div>
+              <div class="pane-header-title">렉쳐 노트</div>
+              <div class="pane-header-meta" id="lecturePaneMeta">강의를 선택하세요</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="lc-complete-btn" id="lc-complete-btn" onclick="markLectureComplete()" style="display:none">완료 표시</button>
+              <button class="lc-hint-btn" id="lc-hint-btn" onclick="hintToggle()" style="display:none">💡 힌트</button>
+            </div>
+          </div>
+          <div class="pane-body" id="lecturePaneBody">
+            <div class="ph-block"><div class="ph-line" style="width:100%"></div><div class="ph-line" style="width:80%"></div><div class="ph-line" style="width:60%"></div></div>
+          </div>
+          <!-- 힌트 챗봇 패널 -->
+          <div class="hint-panel" id="hintPanel">
+            <div class="hint-panel-head">
+              💡 AI 힌트
+              <button class="hint-close-btn" onclick="hintToggle()">✕</button>
+            </div>
+            <div class="hint-msgs" id="hintMsgs">
+              <div class="hint-msg ai">막히는 부분을 질문해보세요. 단계적인 힌트를 드릴게요!</div>
+            </div>
+            <div class="hint-input-row">
+              <input id="hintInput" class="hint-input" placeholder="질문을 입력하세요..."
+                onkeydown="if(event.key==='Enter')hintSend()">
+              <button class="hint-send-btn" onclick="hintSend()">전송</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="resizer" data-target="--lec-c3" data-min="180" data-max="600"></div>
+
+        <!-- 내 노트 패널 -->
+        <div class="mynotes-pane">
+          <div class="pane-header">
+            <div class="pane-header-title">내 노트</div>
+            <div class="pane-header-meta" id="lectureNotesMeta">이 강의 관련 노트</div>
+          </div>
+          <div class="note-editor-area" id="lectureNotesList">
+            <div class="ln-empty">강의를 선택하면 관련 노트가 표시됩니다</div>
+          </div>
+          <div class="pane-toolbar">
+            <button class="btn btn-gold" onclick="addLectureNote()">+ 새 노트</button>
+            <button class="btn" onclick="goto('mynotes')">전체 노트 보기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ P3: MY NOTES ══ -->
+    <div class="page" id="page-mynotes">
+      <div class="obsidian-layout" id="obsLayout">
+
+        <!-- ① 노트 목록 패널 -->
+        <div class="obs-list-panel">
+          <div class="obs-panel-head">
+            <span>내 노트</span>
+            <button class="obs-new-btn" onclick="obsNewNote()">＋</button>
+          </div>
+          <div class="obs-search-wrap">
+            <input class="obs-search" type="text" placeholder="노트 검색..." oninput="obsSearch(this.value)">
+          </div>
+          <div class="obs-note-list" id="obsNoteList"></div>
+        </div>
+
+        <div class="resizer" data-target="--obs-c1" data-min="140" data-max="360"></div>
+
+        <!-- ② 에디터 패널 -->
+        <div class="obs-editor-panel">
+          <div class="obs-editor-head" id="obsEditorHead">
+            <input class="obs-title-input" id="obsTitleInput" type="text" placeholder="제목 입력..." oninput="obsTitleChanged()">
+            <div class="obs-editor-actions">
+              <button class="obs-mode-btn active" id="btnEdit" onclick="obsSetMode('edit')">편집</button>
+              <button class="obs-mode-btn" id="btnPreview" onclick="obsSetMode('preview')">미리보기</button>
+              <button class="obs-save-btn" onclick="obsSave()">저장</button>
+            </div>
+          </div>
+
+          <!-- CodeMirror 에디터 -->
+          <div id="obsEditorWrap" class="obs-editor-wrap"></div>
+
+          <!-- 마크다운 미리보기 -->
+          <div id="obsPreview" class="obs-preview" style="display:none"></div>
+
+          <!-- 빈 상태 -->
+          <div id="obsEmpty" class="obs-empty">
+            <div class="obs-empty-icon">✎</div>
+            <div class="obs-empty-text">노트를 선택하거나 새로 만들어보세요</div>
+            <button class="btn btn-gold" onclick="obsNewNote()">+ 새 노트</button>
+          </div>
+        </div>
+
+        <div class="resizer" data-target="--obs-c3" data-min="160" data-max="400"></div>
+
+        <!-- ③ 백링크 패널 -->
+        <div class="obs-backlink-panel">
+          <div class="obs-panel-head">백링크</div>
+          <div id="obsBacklinks" class="obs-backlink-list">
+            <div class="obs-backlink-empty">이 노트를 링크한 노트가 없습니다</div>
+          </div>
+
+          <div class="obs-panel-head" style="margin-top:16px">태그</div>
+          <div id="obsTags" class="obs-tag-list"></div>
+
+          <div class="obs-panel-head" style="margin-top:16px">연관 그래프</div>
+          <div class="obs-mini-graph">
+            <svg id="obsMiniGraph" width="100%" height="140"></svg>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ P4: PAPERS ══ -->
+    <div class="page" id="page-papers">
+      <div class="page-head">
+        <div class="page-crumb"><a onclick="goto('home')">홈</a> › 논문 읽기</div>
+        <h1 class="page-title">논문 아카이브</h1>
+        <p class="page-sub">저명한 AI 논문을 AI 주석과 함께 읽습니다. 키워드를 클릭하면 해설이 나타납니다.</p>
+      </div>
+      <div class="papers-layout">
+        <div class="paper-list">
+          <div class="paper-list-head">논문 목록</div>
+          <input type="text" placeholder="제목·저자 검색..."
+            style="width:100%;box-sizing:border-box;padding:6px 8px;margin-bottom:8px;font-size:12px;border:1px solid var(--border);background:var(--cream)"
+            oninput="searchPapers(this.value)">
+          <div class="paper-add-row">
+            <input id="arxivInput" type="text" placeholder="arXiv ID 또는 URL 붙여넣기..."
+              class="paper-add-input"
+              onkeydown="if(event.key==='Enter')addPaper()">
+            <button class="paper-add-btn" onclick="addPaper()">+ 추가</button>
+          </div>
+          <div id="paperAddMsg" class="paper-add-msg" style="display:none"></div>
+          <div id="paperListItems"><!-- 동적 렌더링 --></div>
+        </div>
+
+        <div class="paper-reader">
+          <div class="reader-toolbar" id="paperReaderToolbar">
+            <div class="reader-title">논문을 선택하세요</div>
+          </div>
+          <div class="reader-body" id="paperReaderBody">
+            <div class="ln-empty">왼쪽에서 논문을 선택하면 내용이 표시됩니다</div>
+          </div>
+        </div>
+      </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ P5: AI CHATBOT ══ -->
+    <!-- ══ P5-B: TECH BLOG ══ -->
+    <div class="page" id="page-blog">
+      <div class="page-head">
+        <div class="page-crumb"><a onclick="goto('home')">홈</a> › 테크 블로그</div>
+        <h1 class="page-title">테크 블로그 피드</h1>
+        <p class="page-sub">개인 연구자 · 빅테크 · 국내 기업의 최신 AI 동향을 한 곳에서 팔로우합니다.</p>
+      </div>
+      <div class="blog-layout" id="blogLayout">
+
+        <!-- 소스 필터 -->
+        <div class="blog-sources">
+          <div class="blog-src-head">구독 소스</div>
+
+          <div class="src-category">전체</div>
+          <div class="src-item active" onclick="filterBlog('all',this)">
+            <span class="src-dot" style="background:#0a1628"></span>
+            <span class="src-name">모든 소스</span>
+            <span class="src-count">18</span>
+          </div>
+
+          <div class="src-category">개인 연구자</div>
+          <div class="src-item" onclick="filterBlog('personal',this)">
+            <span class="src-dot" style="background:#8b1a1a"></span>
+            <span class="src-name">Andrej Karpathy</span>
+            <span class="src-count">4</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('personal',this)">
+            <span class="src-dot" style="background:#8b1a1a"></span>
+            <span class="src-name">Sebastian Ruder</span>
+            <span class="src-count">3</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('personal',this)">
+            <span class="src-dot" style="background:#8b1a1a"></span>
+            <span class="src-name">Chip Huyen</span>
+            <span class="src-count">3</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('personal',this)">
+            <span class="src-dot" style="background:#8b1a1a"></span>
+            <span class="src-name">Lilian Weng (OpenAI)</span>
+            <span class="src-count">2</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('personal',this)">
+            <span class="src-dot" style="background:#8b1a1a"></span>
+            <span class="src-name">Jay Alammar</span>
+            <span class="src-count">3</span>
+          </div>
+
+          <div class="src-category">빅테크</div>
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
+            <span class="src-dot" style="background:#0a1628"></span>
+            <span class="src-name">Google AI Blog</span>
+            <span class="src-count">5</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
+            <span class="src-dot" style="background:#0a1628"></span>
+            <span class="src-name">OpenAI Blog</span>
+            <span class="src-count">4</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
+            <span class="src-dot" style="background:#0a1628"></span>
+            <span class="src-name">DeepMind Blog</span>
+            <span class="src-count">3</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
+            <span class="src-dot" style="background:#0a1628"></span>
+            <span class="src-name">Uber Engineering</span>
+            <span class="src-count">2</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('bigtech',this)">
+            <span class="src-dot" style="background:#0a1628"></span>
+            <span class="src-name">Airbnb Tech</span>
+            <span class="src-count">2</span>
+          </div>
+
+          <div class="src-category">국내 기업</div>
+          <div class="src-item" onclick="filterBlog('korean',this)">
+            <span class="src-dot" style="background:#2a5a2a"></span>
+            <span class="src-name">당근 Tech</span>
+            <span class="src-count">3</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('korean',this)">
+            <span class="src-dot" style="background:#2a5a2a"></span>
+            <span class="src-name">버즈빌 Tech</span>
+            <span class="src-count">2</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('korean',this)">
+            <span class="src-dot" style="background:#2a5a2a"></span>
+            <span class="src-name">카카오 Tech</span>
+            <span class="src-count">4</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('korean',this)">
+            <span class="src-dot" style="background:#2a5a2a"></span>
+            <span class="src-name">네이버 Tech</span>
+            <span class="src-count">3</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('korean',this)">
+            <span class="src-dot" style="background:#2a5a2a"></span>
+            <span class="src-name">LINE Engineering</span>
+            <span class="src-count">2</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('korean',this)">
+            <span class="src-dot" style="background:#884400"></span>
+            <span class="src-name">토스 Tech</span>
+            <span class="src-count">2</span>
+          </div>
+          <div class="src-item" onclick="filterBlog('korean',this)">
+            <span class="src-dot" style="background:#884400"></span>
+            <span class="src-name">쏘카 Tech</span>
+            <span class="src-count">1</span>
+          </div>
+        </div>
+
+        <div class="resizer" data-target="--blog-c1" data-min="140" data-max="360"></div>
+
+        <!-- 피드 목록 -->
+        <div class="blog-feed">
+          <div class="feed-toolbar">
+            <button class="feed-filter-btn active" onclick="setBlogTab(this,'all')">전체</button>
+            <button class="feed-filter-btn" onclick="setBlogTab(this,'llm')">LLM</button>
+            <button class="feed-filter-btn" onclick="setBlogTab(this,'cv')">비전</button>
+            <button class="feed-filter-btn" onclick="setBlogTab(this,'infra')">인프라</button>
+            <button class="feed-filter-btn" onclick="setBlogTab(this,'rec')">추천시스템</button>
+            <input class="feed-search" type="text" placeholder="포스트 검색..." oninput="searchBlog(this.value)">
+          </div>
+
+          <div class="feed-list" id="feedList">
+            <!-- 동적 렌더링 (initBlog) -->
+
+
+          </div>
+        </div>
+
+        <div class="resizer" data-target="--blog-c3" data-min="200" data-max="500"></div>
+
+        <!-- 아티클 뷰어 -->
+        <div class="blog-reader">
+          <div class="reader-head">아티클 요약</div>
+          <div class="reader-article" id="blogReaderContent">
+            <div class="ra-source badge-personal" style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:#8b1a1a;margin-bottom:4px">Andrej Karpathy</div>
+            <div class="ra-title">Let's build GPT: from scratch, in code, spelled out.</div>
+            <div class="ra-meta">2025.05.08 · karpathy.ai</div>
+
+            <div class="ra-summary-label">AI 요약</div>
+            <div class="ra-summary">
+              Transformer 아키텍처를 처음부터 PyTorch로 구현하는 튜토리얼. 바이그램 언어 모델에서 시작해 self-attention, multi-head attention, feedforward layer, residual connection을 단계적으로 추가하며 GPT를 완성합니다.
+            </div>
+
+            <div class="ra-kw-section">
+              <div class="ra-kw-label">핵심 키워드</div>
+              <div class="ra-kw-chips">
+                <span class="ra-kw-chip" onclick="goto('lecture')">Self-Attention</span>
+                <span class="ra-kw-chip" onclick="goto('lecture')">Transformer</span>
+                <span class="ra-kw-chip" onclick="goto('lecture')">Residual Connection</span>
+                <span class="ra-kw-chip" onclick="goto('graph')">Language Model</span>
+                <span class="ra-kw-chip" onclick="goto('lecture')">LayerNorm</span>
+              </div>
+            </div>
+
+            <div class="ra-kw-section">
+              <div class="ra-kw-label">연관 과목</div>
+              <div class="ra-kw-chips">
+                <span class="ra-kw-chip" onclick="goto('lecture')" style="border-color:var(--navy);color:var(--navy)">딥러닝 DL-401</span>
+                <span class="ra-kw-chip" onclick="goto('lecture')" style="border-color:#2a5a2a;color:#2a5a2a">NLP NLP-403</span>
+                <span class="ra-kw-chip" onclick="goto('lecture')" style="border-color:#0a1628;color:#0a1628">선형대수 MATH-101</span>
+              </div>
+            </div>
+
+            <div class="ra-actions">
+              <button class="ra-action-btn gold" onclick="goto('mynotes')">✎ 내 노트에 정리하기</button>
+              <button class="ra-action-btn" onclick="goto('papers')">📄 관련 논문 보기 (Attention Is All You Need)</button>
+              <button class="ra-action-btn" onclick="goto('chatbot')">★ AI 학습봇에서 질문하기</button>
+              <button class="ra-action-btn" onclick="goto('graph')">◎ 지식 그래프에서 연결 보기</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ P6: KNOWLEDGE GRAPH ══ -->
+    <div class="page" id="page-graph">
+      <div class="graph-toolbar">
+        <button class="gf-btn active" onclick="filterGraph('all',this)">전체</button>
+        <button class="gf-btn" onclick="filterGraph('MATH',this)">선형대수</button>
+        <button class="gf-btn" onclick="filterGraph('STATS',this)">통계</button>
+        <button class="gf-btn" onclick="filterGraph('ML',this)">ML</button>
+        <button class="gf-btn" onclick="filterGraph('DL',this)">DL</button>
+        <div class="graph-controls">
+          <button class="graph-ctrl-btn" onclick="graphZoomIn()">＋</button>
+          <button class="graph-ctrl-btn" onclick="graphZoomOut()">－</button>
+          <button class="graph-ctrl-btn" onclick="graphReset()">⟳</button>
+        </div>
+        <span class="graph-hint">노드 클릭 → 노트 보기 &nbsp;·&nbsp; 드래그 가능</span>
+      </div>
+      <div class="graph-canvas" id="graphCanvas">
+        <svg id="graphSvg"></svg>
+        <div class="graph-tooltip" id="tooltip">
+          <div class="tt-tag" id="tt-tag"></div>
+          <div class="tt-title" id="tt-title"></div>
+          <div class="tt-desc" id="tt-desc"></div>
+          <div class="tt-links" id="tt-links"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════
+     FLOATING CHATBOT
+══════════════════════════════════════ -->
+
+<!-- 플로팅 버튼 -->
+<button class="chat-fab" id="chatFab" onclick="chatToggle()" title="AI 학습봇">
+  <span class="chat-fab-icon" id="chatFabIcon">★</span>
+  <span class="chat-fab-badge" id="chatFabBadge">1</span>
+</button>
+
+<!-- 챗봇 윈도우 -->
+<div class="chat-window" id="chatWindow">
+
+  <!-- 헤더 -->
+  <div class="chat-win-header">
+    <div class="chat-win-title">
+      <span class="chat-win-star">★</span>
+      AI 학습봇
+    </div>
+    <div class="chat-win-actions">
+      <div class="chat-mode-tabs">
+        <button class="chat-mode-tab active" id="modeStudy" onclick="chatSetMode('study')">학습</button>
+        <button class="chat-mode-tab" id="modeTest"  onclick="chatSetMode('test')">테스트</button>
+      </div>
+      <button class="chat-win-btn" onclick="chatClear()" title="대화 초기화">↺</button>
+      <button class="chat-win-btn" onclick="chatToggle()" title="닫기">✕</button>
+    </div>
+  </div>
+
+  <!-- 컨텍스트 바 -->
+  <div class="chat-context-bar" id="chatContextBar">
+    <span class="chat-ctx-label">현재 과목</span>
+    <span class="chat-ctx-value" id="chatCtxSubject">선형대수학</span>
+    <span class="chat-ctx-sep">·</span>
+    <span class="chat-ctx-label">진도</span>
+    <span class="chat-ctx-value">Lecture 03</span>
+  </div>
+
+  <!-- 메시지 목록 -->
+  <div class="chat-win-messages" id="chatMessages">
+    <div class="chat-msg ai">
+      <div class="chat-msg-av">AI</div>
+      <div class="chat-msg-body">
+        안녕하세요! 오늘 어떤 개념을 공부할까요?<br>
+        현재 <strong>선형대수학 Lecture 03</strong>까지 진행했어요.
+      </div>
+    </div>
+  </div>
+
+  <!-- 취약 개념 칩 -->
+  <div class="chat-chips" id="chatChips">
+    <span class="chat-chip" onclick="chatSuggest('고유값이 뭔지 설명해줘')">고유값</span>
+    <span class="chat-chip" onclick="chatSuggest('행렬식을 쉽게 설명해줘')">행렬식</span>
+    <span class="chat-chip" onclick="chatSuggest('LU 분해를 설명해줘')">LU 분해</span>
+    <span class="chat-chip" onclick="chatSuggest('SVD를 직관적으로 설명해줘')">SVD</span>
+  </div>
+
+  <!-- 입력창 -->
+  <div class="chat-win-input-row">
+    <input
+      class="chat-win-input"
+      id="chatInput"
+      type="text"
+      placeholder="질문하거나 모르는 개념을 입력하세요..."
+      onkeydown="if(event.key==='Enter') chatSend()"
+    >
+    <button class="chat-win-send" onclick="chatSend()">↑</button>
+  </div>
+
+  <!-- 테스트 모드 점수 -->
+  <div class="chat-score-bar" id="chatScoreBar" style="display:none">
+    <span class="chat-score-label">이번 테스트</span>
+    <span class="chat-score-val" id="chatScore">0 / 0</span>
+    <div class="chat-score-progress"><div class="chat-score-fill" id="chatScoreFill"></div></div>
+  </div>
+
+</div>
+
+<script src="app.js" defer></script>
+</body>
+</html>
