@@ -34,6 +34,7 @@ class Lecture(Base):
     title: Mapped[str] = mapped_column(String(300))
     number: Mapped[int] = mapped_column(Integer)
     category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    tags: Mapped[list] = mapped_column(JSONB, default=list)
     youtube_url: Mapped[str | None] = mapped_column(String(500))
     duration_sec: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

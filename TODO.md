@@ -32,7 +32,7 @@
 - [ ] 신규 강좌 추가 — MLVU (바탕화면 폴더 영상 → 로컬 import 방식 결정 필요)
 
 ### 내 YouTube 계정 연동
-- [ ] **플레이리스트 수가 너무 많을 때 LLM으로 AI/데이터 관련 플리 자동 하이라이팅** — 플리 제목+설명을 GPT에게 넘겨서 관련도 점수 매기고, 관련 플리는 자동 체크 + 상단 정렬
+- [ ] **플레이리스트 안의 영상의 수가 너무 많을 때 LLM으로 AI/데이터 관련 영상 자동 추가** — 플리 제목+설명을 GPT에게 넘겨서 관련도 점수 매기고, 관련 플리는 자동 체크 + 상단 정렬
 - [ ] 배치: 주 1회 동기화 — 새 영상 추가/삭제 자동 반영 (APScheduler 기존 youtube job 활용)
 
 ### AI 기능
@@ -49,12 +49,64 @@
 - [ ] **8순위** Gemini 파이프라인 MCP — 회사 Gemini로 논문·자료 요약 → Obsidian → STU
 - [ ] **9순위** YouTube 시청기록 MCP — 시청 기록 기반 강의 진도율 자동 반영
 
-### 인프라
-- [ ] minikube 로컬 K8s 배포 테스트
-- [ ] Jenkins CI 파이프라인 실제 실행 테스트
-- [ ] ArgoCD 설치 및 연동
+### 인프라 — Jenkins + ArgoCD CD 파이프라인 구축
+
+> 목표 흐름: `git push` → Jenkins (테스트 + Docker 빌드/push) → ArgoCD (k8s 배포)
+
+#### Step 1. minikube + ArgoCD 설치
+- [ ] minikube 시작: `minikube start --driver=docker --cpus=4 --memory=6g`
+- [ ] Ingress 활성화: `minikube addons enable ingress`
+- [ ] ArgoCD 설치:
+  ```bash
+  kubectl create namespace argocd
+  kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  ```
+- [ ] ArgoCD 초기 admin 비밀번호 확인: `kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d`
+- [ ] ArgoCD UI 포트포워딩: `kubectl port-forward svc/argocd-server -n argocd 8080:443`
+
+#### Step 2. Jenkins 설치 (minikube 내부 or Docker)
+- [ ] Jenkins Docker 실행:
+  ```bash
+  docker run -d --name jenkins \
+    -p 8090:8080 -p 50000:50000 \
+    -v jenkins_home:/var/jenkins_home \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    jenkins/jenkins:lts
+  ```
+- [ ] 초기 admin 비밀번호: `docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword`
+- [ ] 플러그인 설치: Git, Pipeline, Docker Pipeline, Credentials Binding
+
+#### Step 3. Jenkins Credentials 등록
+- [ ] `dockerhub-creds` — Docker Hub 계정 (Username + Password)
+- [ ] `argocd-token` — ArgoCD API 토큰 (Secret text)
+  - ArgoCD 토큰 발급: `argocd account generate-token --account admin`
+- [ ] `github-token` — GitHub PAT (repo + webhook 권한)
+
+#### Step 4. Jenkinsfile 설정값 수정
+- [ ] `IMAGE_NAME` → 실제 Docker Hub 계정으로 변경 (현재 `yourdockerhub/stu-api`)
+- [ ] `ARGOCD_SERVER` → 실제 ArgoCD 주소로 변경 (현재 `argocd.stu.local`)
+
+#### Step 5. GitHub Webhook → Jenkins 연결
+- [ ] GitHub repo Settings → Webhooks → `http://<jenkins-ip>:8090/github-webhook/` 등록
+- [ ] Jenkins에서 Pipeline 잡 생성: SCM → GitHub repo, `Jenkinsfile` 경로 지정
+
+#### Step 6. ArgoCD Application 등록
+- [ ] `argocd/app-dev.yaml` 적용:
+  ```bash
+  kubectl apply -f argocd/app-dev.yaml
+  ```
+- [ ] repo URL이 실제 GitHub repo 주소와 일치하는지 확인
+- [ ] ArgoCD UI에서 `stu-dev` app Sync 확인
+
+#### Step 7. 엔드투엔드 테스트
+- [ ] `develop` 브랜치에 커밋 push → Jenkins 자동 트리거 확인
+- [ ] Jenkins 빌드 로그: 테스트 통과 → Docker push → ArgoCD sync 순서 확인
+- [ ] `kubectl get pods -n default` — Pod 새 이미지로 롤링 업데이트 확인
+- [ ] `/healthz` 또는 `/docs` 응답 확인
+
+---
 - [ ] API 키 사용량 대시보드
-- [ ] DB, 서버등을 로컬 말고 클라우드 환경으로 이관
+- [ ] DB, 서버 등을 로컬 말고 클라우드 환경으로 이관
 
 ---
 
@@ -243,3 +295,11 @@
 - [x] CI 테스트 환경 수정 (TestClient 전환, DB URL env 변수)
 - [x] 브랜치 전략 README 반영 (develop → staging → main)
 - [x] 커밋별 스택 PR 13개 생성
+- [x] Git 히스토리 재구성 — 3 브랜치(feat/infra, feat/app, feat/tests), 브랜치당 다수 커밋, develop에 merge 완료
+- [x] GitHub Actions CI fix — `alembic upgrade head` 스텝 추가 (`relation "courses" does not exist` 오류 수정)
+- [x] PR Agent fix — `GOOGLE_AI_STUDIO_KEY` 환경변수 수정, `continue-on-error: true`, `auto_improve: false`
+- [x] `entrypoint.sh` 복구 — Docker volume mount 환경에서 누락된 파일 복원
+
+### 프론트엔드 (추가)
+
+- [x] 패널 드래그 리사이즈 — lecture/notes/blog 3컬럼 크기 조절 + localStorage 저장 (CSS custom property + mousedown 이벤트)

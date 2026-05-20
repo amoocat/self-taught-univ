@@ -12,13 +12,16 @@ from app.core.errors import NotFoundError, get_or_404
 router = APIRouter()
 
 _CATEGORY_CODE = {
-    "math": "MATH-101",
-    "stats": "STAT-201",
-    "stat": "STAT-201",
-    "ml": "ML-301",
-    "dl": "DL-401",
-    "cv": "CV-402",
-    "nlp": "NLP-403",
+    "math":  "MATH-101",
+    "stat":  "STAT-201",
+    "ml":    "ML-301",
+    "dl":    "DL-401",
+    "cv":    "CV-402",
+    "nlp":   "NLP-403",
+    "llm":   "LLM-501",
+    "rl":    "RL-502",
+    "data":  "DATA-601",
+    "mlops": "OPS-602",
 }
 
 
@@ -27,6 +30,7 @@ class LectureOut(BaseModel):
     title: str
     number: int
     category: Optional[str] = None
+    tags: list[str] = []
     youtube_url: Optional[str]
     duration_sec: Optional[int]
     completed: bool = False
@@ -40,6 +44,7 @@ class LectureDetailOut(BaseModel):
     title: str
     number: int
     category: Optional[str] = None
+    tags: list[str] = []
     youtube_url: Optional[str]
     duration_sec: Optional[int]
     content: str = ""
@@ -106,6 +111,7 @@ async def list_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
     return [
         LectureOut(
             id=l.id, title=l.title, number=l.number,
+            category=l.category, tags=l.tags or [],
             youtube_url=l.youtube_url, duration_sec=l.duration_sec,
             completed=l.id in completed_ids,
         )
@@ -141,6 +147,8 @@ async def get_lecture_detail(lecture_id: str, db: AsyncSession = Depends(get_db)
         id=lecture.id,
         title=lecture.title,
         number=lecture.number,
+        category=lecture.category,
+        tags=lecture.tags or [],
         youtube_url=lecture.youtube_url,
         duration_sec=lecture.duration_sec,
         content=note.content_md if note else "",

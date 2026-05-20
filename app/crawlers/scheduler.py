@@ -17,6 +17,7 @@ from app.crawlers.youtube import YouTubeCrawler, YOUTUBE_PLAYLISTS
 from app.crawlers.blog import BlogCrawler
 from app.crawlers.arxiv import ArxivCrawler
 from app.models.models import FeedItem, Paper, Lecture, Course
+from app.services.tag_service import extract_tags
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,16 @@ def init_scheduler():
     # 앱 시작 시 저명 논문 한 번 즉시 수집 (DB가 비어있을 때)
     scheduler.add_job(
         job_seed_papers,
-        "date",  # 즉시 1회 실행
+        "date",
         id="seed_papers",
+        replace_existing=True,
+    )
+
+    # 앱 시작 시 태그 없는 강의 일괄 태깅 (신규 과목 추가 후 한 번만)
+    scheduler.add_job(
+        job_tag_lectures,
+        "date",
+        id="tag_lectures",
         replace_existing=True,
     )
 
@@ -133,6 +142,42 @@ async def job_seed_papers():
         logger.info(f"[Job] 저명 논문 {saved}개 저장 완료")
     finally:
         await crawler.close()
+
+
+async def job_tag_lectures():
+    """태그 없는 강의 일괄 GPT 태깅 (앱 시작 시 1회)"""
+    if not settings.CHATGPT_API_KEY:
+        logger.info("[Job] CHATGPT_API_KEY 없음 — 태깅 스킵")
+        return
+
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(Lecture).where(
+                (Lecture.tags == None) | (Lecture.tags == [])  # noqa: E711
+            )
+        )).scalars().all()
+
+    if not rows:
+        logger.info("[Job] 태그 없는 강의 없음 — 스킵")
+        return
+
+    logger.info(f"[Job] 태그 없는 강의 {len(rows)}개 태깅 시작")
+    tagged = 0
+    async with AsyncSessionLocal() as db:
+        for lec in rows:
+            try:
+                tags = await extract_tags(lec.title, category=lec.category or "")
+                lec_db = (await db.execute(
+                    select(Lecture).where(Lecture.id == lec.id)
+                )).scalar_one_or_none()
+                if lec_db:
+                    lec_db.tags = tags
+                    tagged += 1
+            except Exception as e:
+                logger.warning(f"[Job] 태그 실패 ({lec.title[:40]}): {e}")
+        await db.commit()
+
+    logger.info(f"[Job] 태깅 완료 — {tagged}개")
 
 
 # ── DB 저장 헬퍼 ─────────────────────────────────────────────────
@@ -212,16 +257,21 @@ async def _save_lectures(videos) -> int:
             )).scalar_one_or_none()
 
             yt_url = f"https://youtube.com/watch?v={v.video_id}"
+            tags   = await extract_tags(v.title, v.description, category)
+
             if exists:
                 exists.youtube_url  = yt_url
                 exists.duration_sec = v.duration_sec
                 exists.category     = category
+                if not exists.tags:
+                    exists.tags = tags
             else:
                 db.add(Lecture(
                     course_id=course.id,
                     title=v.title,
                     number=lecture_number,
                     category=category,
+                    tags=tags,
                     youtube_url=yt_url,
                     duration_sec=v.duration_sec,
                 ))

@@ -33,58 +33,86 @@ YOUTUBE_PLAYLISTS = [
 
 # 카테고리 분류 규칙 — (카테고리, 키워드 집합)
 # 제목+설명에서 키워드 하나라도 매칭되면 해당 카테고리로 분류
+# 순서 중요: 앞 카테고리가 먼저 매칭됨
 # 아무것도 매칭 안 되면 AI/데이터 무관 영상 → 저장 스킵
 _CATEGORY_RULES: list[tuple[str, set[str]]] = [
-    ("math", {
-        "linear algebra", "calculus", "statistics", "probability", "matrix",
-        "eigenvalue", "eigenvector", "18.06", "strang", "convex optimization",
-        "gradient descent", "partial derivative", "fourier", "linear equation",
-        "선형대수", "미적분", "통계", "확률",
+    # ── LLM (nlp보다 먼저: gpt/llama 등은 llm으로 분류)
+    ("llm", {
+        "large language model", "llm", "chatgpt", "gpt-4", "gpt4", "fine-tuning", "fine tuning",
+        "retrieval augmented", "rag", "prompt engineering", "rlhf",
+        "instruction tuning", "llama", "mistral", "gemma", "phi-3", "claude",
+        "in-context learning", "chain of thought", "function calling",
+        "언어모델", "파인튜닝", "프롬프트",
     }),
+    # ── 수학 기초
+    ("math", {
+        "linear algebra", "calculus", "matrix", "eigenvalue", "eigenvector",
+        "18.06", "strang", "convex optimization", "partial derivative",
+        "fourier transform", "fourier series", "linear equation",
+        "singular value decomposition", "svd", "determinant", "gram-schmidt",
+        "선형대수", "미적분", "행렬", "고유값",
+    }),
+    # ── 통계 / 확률
+    ("stat", {
+        "probability", "statistics", "bayesian", "markov chain", "monte carlo",
+        "statistical learning", "hypothesis testing", "a/b test",
+        "causal inference", "time series", "cs109", "stochastic",
+        "maximum likelihood", "confidence interval", "p-value",
+        "확률", "통계", "베이지안",
+    }),
+    # ── 강화학습
+    ("rl", {
+        "reinforcement learning", "q-learning", "policy gradient", "mdp",
+        "markov decision process", "actor critic", "ppo", "reward function",
+        "exploration exploitation", "david silver", "openai gym",
+        "강화학습", "보상함수",
+    }),
+    # ── 머신러닝 (rl 다음)
     ("ml", {
         "machine learning", "random forest", "xgboost", "gradient boosting",
         "scikit", "supervised learning", "unsupervised learning",
         "classification", "regression", "cs229", "andrew ng", "feature engineering",
+        "decision tree", "naive bayes", "k-means", "svm", "support vector",
         "머신러닝", "분류", "회귀",
     }),
-    ("dl", {
-        "deep learning", "neural network", "backpropagation", "activation function",
-        "dropout", "batch normalization", "cs231n", "pytorch", "tensorflow",
-        "딥러닝", "신경망", "역전파",
-    }),
-    ("nlp", {
-        "natural language processing", "nlp", "bert", "transformer", "tokenizer",
-        "attention mechanism", "language model", "text classification",
-        "cs224n", "cs224", "word2vec", "embedding", "sequence to sequence",
-        "자연어처리", "언어모델",
-    }),
+    # ── 컴퓨터 비전 (dl보다 먼저: cs231n은 cv)
     ("cv", {
         "computer vision", "convolutional", "cnn", "image classification",
         "object detection", "image segmentation", "vision transformer", "vit",
         "diffusion model", "stable diffusion", "gan", "yolo", "resnet",
-        "컴퓨터비전", "이미지",
+        "cs231n", "alexnet", "vgg", "feature map", "bounding box",
+        "컴퓨터비전", "이미지 분류", "객체 탐지",
     }),
-    ("llm", {
-        "large language model", "llm", "chatgpt", "fine-tuning", "fine tuning",
-        "retrieval augmented", "rag", "prompt engineering", "rlhf",
-        "instruction tuning", "llama", "mistral", "gemma", "in-context learning",
-        "언어모델", "파인튜닝",
+    # ── 자연어처리 (cv 다음)
+    ("nlp", {
+        "natural language processing", "nlp", "bert", "transformer", "tokenizer",
+        "attention mechanism", "language model", "text classification",
+        "cs224n", "cs224", "word2vec", "embedding", "sequence to sequence",
+        "named entity", "pos tagging", "sentiment analysis", "text generation",
+        "자연어처리", "텍스트 분류",
     }),
+    # ── 딥러닝 (cv/nlp보다 뒤)
+    ("dl", {
+        "deep learning", "neural network", "backpropagation", "activation function",
+        "dropout", "batch normalization", "pytorch", "tensorflow", "keras",
+        "deep neural", "multilayer perceptron", "mlp", "autoencoder",
+        "딥러닝", "신경망", "역전파",
+    }),
+    # ── 데이터 엔지니어링
     ("data", {
         "data engineering", "data pipeline", "apache spark", "kafka",
         "data lake", "etl", "airflow", "dbt", "data warehouse",
         "hadoop", "flink", "bigquery", "snowflake", "data architecture",
+        "stream processing", "batch processing", "data modeling",
         "데이터 엔지니어링", "파이프라인",
     }),
-    ("stat", {
-        "bayesian", "markov chain", "monte carlo", "statistical learning",
-        "hypothesis testing", "a/b test", "causal inference", "time series",
-        "베이지안", "통계학",
-    }),
-    ("infra", {
+    # ── MLOps / 인프라
+    ("mlops", {
         "kubernetes", "k8s", "docker", "mlops", "model deployment",
         "model serving", "ci/cd", "devops", "cloud native", "monitoring",
-        "쿠버네티스", "도커", "배포",
+        "feature store", "model registry", "experiment tracking", "mlflow",
+        "kubeflow", "bentoml", "triton", "model versioning",
+        "쿠버네티스", "도커", "모델 배포",
     }),
 ]
 
