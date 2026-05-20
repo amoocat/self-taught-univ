@@ -381,11 +381,13 @@
 
     <!-- ══ P2: LECTURE + MY NOTES (반반) ══ -->
     <div class="page" id="page-lecture">
-      <div class="lecture-layout">
+      <div class="lecture-layout" id="lectureLayout">
         <!-- 강의 목록 -->
         <div class="lecture-list" id="lectureList">
           <!-- 동적 렌더링 (initLecture) -->
         </div>
+
+        <div class="resizer" data-target="--lec-c1" data-min="120" data-max="400"></div>
 
         <!-- 렉쳐 노트 패널 -->
         <div class="lecture-content">
@@ -419,6 +421,8 @@
           </div>
         </div>
 
+        <div class="resizer" data-target="--lec-c3" data-min="180" data-max="600"></div>
+
         <!-- 내 노트 패널 -->
         <div class="mynotes-pane">
           <div class="pane-header">
@@ -438,7 +442,7 @@
 
     <!-- ══ P3: MY NOTES ══ -->
     <div class="page" id="page-mynotes">
-      <div class="obsidian-layout">
+      <div class="obsidian-layout" id="obsLayout">
 
         <!-- ① 노트 목록 패널 -->
         <div class="obs-list-panel">
@@ -451,6 +455,8 @@
           </div>
           <div class="obs-note-list" id="obsNoteList"></div>
         </div>
+
+        <div class="resizer" data-target="--obs-c1" data-min="140" data-max="360"></div>
 
         <!-- ② 에디터 패널 -->
         <div class="obs-editor-panel">
@@ -476,6 +482,8 @@
             <button class="btn btn-gold" onclick="obsNewNote()">+ 새 노트</button>
           </div>
         </div>
+
+        <div class="resizer" data-target="--obs-c3" data-min="160" data-max="400"></div>
 
         <!-- ③ 백링크 패널 -->
         <div class="obs-backlink-panel">
@@ -540,7 +548,7 @@
         <h1 class="page-title">테크 블로그 피드</h1>
         <p class="page-sub">개인 연구자 · 빅테크 · 국내 기업의 최신 AI 동향을 한 곳에서 팔로우합니다.</p>
       </div>
-      <div class="blog-layout">
+      <div class="blog-layout" id="blogLayout">
 
         <!-- 소스 필터 -->
         <div class="blog-sources">
@@ -645,6 +653,8 @@
           </div>
         </div>
 
+        <div class="resizer" data-target="--blog-c1" data-min="140" data-max="360"></div>
+
         <!-- 피드 목록 -->
         <div class="blog-feed">
           <div class="feed-toolbar">
@@ -662,6 +672,8 @@
 
           </div>
         </div>
+
+        <div class="resizer" data-target="--blog-c3" data-min="200" data-max="500"></div>
 
         <!-- 아티클 뷰어 -->
         <div class="blog-reader">

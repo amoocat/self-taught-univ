@@ -328,6 +328,31 @@ body {
 ══════════════════════════════════════ */
 .layout { display: flex; flex: 1; overflow: hidden; }
 
+/* ── Panel Resizer ───────────────────── */
+.resizer {
+  width: 5px;
+  cursor: col-resize;
+  position: relative;
+  background: transparent;
+  z-index: 10;
+  flex-shrink: 0;
+}
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 15%; bottom: 15%;
+  left: 50%; transform: translateX(-50%);
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.2s;
+}
+.resizer:hover::after,
+.resizer-active::after { background: var(--accent-blue, #3b82f6); }
+body.is-resizing { cursor: col-resize !important; user-select: none !important; }
+body.is-resizing * { pointer-events: none !important; }
+body.is-resizing .resizer-active { pointer-events: auto !important; }
+
 /* ─── SIDEBAR ─── */
 .sidebar {
   width: var(--sidebar-collapsed);
@@ -886,7 +911,7 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 ══════════════════════════════════════ */
 #page-lecture { overflow: hidden; }
 
-.lecture-layout { display: grid; grid-template-columns: 200px 1fr 1fr; flex: 1; overflow: hidden; }
+.lecture-layout { display: grid; grid-template-columns: var(--lec-c1,200px) 5px 1fr 5px var(--lec-c3,400px); flex: 1; overflow: hidden; }
 
 /* lecture list */
 .lecture-list {
@@ -1987,7 +2012,7 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 
 .blog-layout {
   display: grid;
-  grid-template-columns: 220px 1fr 300px;
+  grid-template-columns: var(--blog-c1,220px) 5px 1fr 5px var(--blog-c3,300px);
   flex: 1;
   overflow: hidden;
 }
@@ -2925,7 +2950,7 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 
 .obsidian-layout {
   display: grid;
-  grid-template-columns: 220px 1fr 240px;
+  grid-template-columns: var(--obs-c1,220px) 5px 1fr 5px var(--obs-c3,240px);
   height: 100%;
   overflow: hidden;
 }
