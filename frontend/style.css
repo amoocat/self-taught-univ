@@ -3352,7 +3352,7 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.55);
-  z-index: 900;
+  z-index: 1100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3404,29 +3404,83 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   flex-shrink: 0;
 }
 
+/* Step 컨테이너 — flex:1 + min-height:0 이 있어야 내부 overflow-y 작동 */
+#ytStep1, #ytStep2 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* 모달 목록 (step1 플리 / step2 영상 공통) */
 .yt-modal-list {
   flex: 1;
   overflow-y: auto;
   border-top: 1px solid var(--cream3);
+  min-height: 0;
 }
 .yt-pl-item {
+  border-bottom: 1px solid var(--cream3);
+  user-select: none;
+}
+.yt-pl-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 9px 14px;
-  border-bottom: 1px solid var(--cream3);
   cursor: pointer;
   transition: background 0.1s;
-  user-select: none;
 }
-.yt-pl-item:hover { background: var(--cream2); }
-.yt-pl-item.selected { background: var(--cream2); }
-.yt-pl-item input[type=checkbox] { accent-color: var(--red); flex-shrink: 0; }
+.yt-pl-row:hover { background: var(--cream2); }
+.yt-pl-item.selected .yt-pl-row { background: var(--cream2); }
+.yt-pl-row input[type=checkbox] { accent-color: var(--red); flex-shrink: 0; }
 .yt-pl-thumb { width: 64px; height: 40px; object-fit: cover; flex-shrink: 0; background: var(--cream3); }
 .yt-pl-info { flex: 1; min-width: 0; }
 .yt-pl-name { font-size: 12px; font-family: var(--font-serif); font-weight: 700; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .yt-pl-meta { font-size: 10px; color: var(--gray2); font-family: var(--font-mono); margin-top: 2px; }
+.yt-pl-expand-btn {
+  background: none;
+  border: none;
+  font-size: 10px;
+  color: var(--gray2);
+  cursor: pointer;
+  padding: 2px 8px;
+  flex-shrink: 0;
+  transition: color 0.1s;
+  line-height: 1;
+}
+.yt-pl-expand-btn:hover { color: var(--navy); }
+
+/* 플리 내 영상 목록 (accordion) */
+.yt-pl-videos {
+  border-top: 1px solid var(--cream3);
+  background: var(--cream2);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.yt-vid-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--cream3);
+}
+.yt-vid-item:last-child { border-bottom: none; }
+.yt-vid-thumb { width: 48px; height: 30px; object-fit: cover; flex-shrink: 0; background: var(--cream3); }
+.yt-vid-thumb-ph { width: 48px; height: 30px; flex-shrink: 0; background: var(--cream3); }
+.yt-vid-info { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.yt-vid-title {
+  flex: 1;
+  font-size: 11px;
+  font-family: var(--font-serif);
+  color: var(--navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.yt-vid-dur { font-size: 9px; font-family: var(--font-mono); color: var(--gray2); flex-shrink: 0; }
+.yt-vid-loading { padding: 8px 14px; font-size: 11px; font-family: var(--font-mono); color: var(--gray2); }
 
 /* Step 2 — 영상 결과 아이템 */
 .yt-results-list .yt-pl-item { cursor: default; }

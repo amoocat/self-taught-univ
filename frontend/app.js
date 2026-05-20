@@ -858,10 +858,20 @@ let _ytPlaylists    = [];
 let _ytSelected     = new Set();   // 선택된 playlist_id 집합
 let _ytFilterData   = null;        // filter 결과 캐시
 
+function _lockScroll() {
+  const sw = window.innerWidth - document.documentElement.clientWidth;
+  document.body.style.overflow = 'hidden';
+  if (sw > 0) document.body.style.paddingRight = sw + 'px';
+}
+function _unlockScroll() {
+  document.body.style.overflow = '';
+  document.body.style.paddingRight = '';
+}
+
 async function ytModalOpen() {
   const modal = document.getElementById('ytImportModal');
   modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
+  _lockScroll();
   _ytSelected.clear();
   _ytFilterData = null;
   _showStep1();
@@ -870,7 +880,7 @@ async function ytModalOpen() {
 
 function ytModalClose() {
   document.getElementById('ytImportModal').style.display = 'none';
-  document.body.style.overflow = '';
+  _unlockScroll();
 }
 
 function ytModalOverlayClick(e) {
@@ -910,15 +920,19 @@ async function _ytLoadPlaylists() {
     desc.textContent = `${_ytPlaylists.length}개 플레이리스트 · 가져올 항목을 선택하세요`;
 
     listEl.innerHTML = _ytPlaylists.map((pl, i) => `
-      <div class="yt-pl-item" id="ytRow${i}" onclick="ytTogglePl(${i})">
-        <input type="checkbox" id="ytCb${i}" onclick="event.stopPropagation();ytTogglePl(${i})">
-        ${pl.thumbnail_url
-          ? `<img class="yt-pl-thumb" src="${pl.thumbnail_url}" alt="">`
-          : `<div class="yt-pl-thumb"></div>`}
-        <div class="yt-pl-info">
-          <div class="yt-pl-name">${_esc(pl.title)}</div>
-          <div class="yt-pl-meta">${pl.video_count}개 영상${pl.description ? ' · ' + pl.description.slice(0,50) : ''}</div>
+      <div class="yt-pl-item" id="ytRow${i}">
+        <div class="yt-pl-row" onclick="ytTogglePl(${i})">
+          <input type="checkbox" id="ytCb${i}" onclick="event.stopPropagation();ytTogglePl(${i})">
+          ${pl.thumbnail_url
+            ? `<img class="yt-pl-thumb" src="${pl.thumbnail_url}" alt="">`
+            : `<div class="yt-pl-thumb"></div>`}
+          <div class="yt-pl-info">
+            <div class="yt-pl-name">${_esc(pl.title)}</div>
+            <div class="yt-pl-meta">${pl.video_count}개 영상${pl.description ? ' · ' + pl.description.slice(0,50) : ''}</div>
+          </div>
+          <button class="yt-pl-expand-btn" id="ytExpBtn${i}" onclick="event.stopPropagation();ytExpandPl(${i})" title="영상 목록">▼</button>
         </div>
+        <div class="yt-pl-videos" id="ytVideos${i}" style="display:none"></div>
       </div>
     `).join('');
   } catch (e) {
@@ -937,6 +951,54 @@ function ytTogglePl(idx) {
   const count = _ytSelected.size;
   document.getElementById('ytSelectedCount').textContent = `${count}개 선택`;
   document.getElementById('ytFilterBtn').disabled = count === 0;
+}
+
+async function ytExpandPl(i) {
+  const pl       = _ytPlaylists[i];
+  const videosEl = document.getElementById(`ytVideos${i}`);
+  const btnEl    = document.getElementById(`ytExpBtn${i}`);
+
+  if (videosEl.style.display !== 'none') {
+    videosEl.style.display = 'none';
+    btnEl.textContent = '▼';
+    return;
+  }
+  videosEl.style.display = '';
+  btnEl.textContent = '▲';
+
+  if (videosEl.dataset.loaded === '1') return;
+
+  videosEl.innerHTML = '<div class="yt-vid-loading">영상 목록 불러오는 중...</div>';
+  try {
+    const res  = await fetch('/api/v1/youtube/playlists/filter', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify([pl.playlist_id]),
+    });
+    const data   = await res.json();
+    const plData = data.playlists?.[0];
+
+    if (!plData?.videos?.length) {
+      videosEl.innerHTML = '<div class="yt-vid-loading">학습 관련 영상 없음</div>';
+      videosEl.dataset.loaded = '1';
+      return;
+    }
+
+    videosEl.innerHTML = plData.videos.map(v => `
+      <div class="yt-vid-item">
+        ${v.thumbnail_url
+          ? `<img src="${v.thumbnail_url}" class="yt-vid-thumb" alt="">`
+          : `<div class="yt-vid-thumb-ph"></div>`}
+        <div class="yt-vid-info">
+          <span class="yt-cat-badge ${v.category || ''}">${v.category || '—'}</span>
+          <span class="yt-vid-title">${_esc(v.title)}</span>
+          ${v.duration_sec ? `<span class="yt-vid-dur">${_fmtDur(v.duration_sec)}</span>` : ''}
+        </div>
+      </div>`).join('');
+    videosEl.dataset.loaded = '1';
+  } catch(e) {
+    videosEl.innerHTML = '<div class="yt-vid-loading">불러오기 실패</div>';
+  }
 }
 
 async function ytFilterSelected() {
@@ -1039,7 +1101,7 @@ async function courseModalOpen(courseId) {
 
   const modal = document.getElementById('courseDetailModal');
   modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
+  _lockScroll();
 
   if (_allCourses.length === 0) {
     try {
@@ -1104,7 +1166,7 @@ function _cdRenderView() {
 
 function cdClose() {
   document.getElementById('courseDetailModal').style.display = 'none';
-  document.body.style.overflow = '';
+  _unlockScroll();
 }
 
 function cdOverlayClick(e) {

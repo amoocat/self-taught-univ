@@ -233,6 +233,8 @@
 - [x] `PATCH /api/v1/curriculum/{course_id}` — description·objectives DB 직접 편집
 - [x] 커리큘럼 카드 클릭 → 과목 상세 팝업 (강의 목록·진도·설명·학습목표 + 편집 기능)
 - [x] seed.py에서 description/objectives 하드코딩 제거 (DB에서 관리)
+- [x] YouTube 플리 모달 스크롤 수정 — `#ytStep1/#ytStep2` flex 레이아웃, overlay z-index, 스크롤바 shift 보정
+- [x] 플리 클릭 시 영상 목록 accordion 확장 — filter 엔드포인트 재사용, 학습 관련 영상만 미리보기
 
 ### Phase 2 — YouTube 연동
 
