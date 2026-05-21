@@ -858,8 +858,10 @@ let _ytPlaylists          = [];
 let _ytSelected           = new Set();   // 선택된 playlist_id 집합
 let _ytFilterData         = null;        // filter 결과 캐시
 let _registeredPlaylistIds = new Set();  // DB에 이미 저장된 playlist_id
-let _ytNextPageToken      = null;        // 좋아요 채널 발견 더 보기 토큰
+let _ytNextPageToken      = null;        // 채널 발견 더 보기 토큰
 let _ytDisplayedChannels  = new Set();   // discover에서 이미 헤더 표시된 channel_id
+let _ytDiscoverSourceId   = null;        // null=좋아요, 문자열=소스 플리 ID
+let _ytDiscoverSourceTitle = '좋아요 영상'; // 현재 discover 소스 이름 (UI 표시용)
 
 function _lockScroll() {
   const sw = window.innerWidth - document.documentElement.clientWidth;
@@ -876,10 +878,13 @@ async function ytModalOpen() {
   modal.style.display = 'flex';
   _lockScroll();
   _ytSelected.clear();
-  _ytFilterData         = null;
-  _ytNextPageToken      = null;
-  _ytDisplayedChannels  = new Set();
+  _ytFilterData          = null;
+  _ytNextPageToken       = null;
+  _ytDisplayedChannels   = new Set();
+  _ytDiscoverSourceId    = null;
+  _ytDiscoverSourceTitle = '좋아요 영상';
   document.getElementById('ytDiscoverBar').style.display = 'none';
+  document.getElementById('ytDiscoverPlPicker').style.display = 'none';
   _showStep1();
   await _ytLoadRegisteredPlaylists();
   await _ytLoadPlaylists();
@@ -1114,14 +1119,46 @@ function _ytUpdateStepDesc() {
   desc.textContent = `${_ytPlaylists.length}개 플레이리스트 · 가져올 항목을 선택하세요`;
 }
 
+function ytDiscoverPickPl() {
+  const select = document.getElementById('ytDiscoverPlSelect');
+  select.innerHTML = _ytPlaylists.map(pl =>
+    `<option value="${_esc(pl.playlist_id)}">${_esc(pl.title)} (${pl.video_count}개)</option>`
+  ).join('');
+  document.getElementById('ytDiscoverPlPicker').style.display = '';
+}
+
+function ytDiscoverWithPl() {
+  const select = document.getElementById('ytDiscoverPlSelect');
+  const opt    = select.options[select.selectedIndex];
+  if (!opt) return;
+  _ytDiscoverSourceId    = opt.value;
+  _ytDiscoverSourceTitle = opt.text;
+  document.getElementById('ytDiscoverPlPicker').style.display = 'none';
+  _ytNextPageToken     = null;
+  _ytDisplayedChannels = new Set();
+  ytDiscoverRun(document.getElementById('ytDiscoverPlBtn'));
+}
+
+function ytDiscoverCancelPl() {
+  document.getElementById('ytDiscoverPlPicker').style.display = 'none';
+}
+
 async function ytDiscover() {
-  const btn = document.getElementById('ytDiscoverBtn');
+  _ytDiscoverSourceId    = null;
+  _ytDiscoverSourceTitle = '좋아요 영상';
+  _ytNextPageToken       = null;
+  _ytDisplayedChannels   = new Set();
+  await ytDiscoverRun(document.getElementById('ytDiscoverBtn'));
+}
+
+async function ytDiscoverRun(btn) {
+  const origText = btn.textContent;
   btn.disabled    = true;
-  btn.textContent = '좋아요 영상 분석 중...';
+  btn.textContent = `${_ytDiscoverSourceTitle} 분석 중...`;
 
   try {
     const data = await _ytFetchDiscover(null);
-    if (!data) { btn.disabled = false; btn.textContent = '👍 좋아요 영상에서 채널 발견'; return; }
+    if (!data) { btn.disabled = false; btn.textContent = origText; return; }
 
     const added = _ytRenderDiscoverChannels(data.channels || []);
     _ytNextPageToken = data.next_page_token || null;
@@ -1133,7 +1170,7 @@ async function ytDiscover() {
   } catch (e) {
     alert('네트워크 오류. 다시 시도해주세요.');
     btn.disabled    = false;
-    btn.textContent = '👍 좋아요 영상에서 채널 발견';
+    btn.textContent = origText;
   }
 }
 
@@ -1158,9 +1195,10 @@ async function ytDiscoverMore() {
 }
 
 async function _ytFetchDiscover(pageToken) {
-  const url = pageToken
-    ? `/api/v1/youtube/discover?page_token=${encodeURIComponent(pageToken)}`
-    : '/api/v1/youtube/discover';
+  const params = new URLSearchParams();
+  if (pageToken)           params.set('page_token', pageToken);
+  if (_ytDiscoverSourceId) params.set('source_playlist_id', _ytDiscoverSourceId);
+  const url = '/api/v1/youtube/discover' + (params.toString() ? '?' + params.toString() : '');
   const res  = await fetch(url);
   const data = await res.json();
   if (!res.ok) {
@@ -1168,7 +1206,7 @@ async function _ytFetchDiscover(pageToken) {
     return null;
   }
   if (!data.channels?.length && !pageToken) {
-    alert(`좋아요 영상 ${data.total_study_videos}개 분석 — 학습 관련 채널 없음`);
+    alert(`${_ytDiscoverSourceTitle} ${data.total_study_videos}개 분석 — 학습 관련 채널 없음`);
     return null;
   }
   return data;
@@ -1180,10 +1218,14 @@ function _ytRenderDiscoverChannels(channels) {
   for (const ch of channels) {
     if (!_ytDisplayedChannels.has(ch.channel_id)) {
       _ytDisplayedChannels.add(ch.channel_id);
+      const icon     = _ytDiscoverSourceId ? '📋' : '👍';
+      const srcLabel = _ytDiscoverSourceId
+        ? `${_ytDiscoverSourceTitle} 내 영상 ${ch.video_count}개`
+        : `좋아요 ${ch.video_count}개`;
       const header = document.createElement('div');
       header.className = 'yt-channel-header';
-      header.innerHTML = `👍 <strong>${_esc(ch.channel_title)}</strong>`
-        + `<span class="yt-ch-count">좋아요 ${ch.video_count}개 · 플리 ${ch.playlists.length}개</span>`;
+      header.innerHTML = `${icon} <strong>${_esc(ch.channel_title)}</strong>`
+        + `<span class="yt-ch-count">${srcLabel} · 플리 ${ch.playlists.length}개</span>`;
       listEl.appendChild(header);
     }
     for (const pl of ch.playlists) {

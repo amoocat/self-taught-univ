@@ -383,6 +383,56 @@ class YouTubeCrawler:
 
         return results, data.get("nextPageToken")
 
+    async def fetch_playlist_videos_page(
+        self,
+        playlist_id: str,
+        access_token: str,
+        page_token: str | None = None,
+    ) -> tuple[list[dict], str | None]:
+        """임의 플레이리스트 한 페이지(최대 50개) 수집. 학습 관련만 반환.
+        나중에 볼 영상 등 사용자 플리 기반 채널 발견에 사용.
+        """
+        params: dict = {
+            "part":       "snippet",
+            "playlistId": playlist_id,
+            "maxResults": 50,
+        }
+        if page_token:
+            params["pageToken"] = page_token
+
+        try:
+            resp = await self.client.get(
+                f"{self.BASE_URL}/playlistItems",
+                params=params,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            logger.error(f"[YouTube] fetch_playlist_videos_page 실패 ({playlist_id}): {e}")
+            return [], None
+
+        results = []
+        for item in data.get("items", []):
+            sn       = item["snippet"]
+            title    = sn.get("title", "")
+            desc     = sn.get("description", "")[:500]
+            video_id = sn.get("resourceId", {}).get("videoId")
+            if not video_id:
+                continue
+            category = _classify_video(title, desc)
+            if category is None:
+                continue
+            results.append({
+                "video_id":      video_id,
+                "title":         title,
+                "channel_id":    sn.get("videoOwnerChannelId") or sn.get("channelId", ""),
+                "channel_title": sn.get("videoOwnerChannelTitle") or sn.get("channelTitle", ""),
+                "category":      category,
+            })
+
+        return results, data.get("nextPageToken")
+
     async def fetch_liked_videos(
         self,
         access_token: str,
@@ -448,10 +498,17 @@ class YouTubeCrawler:
             logger.error(f"[YouTube] get_video_channel 실패 {video_id}: {e}")
             return None
 
-    async def get_channel_playlists(self, channel_id: str) -> list[dict]:
-        """channel_id → 해당 채널의 공개 플레이리스트 목록"""
+    async def get_channel_playlists(
+        self,
+        channel_id: str,
+        max_pages: int | None = None,
+    ) -> list[dict]:
+        """channel_id → 해당 채널의 공개 플레이리스트 목록.
+        max_pages: 최대 API 페이지 수 (None=무제한, 1=첫 50개만 — discover 가속용)
+        """
         playlists = []
         page_token = None
+        pages_fetched = 0
 
         while True:
             params: dict = {
@@ -481,8 +538,9 @@ class YouTubeCrawler:
                     "thumbnail_url": sn.get("thumbnails", {}).get("medium", {}).get("url", ""),
                 })
 
+            pages_fetched += 1
             page_token = data.get("nextPageToken")
-            if not page_token:
+            if not page_token or (max_pages is not None and pages_fetched >= max_pages):
                 break
 
         return playlists

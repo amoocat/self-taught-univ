@@ -190,9 +190,13 @@ async def get_registered_playlists(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/discover")
-async def discover_study_channels(page_token: str = Query(None)):
+async def discover_study_channels(
+    page_token: str = Query(None),
+    source_playlist_id: str = Query(None, description="탐색 소스 플레이리스트 ID. 없으면 좋아요 영상 사용."),
+):
     """
-    내 좋아요 영상 한 페이지(50개) → 학습 관련 채널 식별 → 채널별 플리 반환.
+    좋아요 영상(기본) 또는 지정 플레이리스트 한 페이지(50개) → 학습 관련 채널 식별 → 채널별 플리 반환.
+    source_playlist_id 지정 시 해당 플리 기준으로 탐색 (나중에 볼 영상 등).
     next_page_token이 있으면 더 보기 가능. OAuth 필요.
     """
     import asyncio
@@ -206,10 +210,15 @@ async def discover_study_channels(page_token: str = Query(None)):
 
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     try:
-        # 1. 좋아요 영상 한 페이지 수집
-        liked, next_page_token = await crawler.fetch_liked_videos_page(
-            access_token, page_token=page_token,
-        )
+        # 1. 영상 한 페이지 수집 (소스: 좋아요 or 지정 플리)
+        if source_playlist_id:
+            liked, next_page_token = await crawler.fetch_playlist_videos_page(
+                source_playlist_id, access_token, page_token=page_token,
+            )
+        else:
+            liked, next_page_token = await crawler.fetch_liked_videos_page(
+                access_token, page_token=page_token,
+            )
 
         # 2. 채널별 그룹화
         channel_map: dict[str, dict] = {}
@@ -228,7 +237,7 @@ async def discover_study_channels(page_token: str = Query(None)):
         # 3. 채널별 플리 병렬 조회
         async def _fetch_study_playlists(ch: dict) -> dict | None:
             try:
-                pls = await crawler.get_channel_playlists(ch["channel_id"])
+                pls = await crawler.get_channel_playlists(ch["channel_id"], max_pages=1)
                 study_pls = [
                     pl for pl in pls
                     if _classify_video(pl["title"], pl.get("description", "")) is not None

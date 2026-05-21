@@ -3528,6 +3528,27 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 }
 .yt-discover-btn:hover  { border-color: var(--red); color: var(--red); }
 .yt-discover-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.yt-discover-cancel-btn { color: var(--gray3); }
+.yt-discover-cancel-btn:hover { border-color: var(--gray3); color: var(--gray2); }
+
+.yt-discover-pl-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px 8px;
+  flex-shrink: 0;
+}
+.yt-discover-pl-select {
+  flex: 1;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--bg2);
+  border: 1px solid var(--gray3);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
 
 .yt-channel-header {
   padding: 8px 14px 4px;

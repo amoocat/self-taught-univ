@@ -429,6 +429,12 @@
           <div class="yt-modal-desc" id="ytStep1Desc">불러오는 중...</div>
           <div id="ytDiscoverBar" style="display:none" class="yt-discover-bar">
             <button class="yt-discover-btn" id="ytDiscoverBtn" onclick="ytDiscover()">👍 좋아요 영상에서 채널 발견</button>
+            <button class="yt-discover-btn" id="ytDiscoverPlBtn" onclick="ytDiscoverPickPl()">📋 내 플리에서 채널 발견</button>
+          </div>
+          <div id="ytDiscoverPlPicker" style="display:none" class="yt-discover-pl-picker">
+            <select id="ytDiscoverPlSelect" class="yt-discover-pl-select"></select>
+            <button class="yt-discover-btn" onclick="ytDiscoverWithPl()">탐색 시작 →</button>
+            <button class="yt-discover-btn yt-discover-cancel-btn" onclick="ytDiscoverCancelPl()">취소</button>
           </div>
           <div id="ytModalPlaylists" class="yt-modal-list"></div>
           <div class="yt-modal-footer">
