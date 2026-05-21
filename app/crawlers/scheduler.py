@@ -70,6 +70,15 @@ def init_scheduler():
         replace_existing=True,
     )
 
+    # 매일 새벽 3시 30분 — 저장된 강의 큐레이션 (학습 무관 영상 비활성화)
+    scheduler.add_job(
+        job_curate_lectures,
+        CronTrigger(hour=3, minute=30),
+        id="curate_lectures",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
     # 매주 화요일 새벽 4시 — YouTube 영상 유효성 체크
     scheduler.add_job(
         job_check_video_availability,
@@ -188,6 +197,55 @@ async def job_tag_lectures():
         await db.commit()
 
     logger.info(f"[Job] 태깅 완료 — {tagged}개")
+
+
+async def job_curate_lectures():
+    """일 1회 — 저장된 YouTube 강의 재검토. 학습 무관 영상 is_available=False, 카테고리 보정."""
+    from app.crawlers.youtube import _classify_video
+
+    logger.info("[Job] 강의 큐레이션 시작")
+
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(Lecture).where(Lecture.youtube_video_id != None)  # noqa: E711
+        )).scalars().all()
+
+    if not rows:
+        logger.info("[Job] youtube_video_id 있는 강의 없음 — 스킵")
+        return
+
+    deactivated  = 0
+    reactivated  = 0
+    recategorized = 0
+
+    async with AsyncSessionLocal() as db:
+        for lec in rows:
+            lec_db = (await db.execute(
+                select(Lecture).where(Lecture.id == lec.id)
+            )).scalar_one_or_none()
+            if not lec_db:
+                continue
+
+            category = _classify_video(lec.title, lec.subtitle or "")
+
+            if category is None:
+                if lec_db.is_available:
+                    lec_db.is_available = False
+                    deactivated += 1
+            else:
+                if not lec_db.is_available:
+                    lec_db.is_available = True
+                    reactivated += 1
+                if lec_db.category != category:
+                    lec_db.category = category
+                    recategorized += 1
+
+        await db.commit()
+
+    logger.info(
+        f"[Job] 큐레이션 완료 — 총 {len(rows)}개 검토, "
+        f"비활성화 {deactivated}개, 복구 {reactivated}개, 카테고리 변경 {recategorized}개"
+    )
 
 
 async def job_check_video_availability():

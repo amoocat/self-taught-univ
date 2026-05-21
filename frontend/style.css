@@ -3651,6 +3651,23 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   background: var(--cream);
   flex-shrink: 0;
 }
+.yt-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.yt-select-all-btn {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: transparent;
+  border: 1px solid var(--gray3);
+  color: var(--gray2);
+  border-radius: 3px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.yt-select-all-btn:hover { border-color: var(--fg); color: var(--fg); }
 .yt-sel-count {
   font-size: 11px;
   font-family: var(--font-mono);

@@ -432,7 +432,10 @@
           </div>
           <div id="ytModalPlaylists" class="yt-modal-list"></div>
           <div class="yt-modal-footer">
-            <span id="ytSelectedCount" class="yt-sel-count">0개 선택</span>
+            <div class="yt-footer-left">
+              <button id="ytSelectAllBtn" class="yt-select-all-btn" onclick="ytSelectAll()">모두 선택</button>
+              <span id="ytSelectedCount" class="yt-sel-count">0개 선택</span>
+            </div>
             <button id="ytFilterBtn" class="yt-modal-btn-primary" onclick="ytFilterSelected()" disabled>필터링 미리보기 →</button>
           </div>
         </div>

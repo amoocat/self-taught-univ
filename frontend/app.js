@@ -953,6 +953,40 @@ function ytTogglePl(idx) {
   const count = _ytSelected.size;
   document.getElementById('ytSelectedCount').textContent = `${count}개 선택`;
   document.getElementById('ytFilterBtn').disabled = count === 0;
+  _ytSyncSelectAllBtn();
+}
+
+function ytSelectAll() {
+  const allSelected = _ytPlaylists.length > 0
+    && _ytPlaylists.every(pl => _ytSelected.has(pl.playlist_id));
+
+  _ytPlaylists.forEach((pl, i) => {
+    const cb  = document.getElementById(`ytCb${i}`);
+    const row = document.getElementById(`ytRow${i}`);
+    if (!cb || !row) return;
+    if (allSelected) {
+      cb.checked = false;
+      row.classList.remove('selected');
+      _ytSelected.delete(pl.playlist_id);
+    } else {
+      cb.checked = true;
+      row.classList.add('selected');
+      _ytSelected.add(pl.playlist_id);
+    }
+  });
+
+  const count = _ytSelected.size;
+  document.getElementById('ytSelectedCount').textContent = `${count}개 선택`;
+  document.getElementById('ytFilterBtn').disabled = count === 0;
+  _ytSyncSelectAllBtn();
+}
+
+function _ytSyncSelectAllBtn() {
+  const btn = document.getElementById('ytSelectAllBtn');
+  if (!btn) return;
+  const allSelected = _ytPlaylists.length > 0
+    && _ytPlaylists.every(pl => _ytSelected.has(pl.playlist_id));
+  btn.textContent = allSelected ? '모두 해제' : '모두 선택';
 }
 
 async function ytAddFromUrl() {
