@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crawlers.youtube import YouTubeCrawler, _classify_video
-from app.crawlers.scheduler import _save_lectures
+from app.crawlers.scheduler import _save_lectures, _save_to_inbox, _promote_inbox_to_lectures
 from app.db.session import get_db
 from app.models.models import Lecture
 
@@ -388,22 +388,41 @@ async def filter_playlists(playlist_ids: list[str]):
 @router.post("/playlists/sync")
 async def sync_playlists(playlist_ids: list[str]):
     """
-    선택한 플레이리스트 크롤링 → DB 저장.
+    선택한 플레이리스트 전체 영상 → VideoInbox 저장 (필터 없음).
+    학습 관련 선별은 매일 새벽 job_curate_lectures 또는 POST /inbox/curate 로 수행.
     body: ["PLxxxxxx", "PLyyyyyy"]
     """
     access_token = await _get_access_token()
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     result = {}
+    total_fetched = 0
     try:
         for pid in playlist_ids:
             videos = await crawler.fetch_playlist_videos(
                 pid,
-                filter_ai=True,
+                filter_ai=False,
                 access_token=access_token,
             )
-            saved = await _save_lectures(videos)
-            result[pid] = {"fetched": len(videos), "saved": saved}
+            saved = await _save_to_inbox(videos)
+            total_fetched += len(videos)
+            result[pid] = {"fetched": len(videos), "inbox": saved}
     finally:
         await crawler.close()
 
-    return {"result": result}
+    # inbox에 쌓인 영상 즉시 큐레이션 (키워드 매칭만이라 실시간 처리 가능)
+    promoted, discarded = await _promote_inbox_to_lectures()
+    return {
+        "result": result,
+        "curated": {"promoted": promoted, "discarded": discarded},
+    }
+
+
+@router.post("/inbox/curate")
+async def curate_inbox():
+    """
+    VideoInbox → 학습 관련 영상 Lecture 승격, 나머지 삭제.
+    수동 트리거 또는 나중에 LLM 기반 큐레이션으로 교체할 때 진입점.
+    일반 sync는 이미 내부적으로 즉시 큐레이션을 수행함.
+    """
+    promoted, discarded = await _promote_inbox_to_lectures()
+    return {"promoted": promoted, "discarded": discarded}

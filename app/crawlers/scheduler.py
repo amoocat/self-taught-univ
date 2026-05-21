@@ -16,7 +16,7 @@ from app.db.session import AsyncSessionLocal
 from app.crawlers.youtube import YouTubeCrawler, YOUTUBE_PLAYLISTS
 from app.crawlers.blog import BlogCrawler
 from app.crawlers.arxiv import ArxivCrawler
-from app.models.models import FeedItem, Paper, Lecture, Course
+from app.models.models import FeedItem, Paper, Lecture, Course, VideoInbox
 from app.services.tag_service import extract_all
 
 logger = logging.getLogger(__name__)
@@ -68,15 +68,6 @@ def init_scheduler():
         "date",
         id="tag_lectures",
         replace_existing=True,
-    )
-
-    # 매일 새벽 3시 30분 — 저장된 강의 큐레이션 (학습 무관 영상 비활성화)
-    scheduler.add_job(
-        job_curate_lectures,
-        CronTrigger(hour=3, minute=30),
-        id="curate_lectures",
-        replace_existing=True,
-        misfire_grace_time=3600,
     )
 
     # 매주 화요일 새벽 4시 — YouTube 영상 유효성 체크
@@ -200,22 +191,23 @@ async def job_tag_lectures():
 
 
 async def job_curate_lectures():
-    """일 1회 — 저장된 YouTube 강의 재검토. 학습 무관 영상 is_available=False, 카테고리 보정."""
-    from app.crawlers.youtube import _classify_video
-
+    """일 1회 — ① inbox → 학습 영상 lectures 승격 + ② 기존 lectures 카테고리 재검토."""
     logger.info("[Job] 강의 큐레이션 시작")
+
+    # ── ① VideoInbox 처리 ──────────────────────────────────────────
+    promoted, discarded = await _promote_inbox_to_lectures()
+    logger.info(f"[Job] inbox 처리 — 승격 {promoted}개, 폐기 {discarded}개")
+
+    # ── ② 기존 Lecture 재검토 (카테고리 보정 / 비활성화) ──────────
+    from app.crawlers.youtube import _classify_video
 
     async with AsyncSessionLocal() as db:
         rows = (await db.execute(
             select(Lecture).where(Lecture.youtube_video_id != None)  # noqa: E711
         )).scalars().all()
 
-    if not rows:
-        logger.info("[Job] youtube_video_id 있는 강의 없음 — 스킵")
-        return
-
-    deactivated  = 0
-    reactivated  = 0
+    deactivated   = 0
+    reactivated   = 0
     recategorized = 0
 
     async with AsyncSessionLocal() as db:
@@ -243,7 +235,7 @@ async def job_curate_lectures():
         await db.commit()
 
     logger.info(
-        f"[Job] 큐레이션 완료 — 총 {len(rows)}개 검토, "
+        f"[Job] 큐레이션 완료 — 기존 {len(rows)}개 재검토: "
         f"비활성화 {deactivated}개, 복구 {reactivated}개, 카테고리 변경 {recategorized}개"
     )
 
@@ -402,3 +394,69 @@ async def _save_lectures(videos) -> int:
 
         await db.commit()
     return saved
+
+
+async def _save_to_inbox(videos) -> int:
+    """video_id 기준 중복 방지 — 필터 없이 VideoInbox에 전체 저장."""
+    saved = 0
+    async with AsyncSessionLocal() as db:
+        for v in videos:
+            exists = (await db.execute(
+                select(VideoInbox).where(VideoInbox.video_id == v.video_id)
+            )).scalar_one_or_none()
+            if not exists:
+                db.add(VideoInbox(
+                    video_id=v.video_id,
+                    playlist_id=v.playlist_id or None,
+                    title=v.title,
+                    description=(v.description or "")[:500] or None,
+                    thumbnail_url=v.thumbnail_url or None,
+                    duration_sec=v.duration_sec or None,
+                    published_at=v.published_at or None,
+                    position=v.position,
+                    channel_title=getattr(v, "channel_title", None),
+                ))
+                saved += 1
+        await db.commit()
+    return saved
+
+
+async def _promote_inbox_to_lectures() -> tuple[int, int]:
+    """VideoInbox 전체를 큐레이션: 학습 영상 → Lecture 승격, 나머지 삭제.
+    반환: (승격 수, 폐기 수)
+    """
+    from app.crawlers.youtube import YoutubeVideo, _classify_video
+    from sqlalchemy import delete
+
+    async with AsyncSessionLocal() as db:
+        inbox_rows = (await db.execute(select(VideoInbox))).scalars().all()
+
+    if not inbox_rows:
+        return 0, 0
+
+    to_promote: list[YoutubeVideo] = []
+    all_ids = [row.id for row in inbox_rows]
+
+    for row in inbox_rows:
+        category = _classify_video(row.title, row.description or "")
+        if category:
+            to_promote.append(YoutubeVideo(
+                video_id=row.video_id,
+                title=row.title,
+                description=row.description or "",
+                thumbnail_url=row.thumbnail_url or "",
+                duration_sec=row.duration_sec or 0,
+                published_at=row.published_at or "",
+                playlist_id=row.playlist_id or "",
+                position=row.position,
+                category=category,
+            ))
+
+    promoted = await _save_lectures(to_promote) if to_promote else 0
+
+    # 처리한 inbox 행 전부 삭제 (승격 여부 무관)
+    async with AsyncSessionLocal() as db:
+        await db.execute(delete(VideoInbox).where(VideoInbox.id.in_(all_ids)))
+        await db.commit()
+
+    return promoted, len(inbox_rows) - len(to_promote)
