@@ -14,6 +14,26 @@
     - [ ] 나중에 볼 영상, 좋아요 한 영상도 자동 추가 후 백엔드에서 필터링하여 재구성
 - [ ]  유튜브 플리에서 긁어온 영상들을 백엔드에서 재구성해서 커리큘럼으로 재구성해야함 (GPT를 통해서 or RAG를 통해서 재분류)
 
+
+## 🎬 YouTube 채널 플리 탐색
+> 저장된 영상 → 업로더 채널 → 채널 전체 플리 수집
+
+- [ ] `get_video_channel` tool 추가 (video_id → channel_id, channel_title)
+- [ ] `get_channel_playlists` tool 추가 (channel_id → 해당 채널의 전체 플리 목록)
+- [ ] `get_multiple_playlists` 와 연결해서 채널 플리 전체 영상 수집까지 one-shot으로
+
+**흐름:**
+```
+내가 저장한 영상 (예: 선대 1강)
+    ↓ video_id로 channel_id 조회
+채널 페이지 (예: 쑤튜브)
+    ↓ channel_id로 플리 목록 조회
+선형대수 전체 강의 플리
+    ↓ playlist_id로 영상 전체 수집
+커리큘럼 생성
+```
+
+
 ### 렉쳐 노트
 - [ ] **렉쳐 노트 내용 전부 비어있음** — DB에 `LectureNote` 데이터 없음. 최소한 선형대수 몇 강 분 수동 입력 필요 -> 나중에는 AI를 통해 생성 
 
@@ -194,26 +214,6 @@
 - [ ] 0원 챌린지 — 무료 티어 조합(Vercel + Railway + Supabase 등)으로 STU 운영 한계 탐색
 - [ ] 대규모 트래픽 실험
 - [ ] 웹사이트 대문 생성 (yale, uc berkely, sogang univ 같은 대학 홈페이지 참고)
-
-# TODO
-
-## 🎬 YouTube 채널 플리 탐색
-> 저장된 영상 → 업로더 채널 → 채널 전체 플리 수집
-
-- [ ] `get_video_channel` tool 추가 (video_id → channel_id, channel_title)
-- [ ] `get_channel_playlists` tool 추가 (channel_id → 해당 채널의 전체 플리 목록)
-- [ ] `get_multiple_playlists` 와 연결해서 채널 플리 전체 영상 수집까지 one-shot으로
-
-**흐름:**
-```
-내가 저장한 영상 (예: 선대 1강)
-    ↓ video_id로 channel_id 조회
-채널 페이지 (예: 쑤튜브)
-    ↓ channel_id로 플리 목록 조회
-선형대수 전체 강의 플리
-    ↓ playlist_id로 영상 전체 수집
-커리큘럼 생성
-```
 
 ---
 
