@@ -343,6 +343,46 @@ class YouTubeCrawler:
             for v in batch:
                 v.duration_sec = dur_map.get(v.video_id, 0)
 
+    async def fetch_liked_videos_page(
+        self,
+        access_token: str,
+        page_token: str | None = None,
+    ) -> tuple[list[dict], str | None]:
+        """좋아요 영상 한 페이지(최대 50개) 수집. 학습 관련만 반환. (videos, next_page_token) 반환."""
+        params: dict = {"part": "snippet", "myRating": "like", "maxResults": 50}
+        if page_token:
+            params["pageToken"] = page_token
+
+        try:
+            resp = await self.client.get(
+                f"{self.BASE_URL}/videos",
+                params=params,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            logger.error(f"[YouTube] fetch_liked_videos_page 실패: {e}")
+            return [], None
+
+        results = []
+        for item in data.get("items", []):
+            sn       = item["snippet"]
+            title    = sn.get("title", "")
+            desc     = sn.get("description", "")[:500]
+            category = _classify_video(title, desc)
+            if category is None:
+                continue
+            results.append({
+                "video_id":      item["id"],
+                "title":         title,
+                "channel_id":    sn["channelId"],
+                "channel_title": sn.get("channelTitle", ""),
+                "category":      category,
+            })
+
+        return results, data.get("nextPageToken")
+
     async def fetch_liked_videos(
         self,
         access_token: str,

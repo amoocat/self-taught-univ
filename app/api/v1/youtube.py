@@ -14,12 +14,16 @@ import secrets
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crawlers.youtube import YouTubeCrawler, _classify_video
 from app.crawlers.scheduler import _save_lectures
+from app.db.session import get_db
+from app.models.models import Lecture
 
 router = APIRouter()
 
@@ -174,11 +178,22 @@ async def get_playlist_meta(id: str = Query(..., description="플레이리스트
     }
 
 
+@router.get("/registered-playlists")
+async def get_registered_playlists(db: AsyncSession = Depends(get_db)):
+    """lectures 테이블에 이미 저장된 playlist_id 목록 반환 (프론트 '등록됨' 뱃지용)."""
+    rows = (await db.execute(
+        select(Lecture.playlist_id)
+        .where(Lecture.playlist_id != None)  # noqa: E711
+        .distinct()
+    )).scalars().all()
+    return {"playlist_ids": [r for r in rows if r]}
+
+
 @router.get("/discover")
-async def discover_study_channels():
+async def discover_study_channels(page_token: str = Query(None)):
     """
-    내 좋아요 영상 → 학습 관련 채널 식별 → 채널별 학습 관련 플리 목록 반환.
-    OAuth 필요. 상위 10개 채널만 조회 (API 할당량 절약).
+    내 좋아요 영상 한 페이지(50개) → 학습 관련 채널 식별 → 채널별 플리 반환.
+    next_page_token이 있으면 더 보기 가능. OAuth 필요.
     """
     import asyncio
 
@@ -191,10 +206,12 @@ async def discover_study_channels():
 
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     try:
-        # 1. 좋아요 영상에서 학습 관련 영상만 수집
-        liked = await crawler.fetch_liked_videos(access_token, max_results=200)
+        # 1. 좋아요 영상 한 페이지 수집
+        liked, next_page_token = await crawler.fetch_liked_videos_page(
+            access_token, page_token=page_token,
+        )
 
-        # 2. 채널별 그룹화 (좋아요 영상 수 + 카테고리 집계)
+        # 2. 채널별 그룹화
         channel_map: dict[str, dict] = {}
         for v in liked:
             cid = v["channel_id"]
@@ -208,11 +225,7 @@ async def discover_study_channels():
             channel_map[cid]["video_count"] += 1
             channel_map[cid]["categories"].add(v["category"])
 
-        # 3. 좋아요 영상 많은 순 상위 10개 채널 플리 병렬 조회
-        top_channels = sorted(
-            channel_map.values(), key=lambda x: x["video_count"], reverse=True
-        )[:10]
-
+        # 3. 채널별 플리 병렬 조회
         async def _fetch_study_playlists(ch: dict) -> dict | None:
             try:
                 pls = await crawler.get_channel_playlists(ch["channel_id"])
@@ -232,7 +245,7 @@ async def discover_study_channels():
             except Exception:
                 return None
 
-        raw = await asyncio.gather(*[_fetch_study_playlists(ch) for ch in top_channels])
+        raw = await asyncio.gather(*[_fetch_study_playlists(ch) for ch in channel_map.values()])
         results = [r for r in raw if r is not None]
 
     finally:
@@ -242,6 +255,7 @@ async def discover_study_channels():
         "total_study_videos": len(liked),
         "channel_count":      len(results),
         "channels":           results,
+        "next_page_token":    next_page_token,
     }
 
 

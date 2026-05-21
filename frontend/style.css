@@ -3496,6 +3496,18 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   cursor: pointer;
   transition: background 0.1s;
 }
+.yt-pl-reg-badge {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  background: var(--cream3);
+  color: var(--gray2);
+  border-radius: 3px;
+  vertical-align: middle;
+  line-height: 1.4;
+}
 .yt-pl-row:hover { background: var(--cream2); }
 .yt-pl-item.selected .yt-pl-row { background: var(--cream2); }
 
