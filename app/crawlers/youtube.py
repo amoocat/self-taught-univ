@@ -343,6 +343,22 @@ class YouTubeCrawler:
             for v in batch:
                 v.duration_sec = dur_map.get(v.video_id, 0)
 
+    async def check_video_availability(self, video_ids: list[str]) -> set[str]:
+        """주어진 video_id 중 현재 공개 상태인 것들의 집합 반환 (50개 배치)"""
+        available: set[str] = set()
+        for i in range(0, len(video_ids), 50):
+            batch  = video_ids[i:i + 50]
+            params = {"part": "status", "id": ",".join(batch), "key": self.api_key}
+            try:
+                resp = await self.client.get(f"{self.BASE_URL}/videos", params=params)
+                resp.raise_for_status()
+                for item in resp.json().get("items", []):
+                    if item.get("status", {}).get("privacyStatus") in ("public", "unlisted"):
+                        available.add(item["id"])
+            except Exception as e:
+                logger.warning(f"[YouTube] 유효성 체크 실패 (batch {i}): {e}")
+        return available
+
     async def close(self):
         await self.client.aclose()
 

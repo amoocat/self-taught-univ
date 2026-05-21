@@ -953,6 +953,75 @@ function ytTogglePl(idx) {
   document.getElementById('ytFilterBtn').disabled = count === 0;
 }
 
+async function ytAddFromUrl() {
+  const input = document.getElementById('ytUrlInput');
+  const raw   = input.value.trim();
+  if (!raw) return;
+
+  const btn = input.nextElementSibling;
+  btn.disabled = true;
+  btn.textContent = '확인 중...';
+
+  try {
+    const res  = await fetch(`/api/v1/youtube/playlist-meta?id=${encodeURIComponent(raw)}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail || '플레이리스트를 찾을 수 없습니다.');
+      return;
+    }
+
+    // 이미 목록에 있으면 스킵
+    if (_ytPlaylists.some(p => p.playlist_id === data.playlist_id)) {
+      alert('이미 목록에 있는 플레이리스트입니다.');
+      return;
+    }
+
+    _ytPlaylists.push({
+      playlist_id:   data.playlist_id,
+      title:         data.title,
+      thumbnail_url: data.thumbnail_url,
+      video_count:   '?',
+      description:   '',
+    });
+    input.value = '';
+
+    const i      = _ytPlaylists.length - 1;
+    const listEl = document.getElementById('ytModalPlaylists');
+    const desc   = document.getElementById('ytStep1Desc');
+
+    const item = document.createElement('div');
+    item.className = 'yt-pl-item';
+    item.id = `ytRow${i}`;
+    item.innerHTML = `
+      <div class="yt-pl-row" onclick="ytTogglePl(${i})">
+        <input type="checkbox" id="ytCb${i}" onclick="event.stopPropagation();ytTogglePl(${i})">
+        ${data.thumbnail_url
+          ? `<img class="yt-pl-thumb" src="${data.thumbnail_url}" alt="">`
+          : `<div class="yt-pl-thumb"></div>`}
+        <div class="yt-pl-info">
+          <div class="yt-pl-name">${_esc(data.title)}</div>
+          <div class="yt-pl-meta">공개 플레이리스트</div>
+        </div>
+        <button class="yt-pl-expand-btn" id="ytExpBtn${i}" onclick="event.stopPropagation();ytExpandPl(${i})" title="영상 목록">▼</button>
+      </div>
+      <div class="yt-pl-videos" id="ytVideos${i}" style="display:none"></div>`;
+    listEl.appendChild(item);
+
+    const cur = _ytPlaylists.length;
+    const authMatch = desc.textContent.match(/^(\d+)개 플레이리스트/);
+    if (authMatch) desc.textContent = `${cur}개 플레이리스트 · 가져올 항목을 선택하세요`;
+
+    // 자동 선택
+    ytTogglePl(i);
+  } catch (e) {
+    alert('네트워크 오류. 다시 시도해주세요.');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '추가';
+  }
+}
+
 async function ytExpandPl(i) {
   const pl       = _ytPlaylists[i];
   const videosEl = document.getElementById(`ytVideos${i}`);

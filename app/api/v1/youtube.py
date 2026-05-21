@@ -9,11 +9,12 @@ YouTube OAuth + 플레이리스트 관리 API
   5. GET  /youtube/preview/{id}   → 크롤링 전 필터 결과 미리보기
 """
 import json
+import re
 import secrets
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
@@ -139,6 +140,39 @@ async def list_my_playlists():
         await crawler.close()
 
     return {"playlists": playlists}
+
+
+_PLAYLIST_ID_RE = re.compile(
+    r"(?:list=|/playlist/|youtu\.be/)([A-Za-z0-9_-]{10,})"
+)
+
+
+@router.get("/playlist-meta")
+async def get_playlist_meta(id: str = Query(..., description="플레이리스트 ID 또는 URL")):
+    """
+    공개 플레이리스트 메타데이터 조회 (OAuth 불필요).
+    id에 URL 전체를 넣어도 playlist ID 자동 추출.
+    """
+    m = _PLAYLIST_ID_RE.search(id)
+    playlist_id = m.group(1) if m else id.strip()
+
+    if not playlist_id:
+        raise HTTPException(status_code=400, detail="유효한 플레이리스트 ID 또는 URL을 입력해주세요.")
+
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    try:
+        meta = await crawler.get_playlist_meta(playlist_id)
+    finally:
+        await crawler.close()
+
+    if not meta.get("title") or meta["title"] == playlist_id:
+        raise HTTPException(status_code=404, detail="플레이리스트를 찾을 수 없습니다. ID를 확인해주세요.")
+
+    return {
+        "playlist_id":   playlist_id,
+        "title":         meta["title"],
+        "thumbnail_url": meta.get("thumbnail_url", ""),
+    }
 
 
 @router.get("/preview/{playlist_id}")

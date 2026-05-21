@@ -420,6 +420,12 @@
 
         <!-- Step 1: 플레이리스트 선택 -->
         <div id="ytStep1">
+          <div class="yt-url-row">
+            <input id="ytUrlInput" class="yt-url-input" type="text"
+              placeholder="YouTube 플레이리스트 URL 또는 ID 붙여넣기"
+              onkeydown="if(event.key==='Enter') ytAddFromUrl()">
+            <button class="yt-url-btn" onclick="ytAddFromUrl()">추가</button>
+          </div>
           <div class="yt-modal-desc" id="ytStep1Desc">불러오는 중...</div>
           <div id="ytModalPlaylists" class="yt-modal-list"></div>
           <div class="yt-modal-footer">

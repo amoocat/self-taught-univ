@@ -10,17 +10,8 @@
 
 ### 커리큘럼
 - [ ] 학습 프로그램 가져오기
-    1. 플레이리스트 ID(URL)를 직접 활용하기 (가장 확실한 방법)
-    내가 저장한 타인의 플레이리스트 URL(예: [https://www.youtube.com/playlist?list=PLxxxxxxxx](https://www.youtube.com/playlist?list=PLxxxxxxxx)...)에서 list= 뒤에 나오는 ID 값을 미리 확보해 두는 것입니다.
-
-    내 계정의 라이브러리를 거치지 않고, 그 플레이리스트 ID를 API에 직접 찔러서 안의 영상 목록을 가져오는 방식입니다.
-
-    1단계 (playlists.list): 플레이리스트 ID를 이용해 해당 학습 프로그램의 제목, 설명, 썸네일 등을 가져옵니다.
-
-    HTTP
-    GET https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=플레이리스트ID&key=YOUR_API_KEY
-    2단계 (playlistItems.list): 그 플레이리스트 안에 들어있는 구체적인 학습 영상 목록(강의 순서, 영상 ID 등)을 추출합니다.
-- [ ] 나중에 볼 영상, 좋아요 한 영상도 자동 추가 후 백엔드에서 필터링하여 재구성
+    - [x] 플레이리스트 URL 직접 입력 — YouTube 플리 모달에 URL 입력창 추가, `GET /api/v1/youtube/playlist-meta` 엔드포인트로 메타 조회 후 자동 추가·선택
+    - [ ] 나중에 볼 영상, 좋아요 한 영상도 자동 추가 후 백엔드에서 필터링하여 재구성
 - [ ]  유튜브 플리에서 긁어온 영상들을 백엔드에서 재구성해서 커리큘럼으로 재구성해야함 (GPT를 통해서 or RAG를 통해서 재분류)
 
 ### 렉쳐 노트
@@ -40,7 +31,7 @@
 ### 강의 구성 고도화
 - [x] `lectures` 테이블에 YouTube 필드 추가 — `youtube_video_id`, `thumbnail_url`, `playlist_id`, `is_available` (migration 0006)
 - [x] 프론트: 강의 목록에 썸네일 표시 (`youtube_video_id` → `img.youtube.com` fallback), 재생시간·완료 표시
-- [ ] 배치: 주기적으로 영상 유효성 체크 → 삭제·비공개 시 `is_available = false` 처리
+- [x] 배치: 주기적으로 영상 유효성 체크 → 삭제·비공개 시 `is_available = false` 처리 (매주 화요일 4시, `job_check_video_availability`)
 - [ ] 최신 동향 자동 크롤링 → 피드 페이지 통합 (Naver D2, 당근 테크, 테크 유튜브)
 - [ ] 신규 강좌 추가 — TED 행복 강좌 (wellbeing 카테고리 신설)
 - [ ] 신규 강좌 추가 — MLVU (바탕화면 폴더 영상 → 로컬 import 방식 결정 필요)

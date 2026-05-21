@@ -3425,6 +3425,41 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 }
 .yt-modal-close:hover { opacity: 1; }
 
+.yt-url-row {
+  display: flex;
+  gap: 6px;
+  padding: 10px 18px 6px;
+  flex-shrink: 0;
+}
+.yt-url-input {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--bg2);
+  border: 1px solid var(--gray3);
+  border-radius: 4px;
+  color: var(--fg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.yt-url-input:focus { border-color: var(--red); }
+.yt-url-input::placeholder { color: var(--gray2); }
+.yt-url-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.yt-url-btn:hover { opacity: 0.85; }
+.yt-url-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .yt-modal-desc {
   padding: 10px 18px 6px;
   font-size: 11px;

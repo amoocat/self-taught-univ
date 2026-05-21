@@ -70,6 +70,15 @@ def init_scheduler():
         replace_existing=True,
     )
 
+    # 매주 화요일 새벽 4시 — YouTube 영상 유효성 체크
+    scheduler.add_job(
+        job_check_video_availability,
+        CronTrigger(day_of_week="tue", hour=4, minute=0),
+        id="check_video_availability",
+        replace_existing=True,
+        misfire_grace_time=7200,
+    )
+
     scheduler.start()
     logger.info("[Scheduler] 시작 완료")
 
@@ -179,6 +188,51 @@ async def job_tag_lectures():
         await db.commit()
 
     logger.info(f"[Job] 태깅 완료 — {tagged}개")
+
+
+async def job_check_video_availability():
+    """DB에 저장된 YouTube 강의 유효성 배치 체크 — 삭제/비공개 영상 is_available=False"""
+    if not settings.YOUTUBE_API_KEY:
+        logger.warning("[Job] YOUTUBE_API_KEY 없음 — 유효성 체크 스킵")
+        return
+
+    logger.info("[Job] YouTube 영상 유효성 체크 시작")
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    try:
+        async with AsyncSessionLocal() as db:
+            rows = (await db.execute(
+                select(Lecture).where(Lecture.youtube_video_id != None)  # noqa: E711
+            )).scalars().all()
+
+        if not rows:
+            logger.info("[Job] youtube_video_id 가진 강의 없음 — 스킵")
+            return
+
+        video_ids = [r.youtube_video_id for r in rows]
+        available = await crawler.check_video_availability(video_ids)
+
+        marked_unavailable = 0
+        marked_available   = 0
+        async with AsyncSessionLocal() as db:
+            for lec in rows:
+                is_avail = lec.youtube_video_id in available
+                lec_db = (await db.execute(
+                    select(Lecture).where(Lecture.id == lec.id)
+                )).scalar_one_or_none()
+                if lec_db and lec_db.is_available != is_avail:
+                    lec_db.is_available = is_avail
+                    if is_avail:
+                        marked_available += 1
+                    else:
+                        marked_unavailable += 1
+            await db.commit()
+
+        logger.info(
+            f"[Job] 유효성 체크 완료 — "
+            f"총 {len(rows)}개, 비공개처리 {marked_unavailable}개, 복구 {marked_available}개"
+        )
+    finally:
+        await crawler.close()
 
 
 # ── DB 저장 헬퍼 ─────────────────────────────────────────────────
