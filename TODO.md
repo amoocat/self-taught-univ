@@ -10,8 +10,9 @@
 
 ### 커리큘럼
 - [ ] 학습 프로그램 가져오기
-    - [x] 플레이리스트 URL 직접 입력 — YouTube 플리 모달에 URL 입력창 추가, `GET /api/v1/youtube/playlist-meta` 엔드포인트로 메타 조회 후 자동 추가·선택
-    - [ ] 나중에 볼 영상, 좋아요 한 영상도 자동 추가 후 백엔드에서 필터링하여 재구성
+    - [x] 플레이리스트 URL 직접 입력 — `GET /api/v1/youtube/playlist-meta`
+    - [x] 영상 URL 입력 → 채널 전체 플리 탐색 — `GET /api/v1/youtube/channel-playlists`
+    - [x] 좋아요 영상 기반 채널 자동 발견 — `GET /api/v1/youtube/discover` (학습 영상 필터링 → 채널 식별 → 채널별 플리 병렬 조회)
 - [ ]  유튜브 플리에서 긁어온 영상들을 백엔드에서 재구성해서 커리큘럼으로 재구성해야함 (GPT를 통해서 or RAG를 통해서 재분류)
 
 
@@ -53,8 +54,6 @@
 - [x] 프론트: 강의 목록에 썸네일 표시 (`youtube_video_id` → `img.youtube.com` fallback), 재생시간·완료 표시
 - [x] 배치: 주기적으로 영상 유효성 체크 → 삭제·비공개 시 `is_available = false` 처리 (매주 화요일 4시, `job_check_video_availability`)
 - [ ] 최신 동향 자동 크롤링 → 피드 페이지 통합 (Naver D2, 당근 테크, 테크 유튜브)
-- [ ] 신규 강좌 추가 — TED 행복 강좌 (wellbeing 카테고리 신설)
-- [ ] 신규 강좌 추가 — MLVU (바탕화면 폴더 영상 → 로컬 import 방식 결정 필요)
 
 ### 내 YouTube 계정 연동
 - [ ] **플레이리스트 안의 영상의 수가 너무 많을 때 LLM으로 AI/데이터 관련 영상 자동 추가** — 플리 제목+설명을 GPT에게 넘겨서 관련도 점수 매기고, 관련 플리는 자동 체크 + 상단 정렬
@@ -214,6 +213,9 @@
 - [ ] 0원 챌린지 — 무료 티어 조합(Vercel + Railway + Supabase 등)으로 STU 운영 한계 탐색
 - [ ] 대규모 트래픽 실험
 - [ ] 웹사이트 대문 생성 (yale, uc berkely, sogang univ 같은 대학 홈페이지 참고)
+
+- [ ] 신규 강좌 추가 — TED 행복 강좌 (wellbeing 카테고리 신설)
+- [ ] 신규 강좌 추가 — MLVU (바탕화면 폴더 영상 → 로컬 import 방식 결정 필요)
 
 ---
 

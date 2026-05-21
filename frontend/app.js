@@ -874,6 +874,7 @@ async function ytModalOpen() {
   _lockScroll();
   _ytSelected.clear();
   _ytFilterData = null;
+  document.getElementById('ytDiscoverBar').style.display = 'none';
   _showStep1();
   await _ytLoadPlaylists();
 }
@@ -918,6 +919,7 @@ async function _ytLoadPlaylists() {
 
     _ytPlaylists = data.playlists || [];
     desc.textContent = `${_ytPlaylists.length}개 플레이리스트 · 가져올 항목을 선택하세요`;
+    document.getElementById('ytDiscoverBar').style.display = '';
 
     listEl.innerHTML = _ytPlaylists.map((pl, i) => `
       <div class="yt-pl-item" id="ytRow${i}">
@@ -1067,6 +1069,63 @@ function _ytPlItemHtml(i, pl, metaText) {
 function _ytUpdateStepDesc() {
   const desc = document.getElementById('ytStep1Desc');
   desc.textContent = `${_ytPlaylists.length}개 플레이리스트 · 가져올 항목을 선택하세요`;
+}
+
+async function ytDiscover() {
+  const btn    = document.getElementById('ytDiscoverBtn');
+  const listEl = document.getElementById('ytModalPlaylists');
+
+  btn.disabled    = true;
+  btn.textContent = '좋아요 영상 분석 중...';
+
+  try {
+    const res  = await fetch('/api/v1/youtube/discover');
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail || '채널 발견 실패. YouTube 계정이 연결되어 있는지 확인해주세요.');
+      btn.disabled    = false;
+      btn.textContent = '👍 좋아요 영상에서 채널 발견';
+      return;
+    }
+    if (!data.channels?.length) {
+      alert(`좋아요 영상 ${data.total_study_videos}개를 분석했지만 학습 관련 채널을 찾지 못했습니다.`);
+      btn.disabled    = false;
+      btn.textContent = '👍 좋아요 영상에서 채널 발견';
+      return;
+    }
+
+    let addedTotal = 0;
+    for (const ch of data.channels) {
+      const header = document.createElement('div');
+      header.className = 'yt-channel-header';
+      header.innerHTML = `👍 <strong>${_esc(ch.channel_title)}</strong>`
+        + `<span class="yt-ch-count">좋아요 ${ch.video_count}개 · 플리 ${ch.playlists.length}개</span>`;
+      listEl.appendChild(header);
+
+      for (const pl of ch.playlists) {
+        if (_ytPlaylists.some(p => p.playlist_id === pl.playlist_id)) continue;
+        _ytPlaylists.push(pl);
+        const i    = _ytPlaylists.length - 1;
+        const item = document.createElement('div');
+        item.className = 'yt-pl-item';
+        item.id        = `ytRow${i}`;
+        item.innerHTML = _ytPlItemHtml(
+          i, pl,
+          `${pl.video_count}개 영상${pl.description ? ' · ' + pl.description.slice(0, 50) : ''}`,
+        );
+        listEl.appendChild(item);
+        addedTotal++;
+      }
+    }
+
+    _ytUpdateStepDesc();
+    btn.textContent = `✅ ${data.channel_count}개 채널 · ${addedTotal}개 플리 발견 완료`;
+  } catch (e) {
+    alert('네트워크 오류. 다시 시도해주세요.');
+    btn.disabled    = false;
+    btn.textContent = '👍 좋아요 영상에서 채널 발견';
+  }
 }
 
 async function ytExpandPl(i) {

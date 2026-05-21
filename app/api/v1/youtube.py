@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
-from app.crawlers.youtube import YouTubeCrawler
+from app.crawlers.youtube import YouTubeCrawler, _classify_video
 from app.crawlers.scheduler import _save_lectures
 
 router = APIRouter()
@@ -171,6 +171,77 @@ async def get_playlist_meta(id: str = Query(..., description="플레이리스트
         "playlist_id":   playlist_id,
         "title":         meta["title"],
         "thumbnail_url": meta.get("thumbnail_url", ""),
+    }
+
+
+@router.get("/discover")
+async def discover_study_channels():
+    """
+    내 좋아요 영상 → 학습 관련 채널 식별 → 채널별 학습 관련 플리 목록 반환.
+    OAuth 필요. 상위 10개 채널만 조회 (API 할당량 절약).
+    """
+    import asyncio
+
+    access_token = await _get_access_token()
+    if not access_token:
+        raise HTTPException(
+            status_code=401,
+            detail="YouTube 인증 필요 — GET /api/v1/youtube/oauth 로 인증해주세요.",
+        )
+
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    try:
+        # 1. 좋아요 영상에서 학습 관련 영상만 수집
+        liked = await crawler.fetch_liked_videos(access_token, max_results=200)
+
+        # 2. 채널별 그룹화 (좋아요 영상 수 + 카테고리 집계)
+        channel_map: dict[str, dict] = {}
+        for v in liked:
+            cid = v["channel_id"]
+            if cid not in channel_map:
+                channel_map[cid] = {
+                    "channel_id":    cid,
+                    "channel_title": v["channel_title"],
+                    "video_count":   0,
+                    "categories":    set(),
+                }
+            channel_map[cid]["video_count"] += 1
+            channel_map[cid]["categories"].add(v["category"])
+
+        # 3. 좋아요 영상 많은 순 상위 10개 채널 플리 병렬 조회
+        top_channels = sorted(
+            channel_map.values(), key=lambda x: x["video_count"], reverse=True
+        )[:10]
+
+        async def _fetch_study_playlists(ch: dict) -> dict | None:
+            try:
+                pls = await crawler.get_channel_playlists(ch["channel_id"])
+                study_pls = [
+                    pl for pl in pls
+                    if _classify_video(pl["title"], pl.get("description", "")) is not None
+                ]
+                if not study_pls:
+                    return None
+                return {
+                    "channel_id":    ch["channel_id"],
+                    "channel_title": ch["channel_title"],
+                    "video_count":   ch["video_count"],
+                    "categories":    sorted(ch["categories"]),
+                    "playlists":     study_pls,
+                }
+            except Exception:
+                return None
+
+        raw = await asyncio.gather(*[_fetch_study_playlists(ch) for ch in top_channels])
+        results = [r for r in raw if r is not None]
+
+    finally:
+        await crawler.close()
+
+    return {
+        "total_study_videos": len(liked),
+        "channel_count":      len(results),
+        "channels":           results,
     }
 
 

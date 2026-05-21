@@ -7,14 +7,27 @@ STU에서 YouTube 플레이리스트를 가져와 커리큘럼(Course + Lecture)
 ## 전체 흐름 요약
 
 ```
-[사용자 입력]
-  플레이리스트 URL / 영상 URL / 채널 탐색
-        ↓
+[사용자 입력 — 3가지 진입점]
+
+  A. 플레이리스트 URL/ID 직접 입력
+        ↓ GET /youtube/playlist-meta
+  
+  B. 영상 URL 입력 → 채널 탐색
+        ↓ GET /youtube/channel-playlists?video_id=
+        채널의 공개 플리 전체 목록
+
+  C. 좋아요 영상 기반 채널 발견 (자동)
+        ↓ GET /youtube/discover
+        좋아요 영상 → 학습 관련 채널 → 채널별 학습 플리
+
+        ↓ (공통)
 [프론트: YouTube 모달]
-  URL 타입 감지 → 플리 목록 렌더링 → 선택 → 필터 미리보기 → 저장
+  플리 선택 → "필터링 미리보기" → 학습 관련 영상만 표시
+        ↓
+  "강의로 저장" → POST /youtube/playlists/sync
         ↓
 [백엔드: YouTube Data API v3]
-  플리 메타 조회 → 영상 목록 수집 → AI/데이터 관련 영상 필터링 → 카테고리 분류
+  영상 목록 수집 → AI/데이터 관련 영상 필터링 → 카테고리 분류
         ↓
 [백엔드: GPT-4o-mini]
   영상 제목 + 설명 → 태그 / 선수지식 자동 추출
@@ -71,17 +84,18 @@ const isVideo = /(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/.test(raw)
 
 **파일:** `app/api/v1/youtube.py`
 
-| 엔드포인트 | 역할 |
-|---|---|
-| `GET /youtube/playlist-meta?id=` | 플리 URL/ID → 제목·썸네일 조회 (OAuth 불필요) |
-| `GET /youtube/channel-playlists?video_id=` | 영상 URL/ID → 채널 공개 플리 전체 목록 |
-| `GET /youtube/playlists` | 내 YouTube 계정 플리 목록 (OAuth 필요) |
-| `POST /youtube/playlists/filter` | 선택한 플리의 AI/데이터 영상만 필터링 (저장 안 함) |
-| `POST /youtube/playlists/sync` | 필터링 결과를 DB에 저장 |
-| `GET /youtube/preview/{playlist_id}` | 단일 플리 필터 미리보기 |
-| `GET /youtube/oauth` | Google OAuth 시작 |
-| `GET /youtube/oauth/callback` | 토큰 교환 후 저장 |
-| `GET /youtube/oauth/status` | 인증 여부 확인 |
+| 엔드포인트 | OAuth | 역할 |
+|---|---|---|
+| `GET /youtube/playlist-meta?id=` | 불필요 | 플리 URL/ID → 제목·썸네일 조회 |
+| `GET /youtube/channel-playlists?video_id=` | 불필요 | 영상 URL/ID → 채널 공개 플리 전체 목록 |
+| `GET /youtube/discover` | **필요** | 좋아요 영상 → 학습 채널 식별 → 채널별 학습 플리 반환 |
+| `GET /youtube/playlists` | **필요** | 내 YouTube 계정 플리 목록 |
+| `POST /youtube/playlists/filter` | 선택적 | 선택한 플리의 AI/데이터 영상만 필터링 (저장 안 함) |
+| `POST /youtube/playlists/sync` | 선택적 | 필터링 결과를 DB에 저장 |
+| `GET /youtube/preview/{playlist_id}` | 선택적 | 단일 플리 필터 미리보기 |
+| `GET /youtube/oauth` | — | Google OAuth 시작 |
+| `GET /youtube/oauth/callback` | — | 토큰 교환 후 저장 |
+| `GET /youtube/oauth/status` | — | 인증 여부 확인 |
 
 ### URL 파싱 정규식
 
@@ -102,15 +116,16 @@ _VIDEO_ID_RE    = re.compile(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{11})")
 crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
 ```
 
-| 메서드 | 역할 | API 엔드포인트 |
-|---|---|---|
-| `fetch_playlist_videos(playlist_id, filter_ai)` | 플리 영상 수집 + 필터링 | `playlistItems.list` |
-| `get_playlist_meta(playlist_id)` | 플리 제목·썸네일 | `playlists.list` |
-| `fetch_user_playlists(access_token)` | 내 계정 플리 목록 | `playlists.list` (OAuth) |
-| `get_video_channel(video_id)` | 영상 → 채널 ID·이름 | `videos.list` |
-| `get_channel_playlists(channel_id)` | 채널 공개 플리 전체 | `playlists.list` |
-| `_fill_durations(videos)` | ISO 8601 재생시간 → 초 변환 | `videos.list` |
-| `check_video_availability(video_ids)` | 삭제/비공개 영상 감지 | `videos.list` |
+| 메서드 | OAuth | 역할 | API 엔드포인트 |
+|---|---|---|---|
+| `fetch_playlist_videos(playlist_id, filter_ai)` | 선택적 | 플리 영상 수집 + AI 필터링 | `playlistItems.list` |
+| `get_playlist_meta(playlist_id)` | 선택적 | 플리 제목·썸네일 | `playlists.list` |
+| `fetch_user_playlists(access_token)` | **필요** | 내 계정 플리 목록 | `playlists.list` |
+| `fetch_liked_videos(access_token)` | **필요** | 좋아요 영상 수집 + AI 필터링 + channel_id 포함 | `videos.list` |
+| `get_video_channel(video_id)` | 불필요 | 영상 → 채널 ID·이름 | `videos.list` |
+| `get_channel_playlists(channel_id)` | 불필요 | 채널 공개 플리 전체 | `playlists.list` |
+| `_fill_durations(videos)` | 선택적 | ISO 8601 재생시간 → 초 변환 | `videos.list` |
+| `check_video_availability(video_ids)` | 불필요 | 삭제/비공개 영상 감지 | `videos.list` |
 
 ### AI/데이터 관련 영상 필터링 (`filter_ai=True`)
 

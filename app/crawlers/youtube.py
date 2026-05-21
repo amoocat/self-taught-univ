@@ -343,6 +343,53 @@ class YouTubeCrawler:
             for v in batch:
                 v.duration_sec = dur_map.get(v.video_id, 0)
 
+    async def fetch_liked_videos(
+        self,
+        access_token: str,
+        max_results: int = 200,
+    ) -> list[dict]:
+        """좋아요한 영상 중 학습 관련 영상만 수집 (OAuth 필요). channel_id 포함."""
+        results = []
+        page_token = None
+
+        while len(results) < max_results:
+            params: dict = {"part": "snippet", "myRating": "like", "maxResults": 50}
+            if page_token:
+                params["pageToken"] = page_token
+
+            try:
+                resp = await self.client.get(
+                    f"{self.BASE_URL}/videos",
+                    params=params,
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception as e:
+                logger.error(f"[YouTube] fetch_liked_videos 실패: {e}")
+                break
+
+            for item in data.get("items", []):
+                sn       = item["snippet"]
+                title    = sn.get("title", "")
+                desc     = sn.get("description", "")[:500]
+                category = _classify_video(title, desc)
+                if category is None:
+                    continue  # 학습 무관 영상 스킵
+                results.append({
+                    "video_id":      item["id"],
+                    "title":         title,
+                    "channel_id":    sn["channelId"],
+                    "channel_title": sn.get("channelTitle", ""),
+                    "category":      category,
+                })
+
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+
+        return results[:max_results]
+
     async def get_video_channel(self, video_id: str) -> dict | None:
         """video_id → {channel_id, channel_title}"""
         params = {"part": "snippet", "id": video_id, "key": self.api_key}
