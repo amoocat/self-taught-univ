@@ -1324,13 +1324,24 @@ async function loadCourse(courseId) {
       (course ? `<div class="ll-section">${course.source}</div>` : '') +
       (_currentLectures.length === 0
         ? `<div class="ln-empty">강의가 없습니다</div>`
-        : _currentLectures.map((l, i) =>
-            `<div class="ll-item${i===0?' active':''}${l.completed?' done':''}" data-lecture-id="${l.id}" onclick="loadLecture('${l.id}',this)">
-              <div class="ll-num">Lecture ${String(l.number).padStart(2,'0')}</div>
-              <div class="ll-name">${l.title}</div>
-              ${l.completed ? '<div class="ll-check">✓ 완료</div>' : ''}
-            </div>`
-          ).join('')
+        : _currentLectures.map((l, i) => {
+            const hasvid = !!l.youtube_url;
+            const unavail = l.is_available === false;
+            const thumbSrc = l.thumbnail_url
+              || (l.youtube_video_id ? `https://img.youtube.com/vi/${l.youtube_video_id}/mqdefault.jpg` : null);
+            const thumb = thumbSrc
+              ? `<img class="ll-thumb" src="${thumbSrc}" alt="" loading="lazy">`
+              : `<div class="ll-thumb ll-thumb-ph">${hasvid ? '▶' : ''}</div>`;
+            const dur = l.duration_sec ? `<span class="ll-dur">${_fmtDur(l.duration_sec)}</span>` : '';
+            return `<div class="ll-item${i===0?' active':''}${l.completed?' done':''}${unavail?' unavail':''}" data-lecture-id="${l.id}" onclick="loadLecture('${l.id}',this)">
+              ${thumb}
+              <div class="ll-content">
+                <div class="ll-num">Lec ${String(l.number).padStart(2,'0')}${unavail ? ' <span class="ll-unavail-badge">삭제됨</span>' : ''}</div>
+                <div class="ll-name">${l.title}</div>
+                <div class="ll-foot">${l.completed ? '<span class="ll-check">✓ 완료</span>' : ''}${dur}</div>
+              </div>
+            </div>`;
+          }).join('')
       );
 
     if (_currentLectures.length > 0) {

@@ -261,9 +261,13 @@ async def _save_lectures(videos) -> int:
             meta    = await extract_all(v.title, v.description, category)
 
             if exists:
-                exists.youtube_url  = yt_url
-                exists.duration_sec = v.duration_sec
-                exists.category     = category
+                exists.youtube_url      = yt_url
+                exists.youtube_video_id = v.video_id
+                exists.thumbnail_url    = v.thumbnail_url or None
+                exists.playlist_id      = v.playlist_id or None
+                exists.duration_sec     = v.duration_sec
+                exists.category         = category
+                exists.is_available     = True
                 if not exists.tags:
                     exists.tags = meta["tags"]
                 if not exists.prerequisites:
@@ -277,6 +281,9 @@ async def _save_lectures(videos) -> int:
                     tags=meta["tags"],
                     prerequisites=meta["prerequisites"],
                     youtube_url=yt_url,
+                    youtube_video_id=v.video_id,
+                    thumbnail_url=v.thumbnail_url or None,
+                    playlist_id=v.playlist_id or None,
                     duration_sec=v.duration_sec,
                 ))
                 saved += 1

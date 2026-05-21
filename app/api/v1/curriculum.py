@@ -35,8 +35,11 @@ class LectureOut(BaseModel):
     category: Optional[str] = None
     tags: list[str] = []
     prerequisites: list[str] = []
-    youtube_url: Optional[str]
-    duration_sec: Optional[int]
+    youtube_url: Optional[str] = None
+    youtube_video_id: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    is_available: bool = True
+    duration_sec: Optional[int] = None
     completed: bool = False
 
     class Config:
@@ -51,8 +54,11 @@ class LectureDetailOut(BaseModel):
     category: Optional[str] = None
     tags: list[str] = []
     prerequisites: list[str] = []
-    youtube_url: Optional[str]
-    duration_sec: Optional[int]
+    youtube_url: Optional[str] = None
+    youtube_video_id: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    is_available: bool = True
+    duration_sec: Optional[int] = None
     content: str = ""
 
     class Config:
@@ -126,8 +132,9 @@ async def list_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
         LectureOut(
             id=l.id, title=l.title, subtitle=l.subtitle, number=l.number,
             category=l.category, tags=l.tags or [], prerequisites=l.prerequisites or [],
-            youtube_url=l.youtube_url, duration_sec=l.duration_sec,
-            completed=l.id in completed_ids,
+            youtube_url=l.youtube_url, youtube_video_id=l.youtube_video_id,
+            thumbnail_url=l.thumbnail_url, is_available=l.is_available,
+            duration_sec=l.duration_sec, completed=l.id in completed_ids,
         )
         for l in lectures
     ]
@@ -166,6 +173,9 @@ async def get_lecture_detail(lecture_id: str, db: AsyncSession = Depends(get_db)
         tags=lecture.tags or [],
         prerequisites=lecture.prerequisites or [],
         youtube_url=lecture.youtube_url,
+        youtube_video_id=lecture.youtube_video_id,
+        thumbnail_url=lecture.thumbnail_url,
+        is_available=lecture.is_available,
         duration_sec=lecture.duration_sec,
         content=note.content_md if note else "",
     )

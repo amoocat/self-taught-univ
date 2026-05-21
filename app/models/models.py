@@ -40,6 +40,10 @@ class Lecture(Base):
     tags: Mapped[list] = mapped_column(JSONB, default=list)
     prerequisites: Mapped[list] = mapped_column(JSONB, default=list)
     youtube_url: Mapped[str | None] = mapped_column(String(500))
+    youtube_video_id: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    playlist_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_available: Mapped[bool] = mapped_column(Boolean, default=True)
     duration_sec: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

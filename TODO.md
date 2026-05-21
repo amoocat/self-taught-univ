@@ -8,9 +8,23 @@
 
 ## 🚨 Phase 0 — 남은 항목
 
+### 커리큘럼
+- [ ] 학습 프로그램 가져오기
+    1. 플레이리스트 ID(URL)를 직접 활용하기 (가장 확실한 방법)
+    내가 저장한 타인의 플레이리스트 URL(예: [https://www.youtube.com/playlist?list=PLxxxxxxxx](https://www.youtube.com/playlist?list=PLxxxxxxxx)...)에서 list= 뒤에 나오는 ID 값을 미리 확보해 두는 것입니다.
+
+    내 계정의 라이브러리를 거치지 않고, 그 플레이리스트 ID를 API에 직접 찔러서 안의 영상 목록을 가져오는 방식입니다.
+
+    1단계 (playlists.list): 플레이리스트 ID를 이용해 해당 학습 프로그램의 제목, 설명, 썸네일 등을 가져옵니다.
+
+    HTTP
+    GET https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=플레이리스트ID&key=YOUR_API_KEY
+    2단계 (playlistItems.list): 그 플레이리스트 안에 들어있는 구체적인 학습 영상 목록(강의 순서, 영상 ID 등)을 추출합니다.
+- [ ] 나중에 볼 영상, 좋아요 한 영상도 자동 추가 후 백엔드에서 필터링하여 재구성
+- [ ]  유튜브 플리에서 긁어온 영상들을 백엔드에서 재구성해서 커리큘럼으로 재구성해야함 (GPT를 통해서 or RAG를 통해서 재분류)
+
 ### 렉쳐 노트
-- [ ] **렉쳐 노트 내용 전부 비어있음** — DB에 `LectureNote` 데이터 없음. 최소한 선형대수 몇 강 분 수동 입력 필요 -> 나중에는 AI를 통해 생성
-- [ ] **YouTube 영상 전부 "동영상 없음"** — YouTube OAuth 인증 후 플레이리스트 sync 필요
+- [ ] **렉쳐 노트 내용 전부 비어있음** — DB에 `LectureNote` 데이터 없음. 최소한 선형대수 몇 강 분 수동 입력 필요 -> 나중에는 AI를 통해 생성 
 
 ### 지식 그래프
 - [ ] **그래프 데이터 항상 fallback** — CHATGPT_API_KEY 설정 완료됨, 노트 저장 후 자동 해결됨
@@ -24,8 +38,8 @@
 ## 🔴 Phase 2 — 진행 중
 
 ### 강의 구성 고도화
-- [ ] `lectures` 테이블에 YouTube 필드 추가 — `youtube_video_id`, `thumbnail_url`, `playlist_id`, `order_index`, `is_available`
-- [ ] 프론트: `ll-item` 클릭 시 YouTube iframe embed로 재생 (`youtube_video_id` 기반)
+- [x] `lectures` 테이블에 YouTube 필드 추가 — `youtube_video_id`, `thumbnail_url`, `playlist_id`, `is_available` (migration 0006)
+- [x] 프론트: 강의 목록에 썸네일 표시 (`youtube_video_id` → `img.youtube.com` fallback), 재생시간·완료 표시
 - [ ] 배치: 주기적으로 영상 유효성 체크 → 삭제·비공개 시 `is_available = false` 처리
 - [ ] 최신 동향 자동 크롤링 → 피드 페이지 통합 (Naver D2, 당근 테크, 테크 유튜브)
 - [ ] 신규 강좌 추가 — TED 행복 강좌 (wellbeing 카테고리 신설)
@@ -188,6 +202,72 @@
 - [ ] 포트폴리오 MCP — Obsidian 회사 기록 정리 → 포트폴리오 자동 구성
 - [ ] 0원 챌린지 — 무료 티어 조합(Vercel + Railway + Supabase 등)으로 STU 운영 한계 탐색
 - [ ] 대규모 트래픽 실험
+- [ ] 웹사이트 대문 생성 (yale, uc berkely, sogang univ 같은 대학 홈페이지 참고)
+
+# TODO
+
+## 🎬 YouTube 채널 플리 탐색
+> 저장된 영상 → 업로더 채널 → 채널 전체 플리 수집
+
+- [ ] `get_video_channel` tool 추가 (video_id → channel_id, channel_title)
+- [ ] `get_channel_playlists` tool 추가 (channel_id → 해당 채널의 전체 플리 목록)
+- [ ] `get_multiple_playlists` 와 연결해서 채널 플리 전체 영상 수집까지 one-shot으로
+
+**흐름:**
+```
+내가 저장한 영상 (예: 선대 1강)
+    ↓ video_id로 channel_id 조회
+채널 페이지 (예: 쑤튜브)
+    ↓ channel_id로 플리 목록 조회
+선형대수 전체 강의 플리
+    ↓ playlist_id로 영상 전체 수집
+커리큘럼 생성
+```
+
+---
+
+## 📊 웹 로그 / 세션 / 쿠키
+> 실제 데이터팀 스타일의 로그 데이터 생성
+
+- [ ] FastAPI 미들웨어로 요청 로깅 추가
+  - `user_id` (로그인 유저 or anonymous)
+  - `session_id` (쿠키 기반)
+  - `event_type` (`page_view` / `click` / `search`)
+  - `path`, `referrer`, `user_agent`
+  - `timestamp`
+- [ ] 세션 구성 (Redis 또는 DB 기반)
+- [ ] 쿠키 설정 (`session_id` 발급 및 유지)
+- [ ] 로그 저장 테이블 (`event_logs`) 마이그레이션 추가
+- [ ] 프론트에서 클릭 이벤트 전송 엔드포인트 (`POST /api/events`)
+
+**로그 테이블 스키마 (안):**
+```sql
+event_logs
+  id          BIGSERIAL PK
+  session_id  TEXT
+  user_id     INTEGER (nullable, FK → users)
+  event_type  TEXT        -- page_view | click | search
+  path        TEXT
+  referrer    TEXT
+  properties  JSONB       -- 이벤트별 추가 데이터 (검색어, 클릭 대상 등)
+  user_agent  TEXT
+  ip_hash     TEXT        -- 개인정보 보호용 해시
+  created_at  TIMESTAMPTZ DEFAULT now()
+```
+
+---
+
+## 🔍 검색 기능
+> 앱 내 강의 및 렉처노트 검색
+
+- [ ] `GET /api/lectures/search?q=` 엔드포인트 추가
+- [ ] `GET /api/notes/search?q=` 엔드포인트 추가
+- [ ] 검색 대상 필드 정의
+  - 강의: `title`, `description`, `category`, `tags`
+  - 렉처노트: `title`, `content`
+- [ ] PostgreSQL `tsvector` 풀텍스트 검색 또는 `ILIKE` 방식 결정
+- [ ] 검색 결과 페이지네이션
+- [ ] 프론트 검색 UI 연동
 
 ### 최종 목표 스택
 ```
