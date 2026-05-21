@@ -343,6 +343,63 @@ class YouTubeCrawler:
             for v in batch:
                 v.duration_sec = dur_map.get(v.video_id, 0)
 
+    async def get_video_channel(self, video_id: str) -> dict | None:
+        """video_id → {channel_id, channel_title}"""
+        params = {"part": "snippet", "id": video_id, "key": self.api_key}
+        try:
+            resp = await self.client.get(f"{self.BASE_URL}/videos", params=params)
+            resp.raise_for_status()
+            items = resp.json().get("items", [])
+            if not items:
+                return None
+            sn = items[0]["snippet"]
+            return {
+                "channel_id":    sn["channelId"],
+                "channel_title": sn.get("channelTitle", ""),
+            }
+        except Exception as e:
+            logger.error(f"[YouTube] get_video_channel 실패 {video_id}: {e}")
+            return None
+
+    async def get_channel_playlists(self, channel_id: str) -> list[dict]:
+        """channel_id → 해당 채널의 공개 플레이리스트 목록"""
+        playlists = []
+        page_token = None
+
+        while True:
+            params: dict = {
+                "part":      "snippet,contentDetails",
+                "channelId": channel_id,
+                "maxResults": 50,
+                "key":       self.api_key,
+            }
+            if page_token:
+                params["pageToken"] = page_token
+
+            try:
+                resp = await self.client.get(f"{self.BASE_URL}/playlists", params=params)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception as e:
+                logger.error(f"[YouTube] get_channel_playlists 실패 {channel_id}: {e}")
+                break
+
+            for item in data.get("items", []):
+                sn = item["snippet"]
+                playlists.append({
+                    "playlist_id":   item["id"],
+                    "title":         sn.get("title", ""),
+                    "description":   sn.get("description", "")[:200],
+                    "video_count":   item.get("contentDetails", {}).get("itemCount", 0),
+                    "thumbnail_url": sn.get("thumbnails", {}).get("medium", {}).get("url", ""),
+                })
+
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+
+        return playlists
+
     async def check_video_availability(self, video_ids: list[str]) -> set[str]:
         """주어진 video_id 중 현재 공개 상태인 것들의 집합 반환 (50개 배치)"""
         available: set[str] = set()

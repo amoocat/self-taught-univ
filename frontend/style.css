@@ -3498,6 +3498,18 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 }
 .yt-pl-row:hover { background: var(--cream2); }
 .yt-pl-item.selected .yt-pl-row { background: var(--cream2); }
+
+.yt-channel-header {
+  padding: 8px 14px 4px;
+  margin-top: 8px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--gray2);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.yt-channel-header:first-child { border-top: none; margin-top: 0; }
+.yt-ch-count { margin-left: 6px; color: var(--gray3); }
 .yt-pl-row input[type=checkbox] { accent-color: var(--red); flex-shrink: 0; }
 .yt-pl-thumb { width: 64px; height: 40px; object-fit: cover; flex-shrink: 0; background: var(--cream3); }
 .yt-pl-info { flex: 1; min-width: 0; }

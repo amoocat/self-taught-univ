@@ -142,9 +142,8 @@ async def list_my_playlists():
     return {"playlists": playlists}
 
 
-_PLAYLIST_ID_RE = re.compile(
-    r"(?:list=|/playlist/|youtu\.be/)([A-Za-z0-9_-]{10,})"
-)
+_PLAYLIST_ID_RE = re.compile(r"(?:list=|/playlist/|youtu\.be/)([A-Za-z0-9_-]{10,})")
+_VIDEO_ID_RE    = re.compile(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{11})")
 
 
 @router.get("/playlist-meta")
@@ -172,6 +171,46 @@ async def get_playlist_meta(id: str = Query(..., description="플레이리스트
         "playlist_id":   playlist_id,
         "title":         meta["title"],
         "thumbnail_url": meta.get("thumbnail_url", ""),
+    }
+
+
+@router.get("/channel-playlists")
+async def get_channel_playlists_endpoint(
+    video_id:   str = Query(None, description="YouTube 영상 ID 또는 URL"),
+    channel_id: str = Query(None, description="YouTube 채널 ID"),
+):
+    """
+    영상 ID/URL 또는 채널 ID → 해당 채널의 공개 플레이리스트 목록 조회 (OAuth 불필요).
+    video_id에 URL 전체 붙여도 video_id 자동 추출.
+    """
+    raw_vid = (video_id or "").strip()
+    m = _VIDEO_ID_RE.search(raw_vid)
+    vid = m.group(1) if m else (raw_vid if len(raw_vid) == 11 else None)
+
+    if not vid and not channel_id:
+        raise HTTPException(status_code=400, detail="video_id 또는 channel_id 중 하나는 필요합니다.")
+
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    try:
+        if vid:
+            channel_meta = await crawler.get_video_channel(vid)
+            if not channel_meta:
+                raise HTTPException(status_code=404, detail="영상을 찾을 수 없습니다. video_id를 확인해주세요.")
+            cid           = channel_meta["channel_id"]
+            channel_title = channel_meta["channel_title"]
+        else:
+            cid           = channel_id.strip()
+            channel_title = cid
+
+        playlists = await crawler.get_channel_playlists(cid)
+    finally:
+        await crawler.close()
+
+    return {
+        "channel_id":     cid,
+        "channel_title":  channel_title,
+        "playlist_count": len(playlists),
+        "playlists":      playlists,
     }
 
 

@@ -958,68 +958,115 @@ async function ytAddFromUrl() {
   const raw   = input.value.trim();
   if (!raw) return;
 
+  // 영상 URL(v=) 이면 채널 플리 탐색, 그 외는 단일 플리 추가
+  const isVideo = /(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/.test(raw)
+               && !/(?:list=|\/playlist\/)/.test(raw);
+
   const btn = input.nextElementSibling;
-  btn.disabled = true;
+  btn.disabled    = true;
   btn.textContent = '확인 중...';
 
   try {
-    const res  = await fetch(`/api/v1/youtube/playlist-meta?id=${encodeURIComponent(raw)}`);
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.detail || '플레이리스트를 찾을 수 없습니다.');
-      return;
-    }
-
-    // 이미 목록에 있으면 스킵
-    if (_ytPlaylists.some(p => p.playlist_id === data.playlist_id)) {
-      alert('이미 목록에 있는 플레이리스트입니다.');
-      return;
-    }
-
-    _ytPlaylists.push({
-      playlist_id:   data.playlist_id,
-      title:         data.title,
-      thumbnail_url: data.thumbnail_url,
-      video_count:   '?',
-      description:   '',
-    });
-    input.value = '';
-
-    const i      = _ytPlaylists.length - 1;
-    const listEl = document.getElementById('ytModalPlaylists');
-    const desc   = document.getElementById('ytStep1Desc');
-
-    const item = document.createElement('div');
-    item.className = 'yt-pl-item';
-    item.id = `ytRow${i}`;
-    item.innerHTML = `
-      <div class="yt-pl-row" onclick="ytTogglePl(${i})">
-        <input type="checkbox" id="ytCb${i}" onclick="event.stopPropagation();ytTogglePl(${i})">
-        ${data.thumbnail_url
-          ? `<img class="yt-pl-thumb" src="${data.thumbnail_url}" alt="">`
-          : `<div class="yt-pl-thumb"></div>`}
-        <div class="yt-pl-info">
-          <div class="yt-pl-name">${_esc(data.title)}</div>
-          <div class="yt-pl-meta">공개 플레이리스트</div>
-        </div>
-        <button class="yt-pl-expand-btn" id="ytExpBtn${i}" onclick="event.stopPropagation();ytExpandPl(${i})" title="영상 목록">▼</button>
-      </div>
-      <div class="yt-pl-videos" id="ytVideos${i}" style="display:none"></div>`;
-    listEl.appendChild(item);
-
-    const cur = _ytPlaylists.length;
-    const authMatch = desc.textContent.match(/^(\d+)개 플레이리스트/);
-    if (authMatch) desc.textContent = `${cur}개 플레이리스트 · 가져올 항목을 선택하세요`;
-
-    // 자동 선택
-    ytTogglePl(i);
+    const ok = isVideo
+      ? await _ytAddChannelPlaylists(raw, btn)
+      : await _ytAddSinglePlaylist(raw);
+    if (ok) input.value = '';
   } catch (e) {
     alert('네트워크 오류. 다시 시도해주세요.');
   } finally {
     btn.disabled    = false;
     btn.textContent = '추가';
   }
+}
+
+async function _ytAddSinglePlaylist(raw) {
+  const res  = await fetch(`/api/v1/youtube/playlist-meta?id=${encodeURIComponent(raw)}`);
+  const data = await res.json();
+
+  if (!res.ok) { alert(data.detail || '플레이리스트를 찾을 수 없습니다.'); return false; }
+  if (_ytPlaylists.some(p => p.playlist_id === data.playlist_id)) {
+    alert('이미 목록에 있는 플레이리스트입니다.'); return false;
+  }
+
+  _ytPlaylists.push({
+    playlist_id:   data.playlist_id,
+    title:         data.title,
+    thumbnail_url: data.thumbnail_url,
+    video_count:   '?',
+    description:   '',
+  });
+
+  const i      = _ytPlaylists.length - 1;
+  const listEl = document.getElementById('ytModalPlaylists');
+  const item   = document.createElement('div');
+  item.className = 'yt-pl-item';
+  item.id        = `ytRow${i}`;
+  item.innerHTML = _ytPlItemHtml(i, data, '공개 플레이리스트');
+  listEl.appendChild(item);
+  _ytUpdateStepDesc();
+  ytTogglePl(i);
+  return true;
+}
+
+async function _ytAddChannelPlaylists(raw, btn) {
+  const m   = /(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/.exec(raw);
+  const vid = m ? m[1] : raw.trim();
+
+  btn.textContent = '채널 조회 중...';
+
+  const res  = await fetch(`/api/v1/youtube/channel-playlists?video_id=${encodeURIComponent(vid)}`);
+  const data = await res.json();
+
+  if (!res.ok) { alert(data.detail || '채널을 찾을 수 없습니다.'); return false; }
+  if (!data.playlists?.length) { alert('이 채널에 공개 플레이리스트가 없습니다.'); return false; }
+
+  // 채널 구분선 헤더
+  const listEl = document.getElementById('ytModalPlaylists');
+  const header = document.createElement('div');
+  header.className = 'yt-channel-header';
+  header.innerHTML = `📺 <strong>${_esc(data.channel_title)}</strong><span class="yt-ch-count">${data.playlist_count}개 플리</span>`;
+  listEl.appendChild(header);
+
+  let added = 0;
+  for (const pl of data.playlists) {
+    if (_ytPlaylists.some(p => p.playlist_id === pl.playlist_id)) continue;
+    _ytPlaylists.push(pl);
+    const i    = _ytPlaylists.length - 1;
+    const item = document.createElement('div');
+    item.className = 'yt-pl-item';
+    item.id        = `ytRow${i}`;
+    item.innerHTML = _ytPlItemHtml(
+      i, pl,
+      `${pl.video_count}개 영상${pl.description ? ' · ' + pl.description.slice(0, 50) : ''}`,
+    );
+    listEl.appendChild(item);
+    added++;
+  }
+
+  if (added === 0) { alert('이 채널의 플리는 이미 모두 목록에 있습니다.'); return false; }
+  _ytUpdateStepDesc();
+  return true;
+}
+
+function _ytPlItemHtml(i, pl, metaText) {
+  return `
+    <div class="yt-pl-row" onclick="ytTogglePl(${i})">
+      <input type="checkbox" id="ytCb${i}" onclick="event.stopPropagation();ytTogglePl(${i})">
+      ${pl.thumbnail_url
+        ? `<img class="yt-pl-thumb" src="${pl.thumbnail_url}" alt="">`
+        : `<div class="yt-pl-thumb"></div>`}
+      <div class="yt-pl-info">
+        <div class="yt-pl-name">${_esc(pl.title)}</div>
+        <div class="yt-pl-meta">${metaText}</div>
+      </div>
+      <button class="yt-pl-expand-btn" id="ytExpBtn${i}" onclick="event.stopPropagation();ytExpandPl(${i})" title="영상 목록">▼</button>
+    </div>
+    <div class="yt-pl-videos" id="ytVideos${i}" style="display:none"></div>`;
+}
+
+function _ytUpdateStepDesc() {
+  const desc = document.getElementById('ytStep1Desc');
+  desc.textContent = `${_ytPlaylists.length}개 플레이리스트 · 가져올 항목을 선택하세요`;
 }
 
 async function ytExpandPl(i) {
