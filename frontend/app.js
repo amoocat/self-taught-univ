@@ -830,25 +830,24 @@ const _CODE_TAG_COLOR = {
 };
 let _curriculumLoaded = false;
 
-async function backfillDifficulty() {
+async function backfillMetadata() {
   const btn = document.getElementById('backfillBtn');
   btn.disabled = true;
   btn.textContent = 'AI 분석 중...';
   try {
-    const res = await fetch('/api/v1/curriculum/backfill-difficulty?reset=true', { method: 'POST' });
+    const res = await fetch('/api/v1/curriculum/backfill-metadata?reset=true', { method: 'POST' });
     const data = await res.json();
-    alert(data.message || `${data.updated}개 강의에 난이도가 배정되었습니다.`);
-    // 강의 패널 재로드
+    alert(data.message || `${data.updated}개 강의에 모듈 + 난이도가 배정되었습니다.`);
     if (_currentCourseId) {
       const lecsEl = document.getElementById('lecs-' + _currentCourseId);
       if (lecsEl) lecsEl.dataset.loaded = '';
       await loadCourse(_currentCourseId);
     }
   } catch (e) {
-    alert('난이도 배정 실패. 다시 시도해주세요.');
+    alert('AI 배정 실패. 다시 시도해주세요.');
   } finally {
     btn.disabled = false;
-    btn.textContent = '★ 난이도 AI 배정';
+    btn.textContent = '★ AI 메타데이터 배정';
   }
 }
 
@@ -1813,27 +1812,65 @@ function _buildLecList(lectures, course) {
   if (!lectures.length)
     return `<div class="ln-empty" style="padding:12px 14px">강의가 없습니다</div>`;
 
-  const hasDiff = lectures.some(l => l.difficulty);
-  if (!hasDiff) {
-    // 난이도 미배정 — 단순 목록
+  const hasModule = lectures.some(l => l.module_name);
+  const hasDiff   = lectures.some(l => l.difficulty);
+
+  if (!hasModule && !hasDiff) {
     return (course ? `<div class="ll-section">${course.source}</div>` : '')
       + lectures.map(_lecItemHtml).join('');
   }
 
-  // 난이도별 그룹핑
-  const groups = { 1: [], 2: [], 3: [] };
-  lectures.forEach(l => { (groups[l.difficulty] || groups[2]).push(l); });
+  if (!hasModule) {
+    // 난이도만 있을 때
+    const groups = { 1: [], 2: [], 3: [] };
+    lectures.forEach(l => { (groups[l.difficulty] || groups[2]).push(l); });
+    return [1, 2, 3].map(d => {
+      if (!groups[d].length) return '';
+      return `<div class="ll-diff-section">
+        <div class="ll-diff-header ${_DIFF_CLASS[d]}">
+          <span class="ll-diff-label">${_DIFF_LABEL[d]}</span>
+          <span class="ll-diff-count">${groups[d].length}강</span>
+        </div>
+        ${groups[d].map(_lecItemHtml).join('')}
+      </div>`;
+    }).join('');
+  }
 
-  return [1, 2, 3].map(d => {
-    if (!groups[d].length) return '';
-    const label = _DIFF_LABEL[d];
-    const cls   = _DIFF_CLASS[d];
-    return `<div class="ll-diff-section">
-      <div class="ll-diff-header ${cls}">
-        <span class="ll-diff-label">${label}</span>
-        <span class="ll-diff-count">${groups[d].length}강</span>
+  // 모듈별 그룹핑 (모듈 안에서 난이도순 정렬)
+  const moduleOrder = [];
+  const moduleMap = {};
+  lectures.forEach(l => {
+    const m = l.module_name || '기타';
+    if (!moduleMap[m]) { moduleMap[m] = []; moduleOrder.push(m); }
+    moduleMap[m].push(l);
+  });
+
+  return moduleOrder.map(mod => {
+    const lecs = moduleMap[mod];
+    // 모듈 안에서 난이도별 서브그룹
+    const hasDiffInMod = lecs.some(l => l.difficulty);
+    let inner;
+    if (hasDiffInMod) {
+      const sub = { 1: [], 2: [], 3: [] };
+      lecs.forEach(l => { (sub[l.difficulty] || sub[2]).push(l); });
+      inner = [1, 2, 3].map(d => {
+        if (!sub[d].length) return '';
+        return `<div class="ll-diff-sub">
+          <span class="ll-diff-dot ${_DIFF_CLASS[d]}" title="${_DIFF_LABEL[d]}"></span>
+          ${sub[d].map(_lecItemHtml).join('')}
+        </div>`;
+      }).join('');
+    } else {
+      inner = lecs.map(_lecItemHtml).join('');
+    }
+
+    return `<div class="ll-module-section">
+      <div class="ll-module-header" onclick="this.parentElement.classList.toggle('open')">
+        <span class="ll-module-arrow">▶</span>
+        <span class="ll-module-name">${_esc(mod)}</span>
+        <span class="ll-module-count">${lecs.length}강</span>
       </div>
-      ${groups[d].map(_lecItemHtml).join('')}
+      <div class="ll-module-body">${inner}</div>
     </div>`;
   }).join('');
 }

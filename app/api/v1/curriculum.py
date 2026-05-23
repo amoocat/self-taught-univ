@@ -47,6 +47,7 @@ class LectureOut(BaseModel):
     is_available: bool = True
     duration_sec: Optional[int] = None
     difficulty: Optional[int] = None
+    module_name: Optional[str] = None
     completed: bool = False
 
     class Config:
@@ -142,7 +143,7 @@ async def list_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
             youtube_url=l.youtube_url, youtube_video_id=l.youtube_video_id,
             thumbnail_url=l.thumbnail_url, is_available=l.is_available,
             duration_sec=l.duration_sec, difficulty=l.difficulty,
-            completed=l.id in completed_ids,
+            module_name=l.module_name, completed=l.id in completed_ids,
         )
         for l in lectures
     ]
@@ -208,36 +209,65 @@ async def delete_lecture(lecture_id: str, db: AsyncSession = Depends(get_db)):
     return {"ok": True, "deleted": lecture_id}
 
 
-@router.post("/backfill-difficulty", status_code=200)
-async def backfill_difficulty(reset: bool = False, db: AsyncSession = Depends(get_db)):
-    """GPT-4o-mini로 난이도 미배정(또는 전체) 강의에 difficulty(1~3) 일괄 배정.
+@router.post("/backfill-metadata", status_code=200)
+async def backfill_metadata(reset: bool = False, db: AsyncSession = Depends(get_db)):
+    """GPT-4o-mini로 전체 강의에 difficulty(1~3) + module_name 일괄 배정.
 
-    reset=true: 기존 값 무시하고 전체 강의 재배정.
+    reset=true: 기존 값 무시하고 전체 재배정.
+    각 과목별로 배치 처리 — 같은 과목 강의끼리 묶어야 모듈명이 일관성 있음.
     """
     if reset:
-        lectures = (await db.execute(select(Lecture))).scalars().all()
+        courses_q = (await db.execute(select(Lecture.course_id).distinct())).scalars().all()
     else:
-        lectures = (
-            await db.execute(select(Lecture).where(Lecture.difficulty.is_(None)))
+        courses_q = (
+            await db.execute(
+                select(Lecture.course_id).where(Lecture.module_name.is_(None)).distinct()
+            )
         ).scalars().all()
 
-    if not lectures:
-        return {"updated": 0, "message": "모든 강의에 난이도가 이미 배정되어 있습니다."}
+    if not courses_q:
+        return {"updated": 0, "message": "모든 강의에 메타데이터가 이미 배정되어 있습니다."}
+
+    # course 이름 조회
+    courses = {
+        c.id: c for c in (await db.execute(select(Course))).scalars().all()
+    }
 
     gpt = openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
-    BATCH = 30
     updated = 0
 
-    for i in range(0, len(lectures), BATCH):
-        batch = lectures[i : i + BATCH]
-        payload = [{"id": l.id, "title": l.title, "category": l.category or ""} for l in batch]
+    for course_id in courses_q:
+        course = courses.get(course_id)
+        if reset:
+            lectures = (await db.execute(
+                select(Lecture).where(Lecture.course_id == course_id).order_by(Lecture.number)
+            )).scalars().all()
+        else:
+            lectures = (await db.execute(
+                select(Lecture).where(
+                    Lecture.course_id == course_id,
+                    Lecture.module_name.is_(None),
+                ).order_by(Lecture.number)
+            )).scalars().all()
+
+        if not lectures:
+            continue
+
+        course_name = course.title if course else "Unknown"
+        payload = [{"id": l.id, "title": l.title} for l in lectures]
+
         prompt = (
-            "Assign a difficulty level to each AI/ML lecture based on its title.\n"
-            "1 = beginner (basic concepts, intro), 2 = intermediate, 3 = advanced (research-level, math-heavy)\n\n"
+            f"You are organizing lectures for the '{course_name}' course in an AI/ML curriculum.\n\n"
+            "For each lecture, assign:\n"
+            '1. "module_name": a short topic group name in Korean (2-6 chars, e.g. "선형대수 기초", "경사하강법", "트랜스포머")\n'
+            "   - Group related lectures under the SAME module_name\n"
+            "   - Aim for 3-7 distinct modules total for this course\n"
+            '2. "difficulty": 1 (beginner/intro), 2 (intermediate), 3 (advanced/research)\n\n'
             "Lectures:\n"
             + json.dumps(payload, ensure_ascii=False)
-            + '\n\nReturn JSON: {"results": [{"id": "...", "difficulty": 1}]}'
+            + '\n\nReturn JSON: {"results": [{"id": "...", "module_name": "...", "difficulty": 2}]}'
         )
+
         try:
             resp = await gpt.chat.completions.create(
                 model="gpt-4o-mini",
@@ -246,15 +276,18 @@ async def backfill_difficulty(reset: bool = False, db: AsyncSession = Depends(ge
             )
             raw = json.loads(resp.choices[0].message.content)
             results = raw.get("results", [])
-            id_map = {r["id"]: r.get("difficulty", 2) for r in results}
-            for lec in batch:
-                lec.difficulty = id_map.get(lec.id, 2)
+            id_map = {r["id"]: r for r in results}
+            for lec in lectures:
+                r = id_map.get(lec.id, {})
+                lec.module_name = r.get("module_name") or lec.module_name or "기타"
+                lec.difficulty  = r.get("difficulty") or lec.difficulty or 2
                 updated += 1
         except Exception as e:
-            logger.error("backfill_difficulty batch %d error: %s", i // BATCH, e)
-            for lec in batch:
-                lec.difficulty = lec.difficulty or 2
-            updated += len(batch)
+            logger.error("backfill_metadata course %s error: %s", course_id, e)
+            for lec in lectures:
+                lec.module_name = lec.module_name or "기타"
+                lec.difficulty  = lec.difficulty or 2
+            updated += len(lectures)
 
     await db.commit()
     return {"updated": updated}

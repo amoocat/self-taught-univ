@@ -437,7 +437,10 @@ async def _promote_inbox_to_lectures() -> tuple[int, int]:
     to_promote: list[YoutubeVideo] = []
     all_ids = [row.id for row in inbox_rows]
 
+    MIN_DURATION_SEC = 300  # 5분 이하 제외
     for row in inbox_rows:
+        if (row.duration_sec or 0) < MIN_DURATION_SEC:
+            continue
         category = _classify_video(row.title, row.description or "")
         if category:
             to_promote.append(YoutubeVideo(

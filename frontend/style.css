@@ -969,6 +969,54 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   color: var(--gray2);
 }
 
+/* ── 강의 모듈 그룹 ── */
+.ll-module-section { border-top: 1px solid rgba(255,255,255,0.06); }
+.ll-module-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+}
+.ll-module-header:hover { background: rgba(255,255,255,0.04); }
+.ll-module-arrow {
+  font-size: 8px;
+  color: var(--gray2);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.ll-module-section.open .ll-module-arrow { transform: rotate(90deg); }
+.ll-module-name {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--gold2);
+  flex: 1;
+}
+.ll-module-count {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--gray2);
+}
+.ll-module-body { display: none; }
+.ll-module-section.open .ll-module-body { display: block; }
+
+/* 모듈 안 난이도 서브구분 */
+.ll-diff-sub { position: relative; padding-left: 4px; }
+.ll-diff-dot {
+  display: block;
+  width: 3px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+.ll-diff-dot.diff-1 { background: #3a8a3a; }
+.ll-diff-dot.diff-2 { background: var(--gold); }
+.ll-diff-dot.diff-3 { background: var(--red); }
+
 .ll-item {
   display: flex;
   align-items: flex-start;

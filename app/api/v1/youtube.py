@@ -300,11 +300,24 @@ async def get_channel_playlists_endpoint(
     finally:
         await crawler.close()
 
+    # 학습 관련 플리만 반환: 제목 또는 설명에 키워드가 있거나 동영상 수가 적당한 경우 포함
+    # 단, 명백히 음악/개인 플리(cover, vlog, shorts 등)는 제외
+    EXCLUDE_KW = {'shorts', 'vlog', 'cover', 'mv', 'music video', 'playlist', 'mix',
+                  'collection', '일상', '먹방', '여행', 'concert', 'live performance'}
+    filtered = [
+        pl for pl in playlists
+        if _classify_video(pl["title"], pl.get("description", "")) is not None
+        or (
+            not any(k in (pl["title"] + pl.get("description", "")).lower() for k in EXCLUDE_KW)
+            and pl.get("video_count", 0) >= 3
+        )
+    ]
+
     return {
         "channel_id":     cid,
         "channel_title":  channel_title,
-        "playlist_count": len(playlists),
-        "playlists":      playlists,
+        "playlist_count": len(filtered),
+        "playlists":      filtered,
     }
 
 
@@ -409,7 +422,7 @@ async def sync_playlists(playlist_ids: list[str]):
     finally:
         await crawler.close()
 
-    # inbox에 쌓인 영상 즉시 큐레이션 (키워드 매칭만이라 실시간 처리 가능)
+    # inbox에 쌓인 영상 즉시 큐레이션 (키워드 매칭 + 5분 이하 제외)
     promoted, discarded = await _promote_inbox_to_lectures()
     return {
         "result": result,

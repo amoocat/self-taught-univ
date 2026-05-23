@@ -46,6 +46,7 @@ class Lecture(Base):
     is_available: Mapped[bool] = mapped_column(Boolean, default=True)
     duration_sec: Mapped[int | None] = mapped_column(Integer)
     difficulty: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    module_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     course: Mapped["Course"] = relationship(back_populates="lectures")
