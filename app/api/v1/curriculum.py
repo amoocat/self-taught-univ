@@ -1,3 +1,6 @@
+import json
+import logging
+import openai
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -5,9 +8,12 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.models import Course, Lecture, LectureNote, Progress
 from app.core.errors import NotFoundError, get_or_404
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -40,6 +46,7 @@ class LectureOut(BaseModel):
     thumbnail_url: Optional[str] = None
     is_available: bool = True
     duration_sec: Optional[int] = None
+    difficulty: Optional[int] = None
     completed: bool = False
 
     class Config:
@@ -134,7 +141,8 @@ async def list_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
             category=l.category, tags=l.tags or [], prerequisites=l.prerequisites or [],
             youtube_url=l.youtube_url, youtube_video_id=l.youtube_video_id,
             thumbnail_url=l.thumbnail_url, is_available=l.is_available,
-            duration_sec=l.duration_sec, completed=l.id in completed_ids,
+            duration_sec=l.duration_sec, difficulty=l.difficulty,
+            completed=l.id in completed_ids,
         )
         for l in lectures
     ]
@@ -190,3 +198,63 @@ async def update_course(course_id: str, body: CourseUpdateIn, db: AsyncSession =
         course.objectives = body.objectives
     await db.commit()
     return {"ok": True}
+
+
+@router.delete("/lectures/{lecture_id}", status_code=200)
+async def delete_lecture(lecture_id: str, db: AsyncSession = Depends(get_db)):
+    lecture = await get_or_404(db, Lecture, lecture_id, "Lecture")
+    await db.delete(lecture)
+    await db.commit()
+    return {"ok": True, "deleted": lecture_id}
+
+
+@router.post("/backfill-difficulty", status_code=200)
+async def backfill_difficulty(reset: bool = False, db: AsyncSession = Depends(get_db)):
+    """GPT-4o-mini로 난이도 미배정(또는 전체) 강의에 difficulty(1~3) 일괄 배정.
+
+    reset=true: 기존 값 무시하고 전체 강의 재배정.
+    """
+    if reset:
+        lectures = (await db.execute(select(Lecture))).scalars().all()
+    else:
+        lectures = (
+            await db.execute(select(Lecture).where(Lecture.difficulty.is_(None)))
+        ).scalars().all()
+
+    if not lectures:
+        return {"updated": 0, "message": "모든 강의에 난이도가 이미 배정되어 있습니다."}
+
+    gpt = openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
+    BATCH = 30
+    updated = 0
+
+    for i in range(0, len(lectures), BATCH):
+        batch = lectures[i : i + BATCH]
+        payload = [{"id": l.id, "title": l.title, "category": l.category or ""} for l in batch]
+        prompt = (
+            "Assign a difficulty level to each AI/ML lecture based on its title.\n"
+            "1 = beginner (basic concepts, intro), 2 = intermediate, 3 = advanced (research-level, math-heavy)\n\n"
+            "Lectures:\n"
+            + json.dumps(payload, ensure_ascii=False)
+            + '\n\nReturn JSON: {"results": [{"id": "...", "difficulty": 1}]}'
+        )
+        try:
+            resp = await gpt.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+            )
+            raw = json.loads(resp.choices[0].message.content)
+            results = raw.get("results", [])
+            id_map = {r["id"]: r.get("difficulty", 2) for r in results}
+            for lec in batch:
+                lec.difficulty = id_map.get(lec.id, 2)
+                updated += 1
+        except Exception as e:
+            logger.error("backfill_difficulty batch %d error: %s", i // BATCH, e)
+            for lec in batch:
+                lec.difficulty = lec.difficulty or 2
+            updated += len(batch)
+
+    await db.commit()
+    return {"updated": updated}

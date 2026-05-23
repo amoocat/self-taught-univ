@@ -830,6 +830,47 @@ const _CODE_TAG_COLOR = {
 };
 let _curriculumLoaded = false;
 
+async function backfillDifficulty() {
+  const btn = document.getElementById('backfillBtn');
+  btn.disabled = true;
+  btn.textContent = 'AI 분석 중...';
+  try {
+    const res = await fetch('/api/v1/curriculum/backfill-difficulty?reset=true', { method: 'POST' });
+    const data = await res.json();
+    alert(data.message || `${data.updated}개 강의에 난이도가 배정되었습니다.`);
+    // 강의 패널 재로드
+    if (_currentCourseId) {
+      const lecsEl = document.getElementById('lecs-' + _currentCourseId);
+      if (lecsEl) lecsEl.dataset.loaded = '';
+      await loadCourse(_currentCourseId);
+    }
+  } catch (e) {
+    alert('난이도 배정 실패. 다시 시도해주세요.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '★ 난이도 AI 배정';
+  }
+}
+
+async function rescanPlaylists() {
+  const btn = document.getElementById('rescanBtn');
+  btn.disabled = true;
+  btn.textContent = '재스캔 중...';
+  try {
+    const res = await fetch('/api/v1/youtube/playlists/rescan-llm', { method: 'POST' });
+    const data = await res.json();
+    const llm = data.llm || {};
+    const newPl = Object.keys(data.inbox || {}).length;
+    alert(`재스캔 완료!\n\n플레이리스트: ${data.playlists_scanned}개\n새 강의 추가: ${llm.promoted || 0}개\n무관 영상 제외: ${llm.skipped || 0}개${llm.new_courses?.length ? '\n신규 강좌: ' + llm.new_courses.join(', ') : ''}`);
+    initCurriculum();
+  } catch (e) {
+    alert('재스캔 실패. 다시 시도해주세요.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↺ 플리 재스캔';
+  }
+}
+
 async function initCurriculum() {
   const grid = document.getElementById('curriculumGrid');
   try {
@@ -1408,7 +1449,40 @@ async function ytSaveFiltered() {
   } catch (e) {
     alert('저장 실패. 다시 시도해주세요.');
     btn.disabled = false;
-    btn.textContent = '강의로 저장';
+    btn.textContent = '키워드 저장';
+  }
+}
+
+async function ytSaveWithLLM() {
+  if (!_ytSelected || !_ytSelected.size) return;
+  const btn = document.getElementById('ytSaveLlmBtn');
+  const keyBtn = document.getElementById('ytSaveBtn');
+  btn.disabled = true;
+  keyBtn.disabled = true;
+  btn.textContent = 'AI 분류 중...';
+
+  try {
+    const res = await fetch('/api/v1/youtube/playlists/sync-llm', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify([..._ytSelected]),
+    });
+    const data = await res.json();
+    const llm = data.llm || {};
+    const promoted = llm.promoted || 0;
+    const skipped  = llm.skipped  || 0;
+    const newC     = (llm.new_courses || []).join(', ');
+    let msg = `AI 분류 완료!\n\n강의 저장: ${promoted}개`;
+    if (skipped)  msg += `\n무관 영상 제외: ${skipped}개`;
+    if (newC)     msg += `\n새 강좌 생성: ${newC}`;
+    ytModalClose();
+    alert(msg);
+    initCurriculum();
+  } catch (e) {
+    alert('AI 분류 실패. 다시 시도해주세요.');
+    btn.disabled = false;
+    keyBtn.disabled = false;
+    btn.textContent = 'AI 분류 저장';
   }
 }
 
@@ -1713,6 +1787,57 @@ function toggleLecturePanel() {
   }
 }
 
+const _DIFF_LABEL = { 1: '입문', 2: '중급', 3: '고급' };
+const _DIFF_CLASS = { 1: 'diff-1', 2: 'diff-2', 3: 'diff-3' };
+
+function _lecItemHtml(l) {
+  const hasvid  = !!l.youtube_url;
+  const unavail = l.is_available === false;
+  const thumbSrc = l.thumbnail_url
+    || (l.youtube_video_id ? `https://img.youtube.com/vi/${l.youtube_video_id}/mqdefault.jpg` : null);
+  const thumb = thumbSrc
+    ? `<img class="ll-thumb" src="${thumbSrc}" alt="" loading="lazy">`
+    : `<div class="ll-thumb ll-thumb-ph">${hasvid ? '▶' : ''}</div>`;
+  const dur = l.duration_sec ? `<span class="ll-dur">${_fmtDur(l.duration_sec)}</span>` : '';
+  return `<div class="ll-item${l.completed ? ' done' : ''}${unavail ? ' unavail' : ''}" data-lecture-id="${l.id}" onclick="loadLecture('${l.id}',this)">
+    ${thumb}
+    <div class="ll-content">
+      <div class="ll-num">Lec ${String(l.number).padStart(2,'0')}${unavail ? ' <span class="ll-unavail-badge">삭제됨</span>' : ''}</div>
+      <div class="ll-name">${l.title}</div>
+      <div class="ll-foot">${l.completed ? '<span class="ll-check">✓ 완료</span>' : ''}${dur}</div>
+    </div>
+  </div>`;
+}
+
+function _buildLecList(lectures, course) {
+  if (!lectures.length)
+    return `<div class="ln-empty" style="padding:12px 14px">강의가 없습니다</div>`;
+
+  const hasDiff = lectures.some(l => l.difficulty);
+  if (!hasDiff) {
+    // 난이도 미배정 — 단순 목록
+    return (course ? `<div class="ll-section">${course.source}</div>` : '')
+      + lectures.map(_lecItemHtml).join('');
+  }
+
+  // 난이도별 그룹핑
+  const groups = { 1: [], 2: [], 3: [] };
+  lectures.forEach(l => { (groups[l.difficulty] || groups[2]).push(l); });
+
+  return [1, 2, 3].map(d => {
+    if (!groups[d].length) return '';
+    const label = _DIFF_LABEL[d];
+    const cls   = _DIFF_CLASS[d];
+    return `<div class="ll-diff-section">
+      <div class="ll-diff-header ${cls}">
+        <span class="ll-diff-label">${label}</span>
+        <span class="ll-diff-count">${groups[d].length}강</span>
+      </div>
+      ${groups[d].map(_lecItemHtml).join('')}
+    </div>`;
+  }).join('');
+}
+
 async function loadCourse(courseId) {
   _currentCourseId = courseId;
   const course = _allCourses.find(c => c.id === courseId);
@@ -1725,29 +1850,7 @@ async function loadCourse(courseId) {
     _currentLectures = await lRes.json();
     lecsEl.dataset.loaded = '1';
 
-    lecsEl.innerHTML =
-      (course ? `<div class="ll-section">${course.source}</div>` : '') +
-      (_currentLectures.length === 0
-        ? `<div class="ln-empty" style="padding:12px 14px">강의가 없습니다</div>`
-        : _currentLectures.map((l, i) => {
-            const hasvid = !!l.youtube_url;
-            const unavail = l.is_available === false;
-            const thumbSrc = l.thumbnail_url
-              || (l.youtube_video_id ? `https://img.youtube.com/vi/${l.youtube_video_id}/mqdefault.jpg` : null);
-            const thumb = thumbSrc
-              ? `<img class="ll-thumb" src="${thumbSrc}" alt="" loading="lazy">`
-              : `<div class="ll-thumb ll-thumb-ph">${hasvid ? '▶' : ''}</div>`;
-            const dur = l.duration_sec ? `<span class="ll-dur">${_fmtDur(l.duration_sec)}</span>` : '';
-            return `<div class="ll-item${l.completed?' done':''}${unavail?' unavail':''}" data-lecture-id="${l.id}" onclick="loadLecture('${l.id}',this)">
-              ${thumb}
-              <div class="ll-content">
-                <div class="ll-num">Lec ${String(l.number).padStart(2,'0')}${unavail ? ' <span class="ll-unavail-badge">삭제됨</span>' : ''}</div>
-                <div class="ll-name">${l.title}</div>
-                <div class="ll-foot">${l.completed ? '<span class="ll-check">✓ 완료</span>' : ''}${dur}</div>
-              </div>
-            </div>`;
-          }).join('')
-      );
+    lecsEl.innerHTML = _buildLecList(_currentLectures, course);
 
     if (_currentLectures.length > 0) loadLecture(_currentLectures[0].id);
     return;

@@ -426,3 +426,89 @@ async def curate_inbox():
     """
     promoted, discarded = await _promote_inbox_to_lectures()
     return {"promoted": promoted, "discarded": discarded}
+
+
+@router.post("/inbox/classify-llm")
+async def classify_inbox_with_llm(db: AsyncSession = Depends(get_db)):
+    """GPT-4o-mini로 VideoInbox 영상을 분류 → 강좌 배정 + 난이도 설정 후 Lecture 승격.
+
+    기존 키워드 기반 /inbox/curate 대신 사용.
+    기존 강좌에 맞지 않으면 새 강좌 자동 생성.
+    """
+    from app.services.video_classifier import classify_and_promote
+    result = await classify_and_promote(db)
+    return result
+
+
+@router.post("/playlists/rescan-llm")
+async def rescan_known_playlists(db: AsyncSession = Depends(get_db)):
+    """기존 Lecture에 등록된 플레이리스트를 전부 재스캔.
+
+    이전에 키워드 필터로 걸러진 영상들을 LLM으로 다시 분류해서 누락 강의 추가.
+    이미 DB에 있는 youtube_video_id는 스킵.
+    """
+    from app.services.video_classifier import classify_and_promote
+
+    # 기존 Lecture에서 playlist_id 수집
+    rows = (await db.execute(
+        select(Lecture.playlist_id).where(Lecture.playlist_id.isnot(None)).distinct()
+    )).scalars().all()
+    playlist_ids = [r for r in rows if r]
+
+    if not playlist_ids:
+        return {"error": "등록된 플레이리스트가 없습니다."}
+
+    # 이미 DB에 있는 video_id 목록
+    existing_vids = set(
+        (await db.execute(
+            select(Lecture.youtube_video_id).where(Lecture.youtube_video_id.isnot(None))
+        )).scalars().all()
+    )
+
+    access_token = await _get_access_token()
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    inbox_result = {}
+    try:
+        for pid in playlist_ids:
+            videos = await crawler.fetch_playlist_videos(pid, filter_ai=False, access_token=access_token)
+            # 이미 있는 영상 제외 후 inbox에 저장
+            new_videos = [v for v in videos if v.video_id not in existing_vids]
+            saved = await _save_to_inbox(new_videos) if new_videos else 0
+            if saved:
+                inbox_result[pid] = {"fetched": len(videos), "new": saved}
+    finally:
+        await crawler.close()
+
+    classify_result = await classify_and_promote(db)
+    return {
+        "playlists_scanned": len(playlist_ids),
+        "inbox": inbox_result,
+        "llm": classify_result,
+    }
+
+
+@router.post("/playlists/sync-llm")
+async def sync_playlists_llm(playlist_ids: list[str], db: AsyncSession = Depends(get_db)):
+    """플레이리스트 영상 → VideoInbox 저장 → GPT-4o-mini LLM 분류 → Lecture 승격.
+
+    /playlists/sync (키워드 방식)의 LLM 대체 버전.
+    강좌 자동 배정 + 난이도 판단 + 신규 강좌 생성까지 처리.
+    """
+    from app.services.video_classifier import classify_and_promote
+
+    access_token = await _get_access_token()
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    inbox_result = {}
+    try:
+        for pid in playlist_ids:
+            videos = await crawler.fetch_playlist_videos(pid, filter_ai=False, access_token=access_token)
+            saved = await _save_to_inbox(videos)
+            inbox_result[pid] = {"fetched": len(videos), "inbox": saved}
+    finally:
+        await crawler.close()
+
+    classify_result = await classify_and_promote(db)
+    return {
+        "result": inbox_result,
+        "llm": classify_result,
+    }

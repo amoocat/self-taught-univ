@@ -354,7 +354,11 @@
             <h1 class="page-title">나의 AI 커리큘럼</h1>
             <p class="page-sub">서울대 · KAIST · MIT · Stanford 강의 기반으로 직접 설계한 인공지능 커리큘럼</p>
           </div>
-          <button class="yt-import-trigger" onclick="ytModalOpen()">▶ YouTube 플리 가져오기</button>
+          <div class="curriculum-actions">
+            <button class="yt-import-trigger" onclick="ytModalOpen()">▶ YouTube 플리 가져오기</button>
+            <button class="curr-tool-btn" id="rescanBtn" onclick="rescanPlaylists()" title="기존 플리 재스캔 + LLM 분류로 누락 강의 추가">↺ 플리 재스캔</button>
+            <button class="curr-tool-btn" id="backfillBtn" onclick="backfillDifficulty()" title="AI가 전체 강의 난이도(입문/중급/고급) 자동 배정">★ 난이도 AI 배정</button>
+          </div>
         </div>
       </div>
       <div class="pad">
@@ -455,7 +459,10 @@
           <div id="ytFilterResults" class="yt-modal-list yt-results-list"></div>
           <div class="yt-modal-footer">
             <span id="ytSaveCount" class="yt-sel-count"></span>
-            <button id="ytSaveBtn" class="yt-modal-btn-primary" onclick="ytSaveFiltered()">강의로 저장</button>
+            <div class="yt-save-btns">
+              <button id="ytSaveBtn" class="yt-modal-btn-secondary" onclick="ytSaveFiltered()">키워드 저장</button>
+              <button id="ytSaveLlmBtn" class="yt-modal-btn-primary" onclick="ytSaveWithLLM()">AI 분류 저장</button>
+            </div>
           </div>
         </div>
       </div>

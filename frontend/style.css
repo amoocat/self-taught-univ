@@ -940,6 +940,34 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   padding: 10px 12px 4px;
   border-top: 1px solid var(--cream3);
 }
+.ll-diff-section { border-top: 1px solid rgba(255,255,255,0.06); }
+.ll-diff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px 5px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.ll-diff-header.diff-1 { background: #0a1c10; border-left: 2px solid #3a8a3a; }
+.ll-diff-header.diff-2 { background: #1a1a08; border-left: 2px solid var(--gold); }
+.ll-diff-header.diff-3 { background: #1a0a0a; border-left: 2px solid var(--red); }
+.ll-diff-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.diff-1 .ll-diff-label { color: #5fc45f; }
+.diff-2 .ll-diff-label { color: var(--gold2); }
+.diff-3 .ll-diff-label { color: #e06060; }
+.ll-diff-count {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--gray2);
+}
 
 .ll-item {
   display: flex;
@@ -3468,6 +3496,22 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   white-space: nowrap;
 }
 .yt-import-trigger:hover { background: #ff0000; border-color: #ff0000; color: #fff; }
+.curriculum-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.curr-tool-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--gray2);
+  border: 1px solid var(--gray3);
+  font-family: var(--font-serif);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.curr-tool-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold2); }
+.curr-tool-btn:disabled { opacity: 0.45; cursor: default; }
 
 /* ── YouTube 모달 ── */
 .yt-modal-overlay {
@@ -3812,6 +3856,20 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 }
 .yt-modal-btn-primary:hover:not(:disabled) { background: var(--red); border-color: var(--red); color: #fff; }
 .yt-modal-btn-primary:disabled { opacity: 0.4; cursor: default; }
+.yt-modal-btn-secondary {
+  padding: 7px 18px;
+  background: transparent;
+  color: var(--gray2);
+  border: 1px solid var(--gray3);
+  font-family: var(--font-serif);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.yt-modal-btn-secondary:hover:not(:disabled) { border-color: var(--fg); color: var(--fg); }
+.yt-modal-btn-secondary:disabled { opacity: 0.4; cursor: default; }
+.yt-save-btns { display: flex; gap: 8px; align-items: center; }
 
 /* ────────────────────────────────
    COURSE DETAIL MODAL
