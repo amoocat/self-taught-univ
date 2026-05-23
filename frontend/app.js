@@ -1605,6 +1605,7 @@ let _currentLectureId = null;
 let _currentLectures = [];
 let _allCourses = [];
 let _pendingCourseId = null;
+let _lectureAccordionBuilt = false;
 
 function youtubeEmbedUrl(url) {
   const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
@@ -1617,7 +1618,6 @@ function gotoLecture(courseId) {
 }
 
 async function initLecture() {
-  // 과목 목록 캐시 (첫 방문 시 한 번만 fetch)
   if (_allCourses.length === 0) {
     try {
       const cRes = await fetch('/api/v1/curriculum/');
@@ -1627,35 +1627,108 @@ async function initLecture() {
     }
   }
 
+  // 아코디언 헤더는 최초 1회만 빌드
+  if (!_lectureAccordionBuilt) {
+    const listEl = document.getElementById('lectureList');
+    listEl.innerHTML =
+      `<div class="ll-panel-ctrl"><button class="ll-collapse-btn" id="llCollapseBtn" onclick="toggleLecturePanel()" title="패널 접기">‹</button></div>` +
+      _allCourses.map(c => `
+        <div class="ll-course-row" data-course-id="${c.id}" onclick="toggleCourse('${c.id}')">
+          <span class="ll-course-cat">${(c.category||'').toUpperCase()}</span>
+          <span class="ll-course-name">${c.title}</span>
+          <span class="ll-course-arrow">▶</span>
+        </div>
+        <div class="ll-course-lecs" id="lecs-${c.id}"></div>
+      `).join('');
+    _lectureAccordionBuilt = true;
+  }
+
   const targetId = _pendingCourseId || _currentCourseId
     || (_allCourses.length > 0 ? _allCourses[0].id : null);
   _pendingCourseId = null;
+  if (targetId) await openCourse(targetId);
+}
 
-  if (targetId) await loadCourse(targetId);
+async function toggleCourse(courseId) {
+  const lecsEl = document.getElementById('lecs-' + courseId);
+  if (!lecsEl) return;
+  if (lecsEl.classList.contains('open')) {
+    lecsEl.classList.remove('open');
+    const row = document.querySelector(`.ll-course-row[data-course-id="${courseId}"]`);
+    if (row) row.classList.remove('open');
+  } else {
+    await openCourse(courseId);
+  }
+}
+
+async function openCourse(courseId) {
+  // 다른 열린 섹션 닫기
+  document.querySelectorAll('.ll-course-lecs.open').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.ll-course-row.open').forEach(el => el.classList.remove('open'));
+
+  const row = document.querySelector(`.ll-course-row[data-course-id="${courseId}"]`);
+  const lecsEl = document.getElementById('lecs-' + courseId);
+  if (!row || !lecsEl) return;
+
+  row.classList.add('open');
+  lecsEl.classList.add('open');
+
+  // 열린 과목으로 스크롤
+  row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+  if (!lecsEl.dataset.loaded) {
+    await loadCourse(courseId);
+  } else {
+    _currentCourseId = courseId;
+    // 이미 로드된 강의들로 _currentLectures 복원
+    const items = lecsEl.querySelectorAll('.ll-item');
+    if (items.length > 0 && _currentCourseId !== courseId) {
+      // 첫 강의 로드
+      const firstId = items[0].dataset.lectureId;
+      if (firstId) loadLecture(firstId, items[0]);
+    }
+  }
+}
+
+let _savedLecC1 = null;
+
+function toggleLecturePanel() {
+  const layout = document.getElementById('lectureLayout');
+  const list   = document.getElementById('lectureList');
+  const btn    = document.getElementById('llCollapseBtn');
+  if (!layout || !list) return;
+
+  const collapsed = list.classList.contains('ll-collapsed');
+  if (collapsed) {
+    list.classList.remove('ll-collapsed');
+    layout.style.setProperty('--lec-c1', _savedLecC1 || '200px');
+    if (btn) btn.textContent = '‹';
+    if (btn) btn.title = '패널 접기';
+  } else {
+    _savedLecC1 = getComputedStyle(layout).getPropertyValue('--lec-c1').trim() || '200px';
+    layout.style.setProperty('--lec-c1', '28px');
+    list.classList.add('ll-collapsed');
+    if (btn) btn.textContent = '›';
+    if (btn) btn.title = '패널 펼치기';
+  }
 }
 
 async function loadCourse(courseId) {
   _currentCourseId = courseId;
   const course = _allCourses.find(c => c.id === courseId);
-  const listEl = document.getElementById('lectureList');
+  const lecsEl = document.getElementById('lecs-' + courseId);
+  if (!lecsEl) return;
 
   try {
     const lRes = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
     if (!lRes.ok) throw new Error('lectures fetch failed');
     _currentLectures = await lRes.json();
+    lecsEl.dataset.loaded = '1';
 
-    const courseSelect = _allCourses.length > 1
-      ? `<div class="ll-course-select"><select onchange="loadCourse(this.value)">${
-          _allCourses.map(c =>
-            `<option value="${c.id}"${c.id===courseId?' selected':''}>${c.code} · ${c.title}</option>`
-          ).join('')
-        }</select></div>`
-      : `<div class="ll-head">${course ? course.title : ''}</div>`;
-
-    listEl.innerHTML = courseSelect +
+    lecsEl.innerHTML =
       (course ? `<div class="ll-section">${course.source}</div>` : '') +
       (_currentLectures.length === 0
-        ? `<div class="ln-empty">강의가 없습니다</div>`
+        ? `<div class="ln-empty" style="padding:12px 14px">강의가 없습니다</div>`
         : _currentLectures.map((l, i) => {
             const hasvid = !!l.youtube_url;
             const unavail = l.is_available === false;
@@ -1665,7 +1738,7 @@ async function loadCourse(courseId) {
               ? `<img class="ll-thumb" src="${thumbSrc}" alt="" loading="lazy">`
               : `<div class="ll-thumb ll-thumb-ph">${hasvid ? '▶' : ''}</div>`;
             const dur = l.duration_sec ? `<span class="ll-dur">${_fmtDur(l.duration_sec)}</span>` : '';
-            return `<div class="ll-item${i===0?' active':''}${l.completed?' done':''}${unavail?' unavail':''}" data-lecture-id="${l.id}" onclick="loadLecture('${l.id}',this)">
+            return `<div class="ll-item${l.completed?' done':''}${unavail?' unavail':''}" data-lecture-id="${l.id}" onclick="loadLecture('${l.id}',this)">
               ${thumb}
               <div class="ll-content">
                 <div class="ll-num">Lec ${String(l.number).padStart(2,'0')}${unavail ? ' <span class="ll-unavail-badge">삭제됨</span>' : ''}</div>
@@ -1676,15 +1749,12 @@ async function loadCourse(courseId) {
           }).join('')
       );
 
-    if (_currentLectures.length > 0) {
-      const first = _currentLectures[0];
-      loadLecture(first.id);
-    }
+    if (_currentLectures.length > 0) loadLecture(_currentLectures[0].id);
     return;
   } catch (e) {
     console.warn('loadCourse failed', e);
+    lecsEl.innerHTML = '<div class="ln-empty" style="padding:12px 14px">강의 목록을 불러올 수 없습니다</div>';
   }
-  listEl.innerHTML = `<div class="ln-empty">강의 목록을 불러올 수 없습니다</div>`;
 }
 
 async function loadLecture(id, clickedEl) {
