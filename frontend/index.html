@@ -755,51 +755,17 @@
           </div>
         </div>
 
-        <div class="resizer" data-target="--blog-c3" data-min="200" data-max="500"></div>
-
-        <!-- 아티클 뷰어 -->
-        <div class="blog-reader">
-          <div class="reader-head">아티클 요약</div>
-          <div class="reader-article" id="blogReaderContent">
-            <div class="ra-source badge-personal" style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:#8b1a1a;margin-bottom:4px">Andrej Karpathy</div>
-            <div class="ra-title">Let's build GPT: from scratch, in code, spelled out.</div>
-            <div class="ra-meta">2025.05.08 · karpathy.ai</div>
-
-            <div class="ra-summary-label">AI 요약</div>
-            <div class="ra-summary">
-              Transformer 아키텍처를 처음부터 PyTorch로 구현하는 튜토리얼. 바이그램 언어 모델에서 시작해 self-attention, multi-head attention, feedforward layer, residual connection을 단계적으로 추가하며 GPT를 완성합니다.
-            </div>
-
-            <div class="ra-kw-section">
-              <div class="ra-kw-label">핵심 키워드</div>
-              <div class="ra-kw-chips">
-                <span class="ra-kw-chip" onclick="goto('lecture')">Self-Attention</span>
-                <span class="ra-kw-chip" onclick="goto('lecture')">Transformer</span>
-                <span class="ra-kw-chip" onclick="goto('lecture')">Residual Connection</span>
-                <span class="ra-kw-chip" onclick="goto('graph')">Language Model</span>
-                <span class="ra-kw-chip" onclick="goto('lecture')">LayerNorm</span>
-              </div>
-            </div>
-
-            <div class="ra-kw-section">
-              <div class="ra-kw-label">연관 과목</div>
-              <div class="ra-kw-chips">
-                <span class="ra-kw-chip" onclick="goto('lecture')" style="border-color:var(--navy);color:var(--navy)">딥러닝 DL-401</span>
-                <span class="ra-kw-chip" onclick="goto('lecture')" style="border-color:#2a5a2a;color:#2a5a2a">NLP NLP-403</span>
-                <span class="ra-kw-chip" onclick="goto('lecture')" style="border-color:#0a1628;color:#0a1628">선형대수 MATH-101</span>
-              </div>
-            </div>
-
-            <div class="ra-actions">
-              <button class="ra-action-btn gold" onclick="goto('mynotes')">✎ 내 노트에 정리하기</button>
-              <button class="ra-action-btn" onclick="goto('papers')">📄 관련 논문 보기 (Attention Is All You Need)</button>
-              <button class="ra-action-btn" onclick="goto('chatbot')">★ AI 학습봇에서 질문하기</button>
-              <button class="ra-action-btn" onclick="goto('graph')">◎ 지식 그래프에서 연결 보기</button>
-            </div>
-          </div>
-        </div>
-
       </div>
+
+      <!-- 아티클 상세 뷰 (클릭 시 표시) -->
+      <div class="blog-detail-view" id="blogDetailView">
+        <div class="blog-detail-nav">
+          <button class="blog-detail-back" onclick="closeBlogDetail()">← 목록으로</button>
+          <span class="blog-detail-source-badge" id="blogDetailSourceBadge"></span>
+        </div>
+        <div class="blog-detail-body" id="blogDetailBody"></div>
+      </div>
+
     </div>
 
     <!-- ══ P6: KNOWLEDGE GRAPH ══ -->
@@ -814,6 +780,7 @@
           <button class="graph-ctrl-btn" onclick="graphZoomIn()">＋</button>
           <button class="graph-ctrl-btn" onclick="graphZoomOut()">－</button>
           <button class="graph-ctrl-btn" onclick="graphReset()">⟳</button>
+          <button class="graph-ctrl-btn graph-gen-btn" id="genGraphBtn" onclick="generateGraphNodes()" title="AI로 강좌에서 개념 노드 생성">AI</button>
         </div>
         <span class="graph-hint">노드 클릭 → 노트 보기 &nbsp;·&nbsp; 드래그 가능</span>
       </div>

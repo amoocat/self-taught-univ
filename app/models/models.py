@@ -141,6 +141,7 @@ class GraphNode(Base):
     category: Mapped[str] = mapped_column(String(50))
     note_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("my_notes.id"), nullable=True)
     description: Mapped[str | None] = mapped_column(Text)
+    has_content: Mapped[bool] = mapped_column(Boolean, default=False)
 
     source_edges: Mapped[list["GraphEdge"]] = relationship(foreign_keys="GraphEdge.source_id", back_populates="source")
     target_edges: Mapped[list["GraphEdge"]] = relationship(foreign_keys="GraphEdge.target_id", back_populates="target")

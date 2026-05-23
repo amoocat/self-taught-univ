@@ -686,15 +686,16 @@ async function drawGraph() {
 
   node.append('circle')
     .attr('r', d => d.r)
-    .attr('fill', '#fdfcfa')
-    .attr('stroke', d => d.color)
-    .attr('stroke-width', 2);
+    .attr('fill', d => d.connected ? '#fdfcfa' : 'transparent')
+    .attr('stroke', d => d.connected ? d.color : '#aaa')
+    .attr('stroke-width', d => d.connected ? 2 : 1)
+    .attr('stroke-dasharray', d => d.connected ? null : '4,2');
 
   node.append('text')
     .text(d => d.label)
     .attr('font-size', d => d.r > 22 ? 12 : 10)
     .attr('font-weight', '700')
-    .attr('fill', d => d.color)
+    .attr('fill', d => d.connected ? d.color : '#aaa')
     .attr('font-family', 'Noto Sans KR, sans-serif')
     .attr('dominant-baseline', 'central')
     .attr('text-anchor', 'middle');
@@ -788,6 +789,27 @@ function graphReset()   {
     d3Zoom.transform,
     d3.zoomIdentity.translate(W/2, H/2).scale(1).translate(-W/2, -H/2)
   );
+}
+
+async function generateGraphNodes() {
+  const btn = document.getElementById('genGraphBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const res = await fetch('/api/v1/graph/generate', { method: 'POST' });
+    const data = await res.json();
+    // 그래프 재초기화
+    graphInitialized = false;
+    if (d3Svg) { d3Svg.selectAll('*').remove(); d3Svg = null; }
+    await drawGraph();
+    alert(data.message || `노드 생성 완료`);
+  } catch (e) {
+    alert('노드 생성 실패: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'AI';
+  }
 }
 
 /* ════════════════════════════════════════
@@ -1551,7 +1573,7 @@ async function initBlog() {
         list.innerHTML = posts.map((p, i) => {
           const kw1 = p.keywords[0] || '';
           const kw2 = p.keywords[1] || '';
-          return `<div class="feed-item${i===0?' active':''}" onclick="selectPost(this,${i})">
+          return `<div class="feed-item" onclick="selectPost(this,${i})">
             <div class="feed-item-meta">
               <span class="feed-source-badge ${p.badge}">${p.source}</span>
               <span class="feed-date">${p.date}</span>
@@ -1566,7 +1588,6 @@ async function initBlog() {
             </div>
           </div>`;
         }).join('');
-        if (posts.length > 0) selectPost(list.querySelector('.feed-item'), 0);
         return;
       }
     }
@@ -1898,7 +1919,7 @@ function goto(page, pushState = true) {
 
   if (page === 'graph')      drawGraph();
   if (page === 'mynotes')    { if (!obsEditor) obsInit(); }
-  if (page === 'blog')       initBlog();
+  if (page === 'blog')       { initBlog(); closeBlogDetail(); }
   if (page === 'curriculum') { initCurriculum(); }
   if (page === 'lecture')    initLecture();
   if (page === 'papers')     initPapers();
@@ -2021,7 +2042,7 @@ function _renderBlogFeed() {
   list.innerHTML = posts.map((p, i) => {
     const kw1 = (p.keywords || [])[0] || '';
     const kw2 = (p.keywords || [])[1] || '';
-    return `<div class="feed-item${i===0?' active':''}" onclick="selectPost(this,${BLOG_POSTS.indexOf(p)})">
+    return `<div class="feed-item" onclick="selectPost(this,${BLOG_POSTS.indexOf(p)})">
       <div class="feed-item-meta">
         <span class="feed-source-badge ${p.badge}">${p.source}</span>
         <span class="feed-date">${p.date}</span>
@@ -2037,7 +2058,6 @@ function _renderBlogFeed() {
     </div>`;
   }).join('');
 
-  if (posts.length > 0) selectPost(list.querySelector('.feed-item'), BLOG_POSTS.indexOf(posts[0]));
 }
 
 function filterBlog(type, el) {
@@ -2060,30 +2080,46 @@ function searchBlog(q) {
 }
 
 function selectPost(el, idx) {
-  document.querySelectorAll('.feed-item').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  showBlogDetail(idx);
+}
+
+function showBlogDetail(idx) {
   const p = BLOG_POSTS[idx];
   if (!p) return;
-  const kws     = (p.keywords || []).map(k => `<span class="ra-kw-chip" onclick="goto('graph')">${k}</span>`).join('');
-  const courses = (p.courses  || []).map(([name,color]) => `<span class="ra-kw-chip" style="border-color:${color};color:${color}" onclick="goto('lecture')">${name}</span>`).join('');
+
+  const kws = (p.keywords || []).map(k =>
+    `<span class="ra-kw-chip" onclick="goto('graph')">${k}</span>`
+  ).join('');
+  const courses = (p.courses || []).map(([name, color]) =>
+    `<span class="ra-kw-chip" style="border-color:${color};color:${color}" onclick="goto('lecture')">${name}</span>`
+  ).join('');
   const paperBtn = p.related_paper
     ? `<button class="ra-action-btn" onclick="goto('papers')">📄 관련 논문: ${p.related_paper}</button>`
     : '';
-  document.getElementById('blogReaderContent').innerHTML = `
-    <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:${p.color||'#0a1628'};margin-bottom:4px">${p.source}</div>
-    <div class="ra-title">${p.title}</div>
-    <div class="ra-meta">${p.date}</div>
+
+  document.getElementById('blogDetailSourceBadge').textContent = p.source || '';
+  document.getElementById('blogDetailBody').innerHTML = `
+    <div class="ra-title" style="font-size:22px;line-height:1.35;margin-bottom:6px">${p.title}</div>
+    <div class="ra-meta" style="margin-bottom:20px">${p.date}${p.url ? ` · <a href="${p.url}" target="_blank" style="color:var(--gold2);text-decoration:underline">원문 링크</a>` : ''}</div>
     <div class="ra-summary-label">AI 요약</div>
-    <div class="ra-summary">${p.summary || ''}</div>
-    <div class="ra-kw-section"><div class="ra-kw-label">핵심 키워드</div><div class="ra-kw-chips">${kws}</div></div>
+    <div class="ra-summary" style="margin-bottom:20px">${p.summary || '요약 없음'}</div>
+    ${kws ? `<div class="ra-kw-section"><div class="ra-kw-label">핵심 키워드</div><div class="ra-kw-chips">${kws}</div></div>` : ''}
     ${courses ? `<div class="ra-kw-section"><div class="ra-kw-label">연관 과목</div><div class="ra-kw-chips">${courses}</div></div>` : ''}
-    <div class="ra-actions">
+    <div class="ra-actions" style="margin-top:24px">
       ${p.url ? `<button class="ra-action-btn" onclick="window.open('${p.url}','_blank')">🔗 원문 보기</button>` : ''}
       <button class="ra-action-btn gold" onclick="goto('mynotes')">✎ 내 노트에 정리하기</button>
       ${paperBtn}
       <button class="ra-action-btn" onclick="goto('chatbot')">★ AI 학습봇에서 질문하기</button>
       <button class="ra-action-btn" onclick="goto('graph')">◎ 지식 그래프에서 연결 보기</button>
     </div>`;
+
+  document.getElementById('blogLayout').style.display = 'none';
+  document.getElementById('blogDetailView').classList.add('active');
+}
+
+function closeBlogDetail() {
+  document.getElementById('blogDetailView').classList.remove('active');
+  document.getElementById('blogLayout').style.display = '';
 }
 
 document.addEventListener('click', e => {
@@ -2400,7 +2436,7 @@ function initResizers() {
   const layouts = {
     lectureLayout: ['--lec-c1', '--lec-c3'],
     obsLayout:     ['--obs-c1', '--obs-c3'],
-    blogLayout:    ['--blog-c1', '--blog-c3'],
+    blogLayout:    ['--blog-c1'],
   };
   Object.entries(layouts).forEach(([id, vars]) => {
     const el = document.getElementById(id);
@@ -2426,11 +2462,15 @@ function _rsDown(e) {
   Object.assign(_rs, { layout, varName, startX: e.clientX, startVal: current,
     min: +resizer.dataset.min || 120, max: +resizer.dataset.max || 600 });
 
+  // 중복 리스너 방지 — 항상 제거 후 재등록
+  document.removeEventListener('mousemove', _rsMove);
+  document.removeEventListener('mouseup', _rsUp);
   document.addEventListener('mousemove', _rsMove);
   document.addEventListener('mouseup', _rsUp);
 }
 
 function _rsMove(e) {
+  if (!_rs.layout) return;
   const { layout, varName, startX, startVal, min, max } = _rs;
   const val = Math.min(max, Math.max(min, startVal + (e.clientX - startX)));
   layout.style.setProperty(varName, val + 'px');
