@@ -301,21 +301,12 @@ async def get_channel_playlists_endpoint(
     finally:
         await crawler.close()
 
-    # 학습 관련 플리만 반환: 제목 또는 설명에 키워드가 있거나 동영상 수가 적당한 경우 포함
-    # 단, 명백히 음악/개인 플리(cover, vlog, shorts 등)는 제외
-    EXCLUDE_KW = {'shorts', 'vlog', 'cover', 'mv', 'music video', 'playlist', 'mix',
-                  'collection', '일상', '먹방', '여행', 'concert', 'live performance'}
+    # 학습 카테고리가 감지된 플리만 반환
     filtered = []
     for pl in playlists:
         cat = _classify_video(pl["title"], pl.get("description", ""))
-        combined = (pl["title"] + pl.get("description", "")).lower()
         if cat is not None:
             filtered.append({**pl, "category": cat})
-        elif (
-            not any(k in combined for k in EXCLUDE_KW)
-            and pl.get("video_count", 0) >= 3
-        ):
-            filtered.append({**pl, "category": None})
 
     return {
         "channel_id":     cid,
