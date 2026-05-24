@@ -1831,7 +1831,8 @@ async function openCourseGraph(courseId) {
       <span class="course-tag ${tagCls}">${course.code}</span>
       <span class="cg-title">${_esc(course.title)}</span>
       <span class="cg-meta">${course.lecture_count}강 · ${pct}% 완료</span>
-      <button class="cg-edit-btn" onclick="courseModalOpen('${course.id}')">편집</button>
+      <button class="cg-edit-btn" onclick="courseModalOpen('${course.id}')">과목 정보</button>
+      <button class="cg-edit-btn cg-arrange-btn" id="cgArrangeBtn" onclick="cgToggleArrange()">✎ 편집</button>
     </div>
     <div class="cg-prog-bar"><div class="cg-prog-fill" style="width:${pct}%"></div></div>
     <div id="cgNodesWrap" class="cg-nodes-wrap"><div class="cd-loading">불러오는 중...</div></div>
@@ -1919,9 +1920,26 @@ function cgToggleNode(idx) {
   document.querySelector(`.cg-node[data-idx="${idx}"]`)?.classList.toggle('open');
 }
 
+function cgToggleArrange() {
+  const wrap = document.getElementById('cgNodesWrap');
+  const btn  = document.getElementById('cgArrangeBtn');
+  if (!wrap || !btn) return;
+  const editing = wrap.classList.toggle('cg-arrange-mode');
+  btn.textContent = editing ? '✔ 완료' : '✎ 편집';
+  btn.classList.toggle('active', editing);
+  // 편집 모드 진입 시 모든 노드 열기
+  if (editing) {
+    document.querySelectorAll('.cg-node').forEach(n => n.classList.add('open'));
+  }
+}
+
 let _cgLecDragEl = null;
 
 function _cgLecDragStart(e, el) {
+  if (!document.getElementById('cgNodesWrap')?.classList.contains('cg-arrange-mode')) {
+    e.preventDefault();
+    return;
+  }
   _cgLecDragEl = el;
   e.dataTransfer.effectAllowed = 'move';
   el.classList.add('cg-lec-dragging');
