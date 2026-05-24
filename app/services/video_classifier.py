@@ -10,11 +10,21 @@ GPT-4o-mini가 영상 제목 + 설명을 읽고:
 import json
 import logging
 import openai
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.core.config import settings
 from app.models.models import Course, Lecture, VideoInbox
+
+
+def _parse_yt_date(s: str | None) -> datetime | None:
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=None)
+    except Exception:
+        return None
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +175,7 @@ async def classify_and_promote(db: AsyncSession) -> dict:
             thumbnail_url=v.thumbnail_url,
             playlist_id=v.playlist_id,
             duration_sec=v.duration_sec,
+            published_at=_parse_yt_date(v.published_at),
             is_available=True,
         ))
         promoted += 1

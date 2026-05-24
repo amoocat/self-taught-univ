@@ -47,7 +47,9 @@ class Lecture(Base):
     duration_sec: Mapped[int | None] = mapped_column(Integer)
     difficulty: Mapped[int | None] = mapped_column(Integer, nullable=True)
     module_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    meta_source: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "manual" | "llm" | null
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    crawled_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     course: Mapped["Course"] = relationship(back_populates="lectures")
     lecture_note: Mapped["LectureNote | None"] = relationship(back_populates="lecture")

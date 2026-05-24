@@ -45,6 +45,9 @@
 - [ ] 정기 동기화 — 이미 등록한 플리에 새 영상 추가됐을 때 자동 반영 (일 1회 배치)
 - [ ] GPT 기반 플리 관련도 점수 — 플리 제목+설명으로 학습 관련도 점수 → 상단 정렬 (v2)
 
+## 참고 자료 추가
+- [ ] medium 계정도 연동해서 관심 및 구독중인 포스팅 크롤링하기
+
 ---
 
 ## 🤖 MCP 개발 (학습봇용) — 우선순위 순
@@ -123,6 +126,15 @@
 ---
 
 ## ✅ 완료된 것들
+
+### 강의 메타데이터 고도화 (이번 세션)
+- [x] `lectures.created_at` → `crawled_at` 리네임 + `published_at` 컬럼 추가 (migration 0011)
+- [x] 기존 강의 282개 `published_at` YouTube API 백필
+- [x] `lectures.meta_source` 컬럼 추가 — `"manual"` / `"llm"` / null (migration 0012)
+- [x] 전체 350개 강의 module_name + difficulty 직접 배정 (meta_source="manual")
+- [x] `batch-meta` 엔드포인트: `meta_source` 필드 + `?source=` 쿼리 파라미터 지원
+- [x] `backfill_metadata` (GPT) 자동으로 `meta_source="llm"` 기록
+- [x] `video_classifier.py` / `scheduler.py`: 신규 강의 생성 시 `published_at` 저장
 
 ### YouTube 연동 (이번 작업)
 - [x] 플레이리스트 URL 직접 입력 — `GET /api/v1/youtube/playlist-meta`

@@ -48,6 +48,7 @@ class LectureOut(BaseModel):
     duration_sec: Optional[int] = None
     difficulty: Optional[int] = None
     module_name: Optional[str] = None
+    meta_source: Optional[str] = None
     completed: bool = False
 
     class Config:
@@ -143,7 +144,8 @@ async def list_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
             youtube_url=l.youtube_url, youtube_video_id=l.youtube_video_id,
             thumbnail_url=l.thumbnail_url, is_available=l.is_available,
             duration_sec=l.duration_sec, difficulty=l.difficulty,
-            module_name=l.module_name, completed=l.id in completed_ids,
+            module_name=l.module_name, meta_source=l.meta_source,
+            completed=l.id in completed_ids,
         )
         for l in lectures
     ]
@@ -199,6 +201,42 @@ async def update_course(course_id: str, body: CourseUpdateIn, db: AsyncSession =
         course.objectives = body.objectives
     await db.commit()
     return {"ok": True}
+
+
+class LectureMetaPatch(BaseModel):
+    id: str
+    module_name: Optional[str] = None
+    difficulty: Optional[int] = None
+    meta_source: Optional[str] = None
+
+
+@router.patch("/lectures/batch-meta", status_code=200)
+async def batch_update_lecture_meta(
+    items: list[LectureMetaPatch],
+    source: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """강의 module_name / difficulty / meta_source 일괄 업데이트.
+
+    source 쿼리 파라미터로 meta_source를 일괄 지정 가능 (예: ?source=manual).
+    각 item에 meta_source 필드가 있으면 item별 값 우선.
+    """
+    ids = [i.id for i in items]
+    lectures = (await db.execute(select(Lecture).where(Lecture.id.in_(ids)))).scalars().all()
+    lec_map = {l.id: l for l in lectures}
+    for item in items:
+        lec = lec_map.get(item.id)
+        if not lec:
+            continue
+        if item.module_name is not None:
+            lec.module_name = item.module_name
+        if item.difficulty is not None:
+            lec.difficulty = item.difficulty
+        effective_source = item.meta_source if item.meta_source is not None else source
+        if effective_source is not None:
+            lec.meta_source = effective_source
+    await db.commit()
+    return {"updated": len(lectures)}
 
 
 @router.delete("/lectures/{lecture_id}", status_code=200)
@@ -281,12 +319,14 @@ async def backfill_metadata(reset: bool = False, db: AsyncSession = Depends(get_
                 r = id_map.get(lec.id, {})
                 lec.module_name = r.get("module_name") or lec.module_name or "기타"
                 lec.difficulty  = r.get("difficulty") or lec.difficulty or 2
+                lec.meta_source = "llm"
                 updated += 1
         except Exception as e:
             logger.error("backfill_metadata course %s error: %s", course_id, e)
             for lec in lectures:
                 lec.module_name = lec.module_name or "기타"
                 lec.difficulty  = lec.difficulty or 2
+                lec.meta_source = lec.meta_source or "llm"
             updated += len(lectures)
 
     await db.commit()

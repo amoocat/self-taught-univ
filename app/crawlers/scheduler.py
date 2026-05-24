@@ -18,6 +18,7 @@ from app.crawlers.blog import BlogCrawler
 from app.crawlers.arxiv import ArxivCrawler
 from app.models.models import FeedItem, Paper, Lecture, Course, VideoInbox
 from app.services.tag_service import extract_all
+from app.services.video_classifier import _parse_yt_date
 
 logger = logging.getLogger(__name__)
 
@@ -389,6 +390,7 @@ async def _save_lectures(videos) -> int:
                     thumbnail_url=v.thumbnail_url or None,
                     playlist_id=v.playlist_id or None,
                     duration_sec=v.duration_sec,
+                    published_at=_parse_yt_date(v.published_at),
                 ))
                 saved += 1
 
