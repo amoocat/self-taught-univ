@@ -1259,6 +1259,141 @@ async function ytDiscover() {
   await ytDiscoverRun(document.getElementById('ytDiscoverBtn'));
 }
 
+async function ytAutoImport() {
+  const btn = document.getElementById('ytAutoImportBtn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'AI 분석 중...';
+
+  try {
+    const res  = await fetch('/api/v1/youtube/discover/auto-import', { method: 'POST' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail || 'AI 자동 가져오기 실패. YouTube 계정 연결을 확인해주세요.');
+      return;
+    }
+
+    if (!data.selected) {
+      alert(data.message || '선택된 플레이리스트가 없습니다.');
+      return;
+    }
+
+    const plNames = (data.selected_playlists || []).map(p => `• ${p.title} (${p.category})`).join('\n');
+    const promoted = data.curated?.promoted ?? 0;
+    alert(
+      `AI가 ${data.discovered}개 플리 중 ${data.selected}개를 선택했습니다.\n\n`
+      + plNames
+      + `\n\n→ 새 강의 ${promoted}개 추가됨`
+    );
+  } catch (e) {
+    alert('네트워크 오류. 다시 시도해주세요.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
+/* ── 렉쳐 페이지 탭 전환 ── */
+
+function switchLecTab(n) {
+  const courses = document.getElementById('llTabCourses');
+  const mods    = document.getElementById('llTabModules');
+  const tab1    = document.getElementById('llTab1');
+  const tab2    = document.getElementById('llTab2');
+  if (!courses || !mods) return;
+
+  if (_activeTab === n) {
+    // 같은 탭 재클릭 → 접기/펼치기 토글
+    const content = n === 1 ? courses : mods;
+    const nowHidden = content.style.display === 'none';
+    content.style.display = nowHidden ? '' : 'none';
+    if (tab1) tab1.classList.toggle('active', n === 1 && nowHidden);
+    if (tab2) tab2.classList.toggle('active', n === 2 && nowHidden);
+    _activeTab = nowHidden ? n : null;
+    return;
+  }
+
+  _activeTab = n;
+  if (tab1) tab1.classList.toggle('active', n === 1);
+  if (tab2) tab2.classList.toggle('active', n === 2);
+  courses.style.display = n === 1 ? '' : 'none';
+  mods.style.display    = n === 2 ? '' : 'none';
+
+  if (n === 2 && !mods.dataset.built) _buildModuleTab();
+}
+
+async function _buildModuleTab() {
+  const el = document.getElementById('llTabModules');
+  if (!el) return;
+  el.innerHTML = '<div class="ll-mod-loading">모듈 목록 불러오는 중...</div>';
+
+  const groups = [];
+  for (const c of _allCourses) {
+    let lecs = _courseLectures[c.id];
+    if (!lecs) {
+      try {
+        const r = await fetch(`/api/v1/curriculum/${c.id}/lectures`);
+        lecs = r.ok ? await r.json() : [];
+      } catch { lecs = []; }
+      _courseLectures[c.id] = lecs;
+    }
+
+    const modOrder = [];
+    const modMap   = {};
+    const modDiff  = {};
+    lecs.forEach(l => {
+      const m = l.module_name;
+      if (!m) return;
+      if (!modMap[m]) { modMap[m] = 0; modOrder.push(m); modDiff[m] = []; }
+      modMap[m]++;
+      if (l.difficulty) modDiff[m].push(l.difficulty);
+    });
+
+    if (!modOrder.length) continue;
+    groups.push({ course: c, modOrder, modMap, modDiff });
+  }
+
+  if (!groups.length) {
+    el.innerHTML = '<div class="ll-mod-loading">모듈 정보가 없습니다</div>';
+    el.dataset.built = '1';
+    return;
+  }
+
+  el.innerHTML = groups.map(({ course, modOrder, modMap, modDiff }) =>
+    `<div class="ll-mod-group">
+      <div class="ll-mod-group-hdr">${(course.category||'').toUpperCase()} · ${_esc(course.title)}</div>
+      ${modOrder.map(m => {
+        const diffs = modDiff[m];
+        const avgD  = diffs.length ? Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length) : 2;
+        const dc    = _DIFF_CLASS[avgD] || 'diff-2';
+        const safeM = m.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<div class="ll-mod-item" onclick="openCourseModule('${course.id}','${safeM}')">
+          <span class="ll-mod-dot-sm ${dc}"></span>
+          <span class="ll-mod-name">${_esc(m)}</span>
+          <span class="ll-mod-count">${modMap[m]}강</span>
+        </div>`;
+      }).join('')}
+    </div>`
+  ).join('');
+  el.dataset.built = '1';
+}
+
+async function openCourseModule(courseId, moduleName) {
+  switchLecTab(1);
+  await openCourse(courseId);
+  const lecsEl = document.getElementById('lecs-' + courseId);
+  if (!lecsEl) return;
+  lecsEl.querySelectorAll('.ll-module-section').forEach(sec => {
+    const nameEl = sec.querySelector('.ll-module-name');
+    if (nameEl && nameEl.textContent.trim() === moduleName) {
+      lecsEl.querySelectorAll('.ll-module-section').forEach(s => s.classList.remove('open'));
+      sec.classList.add('open');
+      sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  });
+}
+
 async function ytDiscoverRun(btn) {
   const origText = btn.textContent;
   btn.disabled    = true;
@@ -1582,6 +1717,60 @@ let _cdEditing  = false;
 let _cdOrigDesc = '';
 let _cdOrigObj  = [];
 
+function _cdBuildModuleNodes(lectures) {
+  const hasModules = lectures.some(l => l.module_name);
+
+  if (!hasModules) {
+    // 모듈 없으면 기존 flat list
+    return lectures.map(l =>
+      `<div class="cd-lec-item${l.completed ? ' done' : ''}">
+        <span class="cd-lec-num">${l.number}</span>
+        <span class="cd-lec-check">${l.completed ? '✓' : '○'}</span>
+        <span class="cd-lec-title">${_esc(l.title)}</span>
+        ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+      </div>`
+    ).join('');
+  }
+
+  // 모듈별 그룹핑
+  const modOrder = [];
+  const modMap   = {};
+  lectures.forEach(l => {
+    const m = l.module_name || '기타';
+    if (!modMap[m]) { modMap[m] = []; modOrder.push(m); }
+    modMap[m].push(l);
+  });
+
+  const nodes = modOrder.map((m, idx) => {
+    const lecs    = modMap[m];
+    const diffs   = lecs.map(l => l.difficulty).filter(Boolean);
+    const avgD    = diffs.length ? Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length) : 2;
+    const dc      = _DIFF_CLASS[avgD] || 'diff-2';
+    const dl      = _DIFF_LABEL[avgD] || '중급';
+    const doneN   = lecs.filter(l => l.completed).length;
+
+    return `<div class="cd-mod-node${idx === 0 ? ' open' : ''}">
+      <div class="cd-mod-node-head" onclick="this.closest('.cd-mod-node').classList.toggle('open')">
+        <span class="cd-mod-dot ${dc}"></span>
+        <span class="cd-mod-node-name">${_esc(m)}</span>
+        <span class="cd-mod-node-count">${doneN}/${lecs.length}강 · ${dl}</span>
+        <span class="cd-mod-node-arrow">▶</span>
+      </div>
+      <div class="cd-mod-lecs">
+        ${lecs.map(l =>
+          `<div class="cd-mod-lec${l.completed ? ' done' : ''}">
+            <span class="cd-mod-lec-num">${l.number}</span>
+            <span class="cd-mod-lec-title">${_esc(l.title)}</span>
+            ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+          </div>`
+        ).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="cd-mod-nodes">${nodes}</div>`;
+}
+
 async function courseModalOpen(courseId) {
   _cdCourseId = courseId;
   _cdEditing  = false;
@@ -1628,15 +1817,10 @@ async function courseModalOpen(courseId) {
     const res = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
     if (res.ok) {
       const lectures = await res.json();
+      _courseLectures[courseId] = lectures;
       const done = lectures.filter(l => l.completed).length;
       document.getElementById('cdLecCount').textContent = `(${done}/${lectures.length})`;
-      document.getElementById('cdLecList').innerHTML = lectures.map(l => `
-        <div class="cd-lec-item${l.completed ? ' done' : ''}">
-          <span class="cd-lec-num">${l.number}</span>
-          <span class="cd-lec-check">${l.completed ? '✓' : '○'}</span>
-          <span class="cd-lec-title">${_esc(l.title)}</span>
-          ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
-        </div>`).join('');
+      document.getElementById('cdLecList').innerHTML = _cdBuildModuleNodes(lectures);
     }
   } catch(e) {
     document.getElementById('cdLecList').innerHTML = '<div class="cd-loading">불러오기 실패</div>';
@@ -1760,6 +1944,8 @@ let _currentLectures = [];
 let _allCourses = [];
 let _pendingCourseId = null;
 let _lectureAccordionBuilt = false;
+let _activeTab = 1;       // 1=과목, 2=모듈, null=접힘
+const _courseLectures = {}; // courseId → lectures 캐시
 
 function youtubeEmbedUrl(url) {
   const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
@@ -1785,7 +1971,14 @@ async function initLecture() {
   if (!_lectureAccordionBuilt) {
     const listEl = document.getElementById('lectureList');
     listEl.innerHTML =
-      `<div class="ll-panel-ctrl"><button class="ll-collapse-btn" id="llCollapseBtn" onclick="toggleLecturePanel()" title="패널 접기">‹</button></div>` +
+      `<div class="ll-panel-ctrl">
+        <div class="ll-tabs">
+          <button class="ll-tab active" id="llTab1" onclick="switchLecTab(1)">과목</button>
+          <button class="ll-tab" id="llTab2" onclick="switchLecTab(2)">모듈</button>
+        </div>
+        <button class="ll-collapse-btn" id="llCollapseBtn" onclick="toggleLecturePanel()" title="패널 접기">‹</button>
+      </div>` +
+      `<div class="ll-tab-content" id="llTabCourses">` +
       _allCourses.map(c => `
         <div class="ll-course-row" data-course-id="${c.id}" onclick="toggleCourse('${c.id}')">
           <span class="ll-course-cat">${(c.category||'').toUpperCase()}</span>
@@ -1793,7 +1986,9 @@ async function initLecture() {
           <span class="ll-course-arrow">▶</span>
         </div>
         <div class="ll-course-lecs" id="lecs-${c.id}"></div>
-      `).join('');
+      `).join('') +
+      `</div>` +
+      `<div class="ll-tab-content" id="llTabModules" style="display:none"></div>`;
     _lectureAccordionBuilt = true;
   }
 
@@ -1879,10 +2074,13 @@ function _lecItemHtml(l) {
     ? `<img class="ll-thumb" src="${thumbSrc}" alt="" loading="lazy">`
     : `<div class="ll-thumb ll-thumb-ph">${hasvid ? '▶' : ''}</div>`;
   const dur = l.duration_sec ? `<span class="ll-dur">${_fmtDur(l.duration_sec)}</span>` : '';
+  const diffBadge = l.difficulty
+    ? `<span class="ll-diff-badge ${_DIFF_CLASS[l.difficulty]}">${_DIFF_LABEL[l.difficulty]}</span>`
+    : '';
   return `<div class="ll-item${l.completed ? ' done' : ''}${unavail ? ' unavail' : ''}" data-lecture-id="${l.id}" onclick="loadLecture('${l.id}',this)">
     ${thumb}
     <div class="ll-content">
-      <div class="ll-num">Lec ${String(l.number).padStart(2,'0')}${unavail ? ' <span class="ll-unavail-badge">삭제됨</span>' : ''}</div>
+      <div class="ll-num">Lec ${String(l.number).padStart(2,'0')}${unavail ? ' <span class="ll-unavail-badge">삭제됨</span>' : ''}${diffBadge}</div>
       <div class="ll-name">${l.title}</div>
       <div class="ll-foot">${l.completed ? '<span class="ll-check">✓ 완료</span>' : ''}${dur}</div>
     </div>
@@ -1926,7 +2124,7 @@ function _buildLecList(lectures, course) {
     moduleMap[m].push(l);
   });
 
-  return moduleOrder.map(mod => {
+  return moduleOrder.map((mod, idx) => {
     const lecs = moduleMap[mod];
     // 모듈 안에서 난이도별 서브그룹
     const hasDiffInMod = lecs.some(l => l.difficulty);
@@ -1945,7 +2143,7 @@ function _buildLecList(lectures, course) {
       inner = lecs.map(_lecItemHtml).join('');
     }
 
-    return `<div class="ll-module-section">
+    return `<div class="ll-module-section${idx === 0 ? ' open' : ''}">
       <div class="ll-module-header" onclick="this.parentElement.classList.toggle('open')">
         <span class="ll-module-arrow">▶</span>
         <span class="ll-module-name">${_esc(mod)}</span>
@@ -1966,6 +2164,7 @@ async function loadCourse(courseId) {
     const lRes = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
     if (!lRes.ok) throw new Error('lectures fetch failed');
     _currentLectures = await lRes.json();
+    _courseLectures[courseId] = _currentLectures;
     lecsEl.dataset.loaded = '1';
 
     lecsEl.innerHTML = _buildLecList(_currentLectures, course);

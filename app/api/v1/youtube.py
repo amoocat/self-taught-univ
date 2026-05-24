@@ -9,11 +9,13 @@ YouTube OAuth + 플레이리스트 관리 API
   5. GET  /youtube/preview/{id}   → 크롤링 전 필터 결과 미리보기
 """
 import json
+import logging
 import re
 import secrets
 from pathlib import Path
 
 import httpx
+import openai
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
@@ -24,6 +26,8 @@ from app.crawlers.youtube import YouTubeCrawler, _classify_video
 from app.crawlers.scheduler import _save_lectures, _save_to_inbox, _promote_inbox_to_lectures
 from app.db.session import get_db
 from app.models.models import Lecture
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -492,6 +496,147 @@ async def rescan_known_playlists(db: AsyncSession = Depends(get_db)):
         "playlists_scanned": len(playlist_ids),
         "inbox": inbox_result,
         "llm": classify_result,
+    }
+
+
+@router.post("/discover/auto-import")
+async def discover_auto_import(
+    source_playlist_id: str = Query(None, description="탐색 소스 플리 ID. 없으면 좋아요 영상 사용."),
+    page_token: str = Query(None),
+    max_playlists: int = Query(20, description="AI가 선택할 최대 플레이리스트 수"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    좋아요(또는 지정 플리) → 채널 플리 탐색 → GPT-4o-mini가 학습 관련도 높은 플리 자동 선택 → VideoInbox 저장.
+    """
+    import asyncio
+
+    access_token = await _get_access_token()
+    if not access_token:
+        raise HTTPException(
+            status_code=401,
+            detail="YouTube 인증 필요 — GET /api/v1/youtube/oauth 로 인증해주세요.",
+        )
+
+    # 1. discover와 동일 로직으로 채널 플리 수집
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    all_playlists: list[dict] = []
+    try:
+        if source_playlist_id:
+            liked, _ = await crawler.fetch_playlist_videos_page(
+                source_playlist_id, access_token, page_token=page_token,
+            )
+        else:
+            liked, _ = await crawler.fetch_liked_videos_page(access_token, page_token=page_token)
+
+        channel_map: dict[str, dict] = {}
+        for v in liked:
+            cid = v["channel_id"]
+            if cid not in channel_map:
+                channel_map[cid] = {"channel_id": cid, "channel_title": v["channel_title"]}
+
+        async def _fetch_study_pls(ch: dict) -> list[dict]:
+            try:
+                pls = await crawler.get_channel_playlists(ch["channel_id"], max_pages=1)
+                result = []
+                for pl in pls:
+                    cat = _classify_video(pl["title"], pl.get("description", ""))
+                    if cat is not None:
+                        result.append({**pl, "category": cat, "channel_title": ch["channel_title"]})
+                return result
+            except Exception:
+                return []
+
+        raw = await asyncio.gather(*[_fetch_study_pls(ch) for ch in channel_map.values()])
+        for pls in raw:
+            all_playlists.extend(pls)
+    finally:
+        await crawler.close()
+
+    if not all_playlists:
+        return {"selected": 0, "message": "학습 관련 플레이리스트를 발견하지 못했습니다."}
+
+    # 2. 이미 등록된 플리 제외
+    existing_ids = set(
+        (await db.execute(
+            select(Lecture.playlist_id).where(Lecture.playlist_id.isnot(None)).distinct()
+        )).scalars().all()
+    )
+    new_playlists = [p for p in all_playlists if p["playlist_id"] not in existing_ids]
+
+    if not new_playlists:
+        return {"selected": 0, "message": "이미 등록된 플레이리스트만 발견됐습니다."}
+
+    # 3. GPT-4o-mini로 가치 있는 플리 선별
+    gpt = openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
+    payload = [
+        {
+            "id": p["playlist_id"],
+            "title": p["title"],
+            "channel": p.get("channel_title", ""),
+            "category": p["category"],
+            "video_count": p.get("video_count", 0),
+            "description": (p.get("description") or "")[:120],
+        }
+        for p in new_playlists
+    ]
+
+    prompt = (
+        "You are curating an AI/ML self-study curriculum. Select the most valuable playlists.\n\n"
+        f"Choose up to {max_playlists} playlists. Prefer:\n"
+        "- Structured lecture series over random video collections\n"
+        "- Playlists with many videos (deeper coverage)\n"
+        "- Mix of foundational and advanced topics\n"
+        "- Reputable channels (universities, known researchers, established educators)\n\n"
+        "Exclude:\n"
+        "- Short clip compilations or interview collections\n"
+        "- Multiple nearly identical playlists from the same channel on the same topic\n\n"
+        "Playlists:\n"
+        + json.dumps(payload, ensure_ascii=False)
+        + f'\n\nReturn JSON: {{"selected_ids": ["PL...", ...], "reason": "brief explanation in Korean"}}'
+    )
+
+    selected_ids: list[str] = []
+    try:
+        resp = await gpt.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+        )
+        raw_result = json.loads(resp.choices[0].message.content)
+        selected_ids = raw_result.get("selected_ids", [])[:max_playlists]
+    except Exception as e:
+        logger.error("auto_import GPT error: %s", e)
+        # fallback: video_count 기준 상위 선택
+        sorted_pls = sorted(new_playlists, key=lambda p: p.get("video_count", 0), reverse=True)
+        selected_ids = [p["playlist_id"] for p in sorted_pls[:max_playlists]]
+
+    selected_pls = [p for p in new_playlists if p["playlist_id"] in selected_ids]
+
+    if not selected_pls:
+        return {"selected": 0, "message": "AI가 선택한 플레이리스트가 없습니다."}
+
+    # 4. 선택된 플리 VideoInbox에 저장
+    crawler2 = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    try:
+        for pl in selected_pls:
+            videos = await crawler2.fetch_playlist_videos(
+                pl["playlist_id"], filter_ai=False, access_token=access_token,
+            )
+            await _save_to_inbox(videos)
+    finally:
+        await crawler2.close()
+
+    promoted, discarded = await _promote_inbox_to_lectures()
+
+    return {
+        "discovered": len(all_playlists),
+        "selected": len(selected_pls),
+        "selected_playlists": [
+            {"title": p["title"], "playlist_id": p["playlist_id"], "category": p["category"]}
+            for p in selected_pls
+        ],
+        "curated": {"promoted": promoted, "discarded": discarded},
     }
 
 

@@ -1017,6 +1017,20 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 .ll-diff-dot.diff-2 { background: var(--gold); }
 .ll-diff-dot.diff-3 { background: var(--red); }
 
+.ll-diff-badge {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 5px;
+  vertical-align: middle;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ll-diff-badge.diff-1 { background: #0a2d12; color: #5fc45f; border: 1px solid #3a8a3a; }
+.ll-diff-badge.diff-2 { background: #2a2000; color: var(--gold2); border: 1px solid var(--gold); }
+.ll-diff-badge.diff-3 { background: #2d0a0a; color: #e06060; border: 1px solid var(--red); }
+
 .ll-item {
   display: flex;
   align-items: flex-start;
@@ -1068,11 +1082,31 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   top: 0;
   z-index: 10;
   display: flex;
-  justify-content: flex-end;
+  align-items: stretch;
   background: #07101e;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   padding: 0;
 }
+.ll-tabs {
+  display: flex;
+  flex: 1;
+}
+.ll-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  color: var(--gray3);
+  padding: 7px 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.ll-tab.active { color: var(--gold2); background: rgba(255,200,60,0.06); }
+.ll-tab:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.03); }
 .ll-collapse-btn {
   background: none;
   border: none;
@@ -1083,11 +1117,45 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   padding: 5px 10px;
   transition: opacity 0.15s;
   line-height: 1;
+  flex-shrink: 0;
 }
 .ll-collapse-btn:hover { opacity: 1; }
+/* 모듈 탭 목록 */
+.ll-mod-group { border-top: 1px solid rgba(255,255,255,0.05); }
+.ll-mod-group-hdr {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--gray3);
+  padding: 8px 10px 3px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.ll-mod-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  gap: 6px;
+}
+.ll-mod-item:hover { background: rgba(255,255,255,0.04); }
+.ll-mod-dot-sm {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ll-mod-dot-sm.diff-1 { background: #3a8a3a; }
+.ll-mod-dot-sm.diff-2 { background: var(--gold); }
+.ll-mod-dot-sm.diff-3 { background: var(--red); }
+.ll-mod-name { flex: 1; font-size: 12px; color: var(--gray2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ll-mod-item:hover .ll-mod-name { color: var(--text); }
+.ll-mod-count { font-size: 10px; color: var(--gray3); flex-shrink: 0; font-family: var(--font-mono); }
+.ll-mod-loading { padding: 14px; color: var(--gray3); font-size: 12px; }
+/* collapsed */
 .lecture-list.ll-collapsed { overflow: hidden; }
-.lecture-list.ll-collapsed .ll-course-row,
-.lecture-list.ll-collapsed .ll-course-lecs { display: none; }
+.lecture-list.ll-collapsed .ll-tab-content { display: none; }
+.lecture-list.ll-collapsed .ll-tabs { display: none; }
 .lecture-list.ll-collapsed .ll-panel-ctrl { justify-content: center; }
 .lecture-list.ll-collapsed .ll-collapse-btn { opacity: 0.7; }
 
@@ -3715,6 +3783,8 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 .yt-discover-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .yt-discover-cancel-btn { color: var(--gray3); }
 .yt-discover-cancel-btn:hover { border-color: var(--gray3); color: var(--gray2); }
+.yt-auto-import-btn { border-color: #5b3fa0; color: #a98fe0; }
+.yt-auto-import-btn:hover { border-color: #a98fe0; color: #c4aff0; }
 
 .yt-discover-pl-picker {
   display: flex;
@@ -4172,6 +4242,84 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   color: var(--gray2);
   padding: 8px 0;
 }
+
+/* 모듈 노드 그래프 (과목 상세 모달) */
+.cd-mod-nodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+.cd-mod-node {
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  background: #f5f7fa;
+  min-width: 150px;
+  max-width: 220px;
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+.cd-mod-node:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.cd-mod-node-head {
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  user-select: none;
+}
+.cd-mod-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.cd-mod-dot.diff-1 { background: #3a8a3a; box-shadow: 0 0 4px rgba(58,138,58,0.5); }
+.cd-mod-dot.diff-2 { background: #b8860b; box-shadow: 0 0 4px rgba(184,134,11,0.5); }
+.cd-mod-dot.diff-3 { background: #c0392b; box-shadow: 0 0 4px rgba(192,57,43,0.5); }
+.cd-mod-node-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cd-mod-node-count {
+  font-size: 10px;
+  color: var(--gray2);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.cd-mod-lecs { display: none; }
+.cd-mod-node.open .cd-mod-lecs { display: block; }
+.cd-mod-lec {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-top: 1px solid rgba(0,0,0,0.04);
+  font-size: 11px;
+  color: var(--navy);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.cd-mod-lec:hover { background: rgba(0,0,0,0.04); }
+.cd-mod-lec.done .cd-mod-lec-title { text-decoration: line-through; color: var(--gray2); }
+.cd-mod-lec-num {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--gray2);
+  min-width: 18px;
+  flex-shrink: 0;
+}
+.cd-mod-lec-title { flex: 1; line-height: 1.3; }
+.cd-mod-lec .cd-yt-link { font-size: 9px; padding: 1px 5px; }
+/* 노드 헤더 안 화살표 */
+.cd-mod-node-arrow {
+  font-size: 9px;
+  color: var(--gray2);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.cd-mod-node.open .cd-mod-node-arrow { transform: rotate(90deg); }
 .cd-footer {
   display: flex;
   align-items: center;
