@@ -440,6 +440,18 @@
             <button class="yt-discover-btn" onclick="ytDiscoverWithPl()">탐색 시작 →</button>
             <button class="yt-discover-btn yt-discover-cancel-btn" onclick="ytDiscoverCancelPl()">취소</button>
           </div>
+          <div id="ytCatFilter" class="yt-cat-filter" style="display:none">
+            <button class="yt-cat-chip active" data-cat="all" onclick="ytFilterCat('all')">전체</button>
+            <button class="yt-cat-chip" data-cat="llm"  onclick="ytFilterCat('llm')">LLM</button>
+            <button class="yt-cat-chip" data-cat="dl"   onclick="ytFilterCat('dl')">DL</button>
+            <button class="yt-cat-chip" data-cat="ml"   onclick="ytFilterCat('ml')">ML</button>
+            <button class="yt-cat-chip" data-cat="nlp"  onclick="ytFilterCat('nlp')">NLP</button>
+            <button class="yt-cat-chip" data-cat="rl"   onclick="ytFilterCat('rl')">RL</button>
+            <button class="yt-cat-chip" data-cat="cv"   onclick="ytFilterCat('cv')">CV</button>
+            <button class="yt-cat-chip" data-cat="math" onclick="ytFilterCat('math')">MATH</button>
+            <button class="yt-cat-chip" data-cat="stat" onclick="ytFilterCat('stat')">STAT</button>
+            <button class="yt-cat-chip" data-cat="mlops" onclick="ytFilterCat('mlops')">MLOps</button>
+          </div>
           <div id="ytModalPlaylists" class="yt-modal-list"></div>
           <div class="yt-modal-footer">
             <div class="yt-footer-left">

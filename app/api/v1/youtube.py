@@ -238,10 +238,11 @@ async def discover_study_channels(
         async def _fetch_study_playlists(ch: dict) -> dict | None:
             try:
                 pls = await crawler.get_channel_playlists(ch["channel_id"], max_pages=1)
-                study_pls = [
-                    pl for pl in pls
-                    if _classify_video(pl["title"], pl.get("description", "")) is not None
-                ]
+                study_pls = []
+                for pl in pls:
+                    cat = _classify_video(pl["title"], pl.get("description", ""))
+                    if cat is not None:
+                        study_pls.append({**pl, "category": cat})
                 if not study_pls:
                     return None
                 return {
@@ -304,14 +305,17 @@ async def get_channel_playlists_endpoint(
     # 단, 명백히 음악/개인 플리(cover, vlog, shorts 등)는 제외
     EXCLUDE_KW = {'shorts', 'vlog', 'cover', 'mv', 'music video', 'playlist', 'mix',
                   'collection', '일상', '먹방', '여행', 'concert', 'live performance'}
-    filtered = [
-        pl for pl in playlists
-        if _classify_video(pl["title"], pl.get("description", "")) is not None
-        or (
-            not any(k in (pl["title"] + pl.get("description", "")).lower() for k in EXCLUDE_KW)
+    filtered = []
+    for pl in playlists:
+        cat = _classify_video(pl["title"], pl.get("description", ""))
+        combined = (pl["title"] + pl.get("description", "")).lower()
+        if cat is not None:
+            filtered.append({**pl, "category": cat})
+        elif (
+            not any(k in combined for k in EXCLUDE_KW)
             and pl.get("video_count", 0) >= 3
-        )
-    ]
+        ):
+            filtered.append({**pl, "category": None})
 
     return {
         "channel_id":     cid,

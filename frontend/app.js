@@ -1156,9 +1156,20 @@ async function _ytAddChannelPlaylists(raw, btn) {
   return true;
 }
 
+const _CAT_COLOR = {
+  llm: '#6a2a8a', nlp: '#1a5a8a', dl: '#1a4a2a', ml: '#2a4a1a',
+  rl: '#8a4a1a', cv: '#8a1a4a', math: '#0a1628', stat: '#884400',
+  data: '#1a4a6a', mlops: '#4a3a1a',
+};
+
 function _ytPlItemHtml(i, pl, metaText) {
   const reg = _registeredPlaylistIds.has(pl.playlist_id);
+  const cat = (pl.category || '').toLowerCase();
+  const catBadge = cat
+    ? `<span class="yt-pl-cat-badge" style="background:${_CAT_COLOR[cat]||'#333'}">${cat.toUpperCase()}</span>`
+    : '';
   return `
+    <div class="yt-pl-item" data-cat="${cat}" data-idx="${i}">
     <div class="yt-pl-row" onclick="ytTogglePl(${i})">
       <input type="checkbox" id="ytCb${i}" onclick="event.stopPropagation();ytTogglePl(${i})">
       ${pl.thumbnail_url
@@ -1167,18 +1178,53 @@ function _ytPlItemHtml(i, pl, metaText) {
       <div class="yt-pl-info">
         <div class="yt-pl-name">
           ${_esc(pl.title)}
+          ${catBadge}
           ${reg ? '<span class="yt-pl-reg-badge">등록됨</span>' : ''}
         </div>
         <div class="yt-pl-meta">${metaText}</div>
       </div>
       <button class="yt-pl-expand-btn" id="ytExpBtn${i}" onclick="event.stopPropagation();ytExpandPl(${i})" title="영상 목록">▼</button>
     </div>
-    <div class="yt-pl-videos" id="ytVideos${i}" style="display:none"></div>`;
+    <div class="yt-pl-videos" id="ytVideos${i}" style="display:none"></div>
+    </div>`;
 }
 
 function _ytUpdateStepDesc() {
   const desc = document.getElementById('ytStep1Desc');
   desc.textContent = `${_ytPlaylists.length}개 플레이리스트 · 가져올 항목을 선택하세요`;
+  // 필터 칩 표시
+  if (_ytPlaylists.length > 0) {
+    document.getElementById('ytCatFilter').style.display = '';
+  }
+}
+
+let _ytActiveCat = 'all';
+function ytFilterCat(cat) {
+  _ytActiveCat = cat;
+  // 칩 active 상태
+  document.querySelectorAll('.yt-cat-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.cat === cat);
+  });
+  // 플리 행 show/hide + 채널 헤더 show/hide
+  const listEl = document.getElementById('ytModalPlaylists');
+  const items  = listEl.querySelectorAll('.yt-pl-item');
+  items.forEach(el => {
+    const elCat = el.dataset.cat || '';
+    el.style.display = (cat === 'all' || elCat === cat) ? '' : 'none';
+  });
+  // 채널 헤더: 아래 보이는 플리가 하나도 없으면 헤더도 숨김
+  const headers = listEl.querySelectorAll('.yt-channel-header');
+  headers.forEach(hdr => {
+    let sib = hdr.nextElementSibling;
+    let hasVisible = false;
+    while (sib && !sib.classList.contains('yt-channel-header')) {
+      if (sib.classList.contains('yt-pl-item') && sib.style.display !== 'none') {
+        hasVisible = true; break;
+      }
+      sib = sib.nextElementSibling;
+    }
+    hdr.style.display = hasVisible ? '' : 'none';
+  });
 }
 
 function ytDiscoverPickPl() {
@@ -1284,12 +1330,16 @@ function _ytRenderDiscoverChannels(channels) {
       const srcLabel = _ytDiscoverSourceId
         ? `${_ytDiscoverSourceTitle} 내 영상 ${ch.video_count}개`
         : `좋아요 ${ch.video_count}개`;
+      const safeChId = ch.channel_id.replace(/[^a-zA-Z0-9_-]/g, '');
       const header = document.createElement('div');
       header.className = 'yt-channel-header';
+      header.dataset.channelId = ch.channel_id;
       header.innerHTML = `${icon} <strong>${_esc(ch.channel_title)}</strong>`
-        + `<span class="yt-ch-count">${srcLabel} · 플리 ${ch.playlists.length}개</span>`;
+        + `<span class="yt-ch-count">${srcLabel} · 플리 ${ch.playlists.length}개</span>`
+        + `<button class="yt-ch-select-btn" onclick="ytSelectChannel('${safeChId}')" data-channel-ref="${safeChId}">전체 선택</button>`;
       listEl.appendChild(header);
     }
+    const safeChId = ch.channel_id.replace(/[^a-zA-Z0-9_-]/g, '');
     for (const pl of ch.playlists) {
       if (_ytPlaylists.some(p => p.playlist_id === pl.playlist_id)) continue;
       _ytPlaylists.push(pl);
@@ -1297,6 +1347,7 @@ function _ytRenderDiscoverChannels(channels) {
       const item = document.createElement('div');
       item.className = 'yt-pl-item';
       item.id        = `ytRow${i}`;
+      item.dataset.channelRef = safeChId;
       item.innerHTML = _ytPlItemHtml(
         i, pl,
         `${pl.video_count}개 영상${pl.description ? ' · ' + pl.description.slice(0, 50) : ''}`,
@@ -1306,6 +1357,36 @@ function _ytRenderDiscoverChannels(channels) {
     }
   }
   return added;
+}
+
+function ytSelectChannel(safeChId) {
+  const listEl = document.getElementById('ytModalPlaylists');
+  const items  = listEl.querySelectorAll(`.yt-pl-item[data-channel-ref="${safeChId}"]`);
+  const allSelected = [...items].every(el => {
+    const idx = parseInt(el.dataset.idx);
+    return _ytSelected.has(_ytPlaylists[idx]?.playlist_id);
+  });
+  items.forEach(el => {
+    const idx = parseInt(el.dataset.idx ?? el.id?.replace('ytRow',''));
+    const pl  = _ytPlaylists[idx];
+    if (!pl) return;
+    if (allSelected) {
+      _ytSelected.delete(pl.playlist_id);
+      document.getElementById(`ytCb${idx}`)?.setAttribute('checked', false);
+      el.classList.remove('selected');
+    } else {
+      _ytSelected.add(pl.playlist_id);
+      document.getElementById(`ytCb${idx}`)?.setAttribute('checked', true);
+      el.classList.add('selected');
+    }
+  });
+  // 헤더 버튼 텍스트 토글
+  const hdr = listEl.querySelector(`.yt-channel-header [data-channel-ref="${safeChId}"]`);
+  if (hdr) hdr.textContent = allSelected ? '전체 선택' : '선택 해제';
+  // 선택 수 업데이트
+  const count = _ytSelected.size;
+  document.getElementById('ytSelectedCount').textContent = `${count}개 선택`;
+  document.getElementById('ytFilterBtn').disabled = count === 0;
 }
 
 function _ytSyncDiscoverMoreBtn() {

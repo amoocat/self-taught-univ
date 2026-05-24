@@ -3735,7 +3735,52 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   cursor: pointer;
 }
 
+/* 카테고리 필터 칩 */
+.yt-cat-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--cream);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+}
+.yt-cat-chip {
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid var(--gray3);
+  background: transparent;
+  color: var(--gray2);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.12s;
+}
+.yt-cat-chip:hover { border-color: var(--navy); color: var(--navy); }
+.yt-cat-chip.active { background: var(--navy); color: var(--gold2); border-color: var(--navy); }
+
+/* 플리 카테고리 배지 */
+.yt-pl-cat-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #fff;
+  border-radius: 2px;
+  margin-left: 5px;
+  vertical-align: middle;
+  opacity: 0.9;
+}
+
+/* 채널 헤더 */
 .yt-channel-header {
+  display: flex;
+  align-items: center;
   padding: 8px 14px 4px;
   margin-top: 8px;
   font-size: 10px;
@@ -3743,9 +3788,23 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
   color: var(--gray2);
   border-top: 1px solid var(--border);
   flex-shrink: 0;
+  gap: 6px;
 }
 .yt-channel-header:first-child { border-top: none; margin-top: 0; }
-.yt-ch-count { margin-left: 6px; color: var(--gray3); }
+.yt-ch-count { margin-left: 4px; color: var(--gray3); flex: 1; }
+.yt-ch-select-btn {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--gray3);
+  color: var(--gray2);
+  cursor: pointer;
+  border-radius: 2px;
+  flex-shrink: 0;
+  transition: all 0.12s;
+}
+.yt-ch-select-btn:hover { border-color: var(--gold); color: var(--gold2); }
 .yt-pl-row input[type=checkbox] { accent-color: var(--red); flex-shrink: 0; }
 .yt-pl-thumb { width: 64px; height: 40px; object-fit: cover; flex-shrink: 0; background: var(--cream3); }
 .yt-pl-info { flex: 1; min-width: 0; }
