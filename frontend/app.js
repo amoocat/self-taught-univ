@@ -2600,6 +2600,88 @@ function selectSubject(id, courseId) {
   if (courseId) gotoLecture(courseId);
 }
 
+let _sbActiveTab = 1;
+
+function switchSbTab(n) {
+  const tabCourses = document.getElementById('sbTabCourses');
+  const tabModules = document.getElementById('sbTabModules');
+  const btn1 = document.getElementById('sbTab1');
+  const btn2 = document.getElementById('sbTab2');
+  if (!tabCourses || !tabModules) return;
+
+  if (_sbActiveTab === n) {
+    const target = n === 1 ? tabCourses : tabModules;
+    const hidden = target.style.display === 'none';
+    target.style.display = hidden ? '' : 'none';
+    _sbActiveTab = hidden ? n : 0;
+    return;
+  }
+
+  _sbActiveTab = n;
+  tabCourses.style.display = n === 1 ? '' : 'none';
+  tabModules.style.display = n === 2 ? '' : 'none';
+  btn1.classList.toggle('active', n === 1);
+  btn2.classList.toggle('active', n === 2);
+
+  if (n === 2) {
+    const modList = document.getElementById('sbModuleList');
+    if (modList && !modList.dataset.built) _buildSbModuleTab();
+  }
+}
+
+async function _buildSbModuleTab() {
+  const modList = document.getElementById('sbModuleList');
+  if (!modList) return;
+
+  const courses = _allCourses || [];
+  if (!courses.length) {
+    modList.innerHTML = '<div class="sb-loading">과목 데이터 없음</div>';
+    return;
+  }
+
+  const diffClass = { 1: 'diff-1', 2: 'diff-2', 3: 'diff-3' };
+  let html = '';
+
+  for (const c of courses) {
+    let lectures = _courseLectures && _courseLectures[c.id];
+    if (!lectures) {
+      try {
+        const res = await fetch(`/api/v1/curriculum/${c.id}/lectures`);
+        if (res.ok) {
+          lectures = await res.json();
+          if (_courseLectures) _courseLectures[c.id] = lectures;
+        }
+      } catch (e) { lectures = []; }
+    }
+
+    const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
+    const modMap = {};
+    (lectures || []).forEach(l => {
+      const mod = l.module_name || '기타';
+      if (!modMap[mod]) modMap[mod] = { diff: l.difficulty || 0, count: 0 };
+      modMap[mod].count++;
+      if (l.difficulty && l.difficulty > modMap[mod].diff) modMap[mod].diff = l.difficulty;
+    });
+
+    if (!Object.keys(modMap).length) continue;
+
+    html += `<div class="sb-mod-group">
+      <div class="sb-mod-group-hdr">${icon} ${c.title.split(' (')[0]}</div>
+      ${Object.entries(modMap).map(([mod, info]) => {
+        const dc = diffClass[info.diff] || 'diff-0';
+        return `<div class="sb-mod-item" onclick="gotoLecture('${c.id}')">
+          <span class="sb-mod-dot ${dc}"></span>
+          <span class="sb-mod-name">${mod}</span>
+          <span class="sb-mod-cnt">${info.count}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  modList.innerHTML = html || '<div class="sb-loading">모듈 없음</div>';
+  modList.dataset.built = '1';
+}
+
 let _blogSourceFilter = 'all';
 let _blogTabFilter    = 'all';
 let _blogSearchQuery  = '';
