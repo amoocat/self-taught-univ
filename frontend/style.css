@@ -1017,6 +1017,20 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 .ll-diff-dot.diff-2 { background: var(--gold); }
 .ll-diff-dot.diff-3 { background: var(--red); }
 
+.ll-diff-badge {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 5px;
+  vertical-align: middle;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ll-diff-badge.diff-1 { background: #0a2d12; color: #5fc45f; border: 1px solid #3a8a3a; }
+.ll-diff-badge.diff-2 { background: #2a2000; color: var(--gold2); border: 1px solid var(--gold); }
+.ll-diff-badge.diff-3 { background: #2d0a0a; color: #e06060; border: 1px solid var(--red); }
+
 .ll-item {
   display: flex;
   align-items: flex-start;
@@ -3715,6 +3729,8 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 .yt-discover-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .yt-discover-cancel-btn { color: var(--gray3); }
 .yt-discover-cancel-btn:hover { border-color: var(--gray3); color: var(--gray2); }
+.yt-auto-import-btn { border-color: #5b3fa0; color: #a98fe0; }
+.yt-auto-import-btn:hover { border-color: #a98fe0; color: #c4aff0; }
 
 .yt-discover-pl-picker {
   display: flex;

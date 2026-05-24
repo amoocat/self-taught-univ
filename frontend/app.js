@@ -1259,6 +1259,41 @@ async function ytDiscover() {
   await ytDiscoverRun(document.getElementById('ytDiscoverBtn'));
 }
 
+async function ytAutoImport() {
+  const btn = document.getElementById('ytAutoImportBtn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'AI 분석 중...';
+
+  try {
+    const res  = await fetch('/api/v1/youtube/discover/auto-import', { method: 'POST' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail || 'AI 자동 가져오기 실패. YouTube 계정 연결을 확인해주세요.');
+      return;
+    }
+
+    if (!data.selected) {
+      alert(data.message || '선택된 플레이리스트가 없습니다.');
+      return;
+    }
+
+    const plNames = (data.selected_playlists || []).map(p => `• ${p.title} (${p.category})`).join('\n');
+    const promoted = data.curated?.promoted ?? 0;
+    alert(
+      `AI가 ${data.discovered}개 플리 중 ${data.selected}개를 선택했습니다.\n\n`
+      + plNames
+      + `\n\n→ 새 강의 ${promoted}개 추가됨`
+    );
+  } catch (e) {
+    alert('네트워크 오류. 다시 시도해주세요.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
 async function ytDiscoverRun(btn) {
   const origText = btn.textContent;
   btn.disabled    = true;
@@ -1879,10 +1914,13 @@ function _lecItemHtml(l) {
     ? `<img class="ll-thumb" src="${thumbSrc}" alt="" loading="lazy">`
     : `<div class="ll-thumb ll-thumb-ph">${hasvid ? '▶' : ''}</div>`;
   const dur = l.duration_sec ? `<span class="ll-dur">${_fmtDur(l.duration_sec)}</span>` : '';
+  const diffBadge = l.difficulty
+    ? `<span class="ll-diff-badge ${_DIFF_CLASS[l.difficulty]}">${_DIFF_LABEL[l.difficulty]}</span>`
+    : '';
   return `<div class="ll-item${l.completed ? ' done' : ''}${unavail ? ' unavail' : ''}" data-lecture-id="${l.id}" onclick="loadLecture('${l.id}',this)">
     ${thumb}
     <div class="ll-content">
-      <div class="ll-num">Lec ${String(l.number).padStart(2,'0')}${unavail ? ' <span class="ll-unavail-badge">삭제됨</span>' : ''}</div>
+      <div class="ll-num">Lec ${String(l.number).padStart(2,'0')}${unavail ? ' <span class="ll-unavail-badge">삭제됨</span>' : ''}${diffBadge}</div>
       <div class="ll-name">${l.title}</div>
       <div class="ll-foot">${l.completed ? '<span class="ll-check">✓ 완료</span>' : ''}${dur}</div>
     </div>
@@ -1926,7 +1964,7 @@ function _buildLecList(lectures, course) {
     moduleMap[m].push(l);
   });
 
-  return moduleOrder.map(mod => {
+  return moduleOrder.map((mod, idx) => {
     const lecs = moduleMap[mod];
     // 모듈 안에서 난이도별 서브그룹
     const hasDiffInMod = lecs.some(l => l.difficulty);
@@ -1945,7 +1983,7 @@ function _buildLecList(lectures, course) {
       inner = lecs.map(_lecItemHtml).join('');
     }
 
-    return `<div class="ll-module-section">
+    return `<div class="ll-module-section${idx === 0 ? ' open' : ''}">
       <div class="ll-module-header" onclick="this.parentElement.classList.toggle('open')">
         <span class="ll-module-arrow">▶</span>
         <span class="ll-module-name">${_esc(mod)}</span>
