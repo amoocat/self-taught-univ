@@ -33,58 +33,105 @@ YOUTUBE_PLAYLISTS = [
 
 # 카테고리 분류 규칙 — (카테고리, 키워드 집합)
 # 제목+설명에서 키워드 하나라도 매칭되면 해당 카테고리로 분류
+# 순서 중요: 앞 카테고리가 먼저 매칭됨
 # 아무것도 매칭 안 되면 AI/데이터 무관 영상 → 저장 스킵
 _CATEGORY_RULES: list[tuple[str, set[str]]] = [
-    ("math", {
-        "linear algebra", "calculus", "statistics", "probability", "matrix",
-        "eigenvalue", "eigenvector", "18.06", "strang", "convex optimization",
-        "gradient descent", "partial derivative", "fourier", "linear equation",
-        "선형대수", "미적분", "통계", "확률",
+    # ── LLM (nlp보다 먼저: gpt/llama 등은 llm으로 분류)
+    ("llm", {
+        "large language model", "llm", "chatgpt", "gpt-4", "gpt4", "fine-tuning", "fine tuning",
+        "retrieval augmented", "rag", "prompt engineering", "rlhf",
+        "instruction tuning", "llama", "mistral", "gemma", "phi-3", "claude",
+        "in-context learning", "chain of thought", "function calling",
+        "언어모델", "파인튜닝", "프롬프트",
     }),
+    # ── 수학 기초
+    ("math", {
+        "linear algebra", "calculus", "matrix", "eigenvalue", "eigenvector",
+        "18.06", "strang", "convex optimization", "partial derivative",
+        "fourier transform", "fourier series", "linear equation",
+        "singular value decomposition", "svd", "determinant", "gram-schmidt",
+        "선형대수", "미적분", "행렬", "고유값",
+    }),
+    # ── 통계 / 확률
+    ("stat", {
+        "probability", "statistics", "bayesian", "markov chain", "monte carlo",
+        "statistical learning", "hypothesis testing", "a/b test",
+        "causal inference", "time series", "cs109", "stochastic",
+        "maximum likelihood", "confidence interval", "p-value",
+        "확률", "통계", "베이지안",
+    }),
+    # ── 강화학습
+    ("rl", {
+        "reinforcement learning", "q-learning", "policy gradient", "mdp",
+        "markov decision process", "actor critic", "ppo", "reward function",
+        "exploration exploitation", "david silver", "openai gym",
+        "강화학습", "보상함수",
+    }),
+    # ── 머신러닝 (rl 다음)
     ("ml", {
         "machine learning", "random forest", "xgboost", "gradient boosting",
         "scikit", "supervised learning", "unsupervised learning",
         "classification", "regression", "cs229", "andrew ng", "feature engineering",
+        "decision tree", "naive bayes", "k-means", "svm", "support vector",
         "머신러닝", "분류", "회귀",
     }),
-    ("dl", {
-        "deep learning", "neural network", "backpropagation", "activation function",
-        "dropout", "batch normalization", "cs231n", "pytorch", "tensorflow",
-        "딥러닝", "신경망", "역전파",
-    }),
-    ("nlp", {
-        "natural language processing", "nlp", "bert", "transformer", "tokenizer",
-        "attention mechanism", "language model", "text classification",
-        "cs224n", "cs224", "word2vec", "embedding", "sequence to sequence",
-        "자연어처리", "언어모델",
-    }),
+    # ── 컴퓨터 비전 (dl보다 먼저: cs231n은 cv)
     ("cv", {
         "computer vision", "convolutional", "cnn", "image classification",
         "object detection", "image segmentation", "vision transformer", "vit",
         "diffusion model", "stable diffusion", "gan", "yolo", "resnet",
-        "컴퓨터비전", "이미지",
+        "cs231n", "alexnet", "vgg", "feature map", "bounding box",
+        "컴퓨터비전", "이미지 분류", "객체 탐지",
     }),
-    ("llm", {
-        "large language model", "llm", "chatgpt", "fine-tuning", "fine tuning",
-        "retrieval augmented", "rag", "prompt engineering", "rlhf",
-        "instruction tuning", "llama", "mistral", "gemma", "in-context learning",
-        "언어모델", "파인튜닝",
+    # ── 자연어처리 (cv 다음)
+    ("nlp", {
+        "natural language processing", "nlp", "bert", "transformer", "tokenizer",
+        "attention mechanism", "language model", "text classification",
+        "cs224n", "cs224", "word2vec", "embedding", "sequence to sequence",
+        "named entity", "pos tagging", "sentiment analysis", "text generation",
+        "자연어처리", "텍스트 분류",
     }),
+    # ── 딥러닝 (cv/nlp보다 뒤)
+    ("dl", {
+        "deep learning", "neural network", "backpropagation", "activation function",
+        "dropout", "batch normalization", "pytorch", "tensorflow", "keras",
+        "deep neural", "multilayer perceptron", "mlp", "autoencoder",
+        "딥러닝", "신경망", "역전파",
+    }),
+    # ── 데이터 엔지니어링
     ("data", {
         "data engineering", "data pipeline", "apache spark", "kafka",
         "data lake", "etl", "airflow", "dbt", "data warehouse",
         "hadoop", "flink", "bigquery", "snowflake", "data architecture",
+        "stream processing", "batch processing", "data modeling",
         "데이터 엔지니어링", "파이프라인",
     }),
-    ("stat", {
-        "bayesian", "markov chain", "monte carlo", "statistical learning",
-        "hypothesis testing", "a/b test", "causal inference", "time series",
-        "베이지안", "통계학",
-    }),
-    ("infra", {
+    # ── MLOps / 인프라
+    ("mlops", {
         "kubernetes", "k8s", "docker", "mlops", "model deployment",
         "model serving", "ci/cd", "devops", "cloud native", "monitoring",
-        "쿠버네티스", "도커", "배포",
+        "feature store", "model registry", "experiment tracking", "mlflow",
+        "kubeflow", "bentoml", "triton", "model versioning",
+        "쿠버네티스", "도커", "모델 배포",
+    }),
+    # ── 보험계리 / 계리학 (SOA, CAS)
+    ("actuary", {
+        "actuarial", "actuary", "soa exam", "exam fm", "exam p", "exam mfe",
+        "exam stam", "exam ltam", "exam mas", "ifrs 17", "ifrs17",
+        "life insurance mathematics", "mortality table", "life table",
+        "credibility theory", "risk theory", "loss models", "annuity",
+        "보험계리", "보험수리", "계리", "생명보험수학", "손해보험수리",
+        "재보험", "보험료", "준비금",
+    }),
+    # ── 산업공학 / 운영과학
+    ("ie", {
+        "industrial engineering", "operations research", "supply chain management",
+        "logistics", "quality management", "six sigma", "lean manufacturing",
+        "queuing theory", "inventory management", "linear programming",
+        "integer programming", "simulation modeling", "scheduling",
+        "facility layout", "work measurement", "ergonomics",
+        "산업공학", "운영관리", "물류관리", "품질관리", "공정관리",
+        "수요예측", "재고관리", "대기이론",
     }),
 ]
 
@@ -194,6 +241,34 @@ class YouTubeCrawler:
         logger.info(f"[YouTube] {playlist_id}: {len(videos)}개 수집 (필터 후)")
         return videos
 
+    async def get_playlist_meta(
+        self,
+        playlist_id: str,
+        access_token: str | None = None,
+    ) -> dict:
+        """단일 플레이리스트 메타(제목, 썸네일) 조회"""
+        params  = {"part": "snippet", "id": playlist_id}
+        headers = {}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        else:
+            params["key"] = self.api_key
+        try:
+            resp = await self.client.get(
+                f"{self.BASE_URL}/playlists", params=params, headers=headers,
+            )
+            resp.raise_for_status()
+            items = resp.json().get("items", [])
+            if items:
+                sn = items[0]["snippet"]
+                return {
+                    "title":         sn.get("title", playlist_id),
+                    "thumbnail_url": sn.get("thumbnails", {}).get("medium", {}).get("url", ""),
+                }
+        except Exception as e:
+            logger.warning(f"[YouTube] playlist meta 조회 실패 {playlist_id}: {e}")
+        return {"title": playlist_id, "thumbnail_url": ""}
+
     async def fetch_user_playlists(self, access_token: str) -> list[dict]:
         """OAuth 토큰으로 내 계정의 플레이리스트 목록 조회"""
         playlists = []
@@ -267,6 +342,224 @@ class YouTubeCrawler:
             }
             for v in batch:
                 v.duration_sec = dur_map.get(v.video_id, 0)
+
+    async def fetch_liked_videos_page(
+        self,
+        access_token: str,
+        page_token: str | None = None,
+    ) -> tuple[list[dict], str | None]:
+        """좋아요 영상 한 페이지(최대 50개) 수집. 학습 관련만 반환. (videos, next_page_token) 반환."""
+        params: dict = {"part": "snippet", "myRating": "like", "maxResults": 50}
+        if page_token:
+            params["pageToken"] = page_token
+
+        try:
+            resp = await self.client.get(
+                f"{self.BASE_URL}/videos",
+                params=params,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            logger.error(f"[YouTube] fetch_liked_videos_page 실패: {e}")
+            return [], None
+
+        results = []
+        for item in data.get("items", []):
+            sn       = item["snippet"]
+            title    = sn.get("title", "")
+            desc     = sn.get("description", "")[:500]
+            category = _classify_video(title, desc)
+            if category is None:
+                continue
+            results.append({
+                "video_id":      item["id"],
+                "title":         title,
+                "channel_id":    sn["channelId"],
+                "channel_title": sn.get("channelTitle", ""),
+                "category":      category,
+            })
+
+        return results, data.get("nextPageToken")
+
+    async def fetch_playlist_videos_page(
+        self,
+        playlist_id: str,
+        access_token: str,
+        page_token: str | None = None,
+    ) -> tuple[list[dict], str | None]:
+        """임의 플레이리스트 한 페이지(최대 50개) 수집. 학습 관련만 반환.
+        나중에 볼 영상 등 사용자 플리 기반 채널 발견에 사용.
+        """
+        params: dict = {
+            "part":       "snippet",
+            "playlistId": playlist_id,
+            "maxResults": 50,
+        }
+        if page_token:
+            params["pageToken"] = page_token
+
+        try:
+            resp = await self.client.get(
+                f"{self.BASE_URL}/playlistItems",
+                params=params,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            logger.error(f"[YouTube] fetch_playlist_videos_page 실패 ({playlist_id}): {e}")
+            return [], None
+
+        results = []
+        for item in data.get("items", []):
+            sn       = item["snippet"]
+            title    = sn.get("title", "")
+            desc     = sn.get("description", "")[:500]
+            video_id = sn.get("resourceId", {}).get("videoId")
+            if not video_id:
+                continue
+            category = _classify_video(title, desc)
+            if category is None:
+                continue
+            results.append({
+                "video_id":      video_id,
+                "title":         title,
+                "channel_id":    sn.get("videoOwnerChannelId") or sn.get("channelId", ""),
+                "channel_title": sn.get("videoOwnerChannelTitle") or sn.get("channelTitle", ""),
+                "category":      category,
+            })
+
+        return results, data.get("nextPageToken")
+
+    async def fetch_liked_videos(
+        self,
+        access_token: str,
+        max_results: int = 200,
+    ) -> list[dict]:
+        """좋아요한 영상 중 학습 관련 영상만 수집 (OAuth 필요). channel_id 포함."""
+        results = []
+        page_token = None
+
+        while len(results) < max_results:
+            params: dict = {"part": "snippet", "myRating": "like", "maxResults": 50}
+            if page_token:
+                params["pageToken"] = page_token
+
+            try:
+                resp = await self.client.get(
+                    f"{self.BASE_URL}/videos",
+                    params=params,
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception as e:
+                logger.error(f"[YouTube] fetch_liked_videos 실패: {e}")
+                break
+
+            for item in data.get("items", []):
+                sn       = item["snippet"]
+                title    = sn.get("title", "")
+                desc     = sn.get("description", "")[:500]
+                category = _classify_video(title, desc)
+                if category is None:
+                    continue  # 학습 무관 영상 스킵
+                results.append({
+                    "video_id":      item["id"],
+                    "title":         title,
+                    "channel_id":    sn["channelId"],
+                    "channel_title": sn.get("channelTitle", ""),
+                    "category":      category,
+                })
+
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+
+        return results[:max_results]
+
+    async def get_video_channel(self, video_id: str) -> dict | None:
+        """video_id → {channel_id, channel_title}"""
+        params = {"part": "snippet", "id": video_id, "key": self.api_key}
+        try:
+            resp = await self.client.get(f"{self.BASE_URL}/videos", params=params)
+            resp.raise_for_status()
+            items = resp.json().get("items", [])
+            if not items:
+                return None
+            sn = items[0]["snippet"]
+            return {
+                "channel_id":    sn["channelId"],
+                "channel_title": sn.get("channelTitle", ""),
+            }
+        except Exception as e:
+            logger.error(f"[YouTube] get_video_channel 실패 {video_id}: {e}")
+            return None
+
+    async def get_channel_playlists(
+        self,
+        channel_id: str,
+        max_pages: int | None = None,
+    ) -> list[dict]:
+        """channel_id → 해당 채널의 공개 플레이리스트 목록.
+        max_pages: 최대 API 페이지 수 (None=무제한, 1=첫 50개만 — discover 가속용)
+        """
+        playlists = []
+        page_token = None
+        pages_fetched = 0
+
+        while True:
+            params: dict = {
+                "part":      "snippet,contentDetails",
+                "channelId": channel_id,
+                "maxResults": 50,
+                "key":       self.api_key,
+            }
+            if page_token:
+                params["pageToken"] = page_token
+
+            try:
+                resp = await self.client.get(f"{self.BASE_URL}/playlists", params=params)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception as e:
+                logger.error(f"[YouTube] get_channel_playlists 실패 {channel_id}: {e}")
+                break
+
+            for item in data.get("items", []):
+                sn = item["snippet"]
+                playlists.append({
+                    "playlist_id":   item["id"],
+                    "title":         sn.get("title", ""),
+                    "description":   sn.get("description", "")[:200],
+                    "video_count":   item.get("contentDetails", {}).get("itemCount", 0),
+                    "thumbnail_url": sn.get("thumbnails", {}).get("medium", {}).get("url", ""),
+                })
+
+            pages_fetched += 1
+            page_token = data.get("nextPageToken")
+            if not page_token or (max_pages is not None and pages_fetched >= max_pages):
+                break
+
+        return playlists
+
+    async def check_video_availability(self, video_ids: list[str]) -> set[str]:
+        """주어진 video_id 중 현재 공개 상태인 것들의 집합 반환 (50개 배치)"""
+        available: set[str] = set()
+        for i in range(0, len(video_ids), 50):
+            batch  = video_ids[i:i + 50]
+            params = {"part": "status", "id": ",".join(batch), "key": self.api_key}
+            try:
+                resp = await self.client.get(f"{self.BASE_URL}/videos", params=params)
+                resp.raise_for_status()
+                for item in resp.json().get("items", []):
+                    if item.get("status", {}).get("privacyStatus") in ("public", "unlisted"):
+                        available.add(item["id"])
+            except Exception as e:
+                logger.warning(f"[YouTube] 유효성 체크 실패 (batch {i}): {e}")
+        return available
 
     async def close(self):
         await self.client.aclose()

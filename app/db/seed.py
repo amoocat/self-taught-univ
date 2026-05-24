@@ -57,7 +57,7 @@ _COURSES = [
     {
         "title": "확률론과 통계",
         "source": "Stanford CS109 · 확률론 기초",
-        "category": "stats",
+        "category": "stat",
         "order_index": 2,
         "lectures": [
             "Counting and Sets",
@@ -186,19 +186,158 @@ _COURSES = [
             "Future of NLP and DL",
         ],
     },
+    {
+        "title": "대규모 언어 모델 (LLM)",
+        "source": "Stanford CS324 · DeepLearning.AI",
+        "category": "llm",
+        "order_index": 7,
+        "lectures": [
+            "Introduction to Large Language Models",
+            "Tokenization and Vocabulary",
+            "Pretraining Objectives and Data",
+            "Transformer Architecture Deep Dive",
+            "Scaling Laws",
+            "Instruction Tuning",
+            "RLHF: Reinforcement Learning from Human Feedback",
+            "Prompt Engineering",
+            "In-Context Learning and Few-Shot",
+            "Retrieval-Augmented Generation (RAG)",
+            "Fine-Tuning: Full vs. LoRA vs. QLoRA",
+            "Evaluation: MMLU, HumanEval, MT-Bench",
+            "Alignment and Safety",
+            "Multimodal LLMs",
+            "Agents and Tool Use",
+            "Efficient Inference: Quantization and Distillation",
+        ],
+    },
+    {
+        "title": "강화학습",
+        "source": "David Silver (UCL) · OpenAI Spinning Up",
+        "category": "rl",
+        "order_index": 8,
+        "lectures": [
+            "Introduction to Reinforcement Learning",
+            "Markov Decision Processes",
+            "Dynamic Programming",
+            "Model-Free Prediction: Monte Carlo",
+            "Model-Free Prediction: TD Learning",
+            "Model-Free Control",
+            "Value Function Approximation",
+            "Policy Gradient Methods",
+            "Actor-Critic Methods",
+            "Integrating Learning and Planning",
+            "Exploration vs. Exploitation",
+            "Deep Q-Networks (DQN)",
+            "Proximal Policy Optimization (PPO)",
+            "Multi-Agent Reinforcement Learning",
+            "RL in Real-World Applications",
+        ],
+    },
+    {
+        "title": "데이터 엔지니어링",
+        "source": "DataTalks.Club · Zach Wilson",
+        "category": "data",
+        "order_index": 9,
+        "lectures": [
+            "Data Engineering Fundamentals",
+            "Relational Databases and SQL",
+            "NoSQL: Document, Column, Graph Stores",
+            "Data Warehousing Concepts",
+            "ETL vs. ELT Patterns",
+            "Apache Spark: Basics",
+            "Apache Spark: Advanced Operations",
+            "Stream Processing with Kafka",
+            "Apache Flink Fundamentals",
+            "Airflow: DAG Orchestration",
+            "dbt: Data Build Tool",
+            "Data Lake and Lakehouse Architecture",
+            "BigQuery and Snowflake",
+            "Data Quality and Observability",
+            "Building a Modern Data Stack",
+        ],
+    },
+    {
+        "title": "MLOps",
+        "source": "Made With ML · Full Stack Deep Learning",
+        "category": "mlops",
+        "order_index": 10,
+        "lectures": [
+            "Introduction to MLOps",
+            "Experiment Tracking with MLflow",
+            "Data Versioning with DVC",
+            "Feature Stores",
+            "Model Training Pipelines",
+            "Model Registry and Versioning",
+            "Model Serving: REST APIs",
+            "Model Serving: Batch Inference",
+            "Containerization with Docker",
+            "Kubernetes for ML Workloads",
+            "CI/CD for Machine Learning",
+            "Model Monitoring and Drift Detection",
+            "A/B Testing and Canary Deployments",
+            "Kubeflow Pipelines",
+            "Cost Optimization in MLOps",
+        ],
+    },
+    {
+        "title": "보험계리학 (Actuarial Science)",
+        "source": "SOA 시험 준비 · 계리 수학 기초",
+        "category": "actuary",
+        "order_index": 11,
+        "lectures": [
+            "보험계리학 개요 및 SOA 시험 체계",
+            "Exam P: 확률론 기초",
+            "Exam FM: 이자론 (Theory of Interest)",
+            "Exam FM: 채권 및 투자",
+            "Exam MFE: 금융경제학",
+            "Exam LTAM: 생명보험수학 기초",
+            "생명표와 사망률 분석",
+            "순보험료와 영업보험료",
+            "책임준비금 계산",
+            "Exam STAM: 손해보험 단기 모형",
+            "손실 모형과 신뢰도 이론",
+            "IFRS 17 보험계약 기준서",
+            "재보험 구조와 리스크 관리",
+            "연금수학과 퇴직급여",
+        ],
+    },
+    {
+        "title": "산업공학 (Industrial Engineering)",
+        "source": "POSTECH IE · 서울대 산업공학",
+        "category": "ie",
+        "order_index": 12,
+        "lectures": [
+            "산업공학 개론",
+            "선형계획법 (Linear Programming)",
+            "정수계획법과 네트워크 최적화",
+            "대기행렬 이론 (Queuing Theory)",
+            "시뮬레이션 모델링",
+            "재고 관리 모델",
+            "수요 예측",
+            "공급망 관리 (Supply Chain Management)",
+            "설비 배치와 자재 흐름",
+            "작업 측정과 공정 분석",
+            "품질 관리와 통계적 공정 관리 (SPC)",
+            "6시그마와 린 생산",
+            "프로젝트 관리 (CPM/PERT)",
+            "생산 계획 및 일정 관리",
+        ],
+    },
 ]
 
 
 async def seed_courses(db: AsyncSession) -> dict:
-    existing = (await db.execute(select(Course))).scalars().first()
-    if existing:
-        logger.info("[Seed] Course 데이터 이미 존재 — 스킵")
-        return {"courses": 0, "lectures": 0}
+    existing_categories = set(
+        (await db.execute(select(Course.category))).scalars().all()
+    )
 
     courses_added = 0
     lectures_added = 0
 
     for data in _COURSES:
+        if data["category"] in existing_categories:
+            continue
+
         course = Course(
             title=data["title"],
             source=data["source"],
@@ -206,7 +345,7 @@ async def seed_courses(db: AsyncSession) -> dict:
             order_index=data["order_index"],
         )
         db.add(course)
-        await db.flush()  # id 발급
+        await db.flush()
 
         for i, title in enumerate(data["lectures"], start=1):
             db.add(Lecture(
@@ -219,6 +358,9 @@ async def seed_courses(db: AsyncSession) -> dict:
 
         courses_added += 1
 
-    await db.commit()
-    logger.info(f"[Seed] Course {courses_added}개, Lecture {lectures_added}개 삽입 완료")
+    if courses_added:
+        await db.commit()
+        logger.info(f"[Seed] Course {courses_added}개, Lecture {lectures_added}개 삽입 완료")
+    else:
+        logger.info("[Seed] 모든 카테고리 이미 존재 — 스킵")
     return {"courses": courses_added, "lectures": lectures_added}
