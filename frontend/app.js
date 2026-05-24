@@ -888,7 +888,7 @@ async function initCurriculum() {
             : c.status === 'active'
               ? `<span class="s-active">● 진행 중</span>`
               : `<span class="s-todo">○ 예정</span>`;
-          return `<div class="course-card" onclick="courseModalOpen('${c.id}')" style="cursor:pointer">
+          return `<div class="course-card" onclick="openCourseGraph('${c.id}')">
             <span class="course-tag ${tagCls}">${c.code}</span>
             <div class="course-title">${c.title}</div>
             <div class="course-source">${c.source}</div>
@@ -1833,6 +1833,106 @@ function _cdRenderView() {
   ol.innerHTML = _cdOrigObj.length
     ? _cdOrigObj.map(o => `<li>${_esc(o)}</li>`).join('')
     : '<li class="cd-empty">—</li>';
+}
+
+/* ── 커리큘럼 인라인 모듈 그래프 ── */
+
+async function openCourseGraph(courseId) {
+  const course = _allCourses.find(c => c.id === courseId);
+  if (!course) return;
+
+  document.getElementById('curriculumGrid').style.display = 'none';
+  const graphEl = document.getElementById('courseGraphView');
+  graphEl.style.display = '';
+
+  const prefix = course.code.split('-')[0];
+  const tagCls = _CODE_TAG_COLOR[prefix] || 't-gray';
+  const pct    = Math.round(course.progress_pct);
+
+  graphEl.innerHTML = `
+    <div class="cg-header">
+      <button class="cg-back-btn" onclick="closeCourseGraph()">← 커리큘럼</button>
+      <span class="course-tag ${tagCls}">${course.code}</span>
+      <span class="cg-title">${_esc(course.title)}</span>
+      <span class="cg-meta">${course.lecture_count}강 · ${pct}% 완료</span>
+      <button class="cg-edit-btn" onclick="courseModalOpen('${course.id}')">편집</button>
+    </div>
+    <div class="cg-prog-bar"><div class="cg-prog-fill" style="width:${pct}%"></div></div>
+    <div id="cgNodesWrap" class="cg-nodes-wrap"><div class="cd-loading">불러오는 중...</div></div>
+  `;
+
+  let lectures = _courseLectures[courseId];
+  if (!lectures) {
+    try {
+      const r = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
+      lectures = r.ok ? await r.json() : [];
+    } catch { lectures = []; }
+    _courseLectures[courseId] = lectures;
+  }
+
+  const wrap = document.getElementById('cgNodesWrap');
+  if (!lectures.length) { wrap.innerHTML = '<div class="cd-loading">강의가 없습니다</div>'; return; }
+
+  const hasModules = lectures.some(l => l.module_name);
+
+  if (!hasModules) {
+    wrap.innerHTML = `<div class="cg-flat-grid">${
+      lectures.map(l =>
+        `<div class="cg-flat-lec${l.completed ? ' done' : ''}">
+          <span class="cg-flat-num">${l.number}</span>
+          <span class="cg-flat-title">${_esc(l.title)}</span>
+          ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+        </div>`
+      ).join('')
+    }</div>`;
+    return;
+  }
+
+  // 모듈별 그룹
+  const modOrder = [], modMap = {};
+  lectures.forEach(l => {
+    const m = l.module_name || '기타';
+    if (!modMap[m]) { modMap[m] = []; modOrder.push(m); }
+    modMap[m].push(l);
+  });
+
+  const nodeItems = modOrder.map((m, idx) => {
+    const lecs  = modMap[m];
+    const diffs = lecs.map(l => l.difficulty).filter(Boolean);
+    const avgD  = diffs.length ? Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length) : 2;
+    const dc    = _DIFF_CLASS[avgD] || 'diff-2';
+    const dl    = _DIFF_LABEL[avgD] || '중급';
+    const doneN = lecs.filter(l => l.completed).length;
+    const arrow = idx > 0 ? '<div class="cg-arrow">→</div>' : '';
+    return `${arrow}
+      <div class="cg-node${idx === 0 ? ' open' : ''}" data-idx="${idx}">
+        <div class="cg-node-head ${dc}" onclick="cgToggleNode(${idx})">
+          <div class="cg-node-title">${_esc(m)}</div>
+          <div class="cg-node-sub">${dl} · ${lecs.length}강</div>
+          <div class="cg-node-done">${doneN > 0 ? `${doneN}/${lecs.length} 완료` : '미시작'}</div>
+        </div>
+        <div class="cg-node-lecs">
+          ${lecs.map(l =>
+            `<div class="cg-lec-item${l.completed ? ' done' : ''}">
+              <span class="cg-lec-num">${l.number}</span>
+              <span class="cg-lec-title">${_esc(l.title)}</span>
+              ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+            </div>`
+          ).join('')}
+        </div>
+      </div>`;
+  });
+
+  wrap.innerHTML = `<div class="cg-nodes-row">${nodeItems.join('')}</div>`;
+}
+
+function closeCourseGraph() {
+  document.getElementById('courseGraphView').style.display = 'none';
+  document.getElementById('curriculumGrid').style.display = '';
+}
+
+function cgToggleNode(idx) {
+  document.querySelector(`.cg-node[data-idx="${idx}"]`)?.classList.toggle('open');
 }
 
 function cdClose() {
