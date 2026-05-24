@@ -16,7 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <!-- marked (마크다운 렌더러) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -364,6 +364,9 @@
       <div class="pad">
         <div class="curriculum-grid" id="curriculumGrid">
           <!-- 동적 렌더링 (initCurriculum) -->
+        </div>
+        <div id="courseGraphView" class="course-graph-view" style="display:none">
+          <!-- 강좌 클릭 시 인라인 모듈 노드 그래프 -->
         </div>
       </div>
     </div>
@@ -896,6 +899,6 @@
 
 </div>
 
-<script src="app.js" defer></script>
+<script src="app.js?v=3" defer></script>
 </body>
 </html>

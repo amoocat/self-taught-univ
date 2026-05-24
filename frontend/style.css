@@ -906,6 +906,129 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 .s-active { font-family: var(--font-mono); font-size: 10px; color: var(--green, #2a5a2a); font-weight: 700; }
 .s-todo   { font-family: var(--font-mono); font-size: 10px; color: var(--gray2); }
 
+/* ── 강좌 인라인 모듈 그래프 ── */
+.course-graph-view { padding-top: 4px; }
+.cg-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.cg-back-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--gray2);
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  transition: all 0.15s;
+}
+.cg-back-btn:hover { color: var(--navy); border-color: var(--navy); }
+.cg-title {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--navy);
+  flex: 1;
+}
+.cg-meta { font-family: var(--font-mono); font-size: 11px; color: var(--gray2); }
+.cg-edit-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--gray2);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  transition: all 0.15s;
+}
+.cg-edit-btn:hover { color: var(--navy); border-color: var(--navy); }
+.cg-prog-bar {
+  height: 5px;
+  background: var(--cream3);
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.cg-prog-fill { height: 100%; background: var(--navy); }
+/* 노드 행 */
+.cg-nodes-wrap { overflow-x: auto; padding-bottom: 8px; }
+.cg-nodes-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  min-width: min-content;
+}
+.cg-arrow {
+  font-size: 18px;
+  color: var(--gray3);
+  align-self: flex-start;
+  padding: 0 5px;
+  flex-shrink: 0;
+  margin-top: 28px;
+}
+/* 모듈 노드 카드 */
+.cg-node {
+  width: 175px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.07);
+  transition: box-shadow 0.15s;
+}
+.cg-node:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.13); }
+.cg-node-head {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  user-select: none;
+  transition: filter 0.1s;
+}
+.cg-node-head:hover { filter: brightness(0.97); }
+.cg-node-head.diff-1 { background: #edfaee; border-bottom-color: #3a8a3a; }
+.cg-node-head.diff-2 { background: #fffaed; border-bottom-color: #c8970f; }
+.cg-node-head.diff-3 { background: #fff0f0; border-bottom-color: #c0392b; }
+.cg-node-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; line-height: 1.3; }
+.cg-node-sub { font-size: 10px; color: var(--gray2); font-family: var(--font-mono); margin-bottom: 2px; }
+.cg-node-done { font-size: 10px; color: var(--gray3); font-family: var(--font-mono); }
+.cg-node-lecs { display: none; max-height: 300px; overflow-y: auto; }
+.cg-node.open .cg-node-lecs { display: block; }
+.cg-lec-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--navy);
+  border-top: 1px solid rgba(0,0,0,0.04);
+  transition: background 0.1s;
+}
+.cg-lec-item:hover { background: rgba(0,0,0,0.03); }
+.cg-lec-item.done .cg-lec-title { text-decoration: line-through; color: var(--gray2); }
+.cg-lec-num { font-family: var(--font-mono); font-size: 9px; color: var(--gray3); min-width: 16px; flex-shrink: 0; }
+.cg-lec-title { flex: 1; line-height: 1.3; }
+/* 모듈 없는 경우 flat grid */
+.cg-flat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 4px; }
+.cg-flat-lec {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+}
+.cg-flat-lec.done .cg-flat-title { text-decoration: line-through; color: var(--gray2); }
+.cg-flat-num { font-family: var(--font-mono); font-size: 10px; color: var(--gray3); min-width: 22px; flex-shrink: 0; }
+.cg-flat-title { flex: 1; }
+
 /* ══════════════════════════════════════
    P2: LECTURE + MY NOTES (반반)
 ══════════════════════════════════════ */

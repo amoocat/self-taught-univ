@@ -143,11 +143,18 @@ async def list_my_playlists():
 
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     try:
-        playlists = await crawler.fetch_user_playlists(access_token)
+        all_pls = await crawler.fetch_user_playlists(access_token)
     finally:
         await crawler.close()
 
-    return {"playlists": playlists}
+    # 학습 카테고리가 감지된 플리만 반환
+    filtered = []
+    for pl in all_pls:
+        cat = _classify_video(pl["title"], pl.get("description", ""))
+        if cat is not None:
+            filtered.append({**pl, "category": cat})
+
+    return {"playlists": filtered}
 
 
 _PLAYLIST_ID_RE = re.compile(r"(?:list=|/playlist/|youtu\.be/)([A-Za-z0-9_-]{10,})")
