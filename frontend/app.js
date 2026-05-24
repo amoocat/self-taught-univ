@@ -2527,6 +2527,7 @@ function goto(page, pushState = true) {
   } else {
     sidebar.style.display = '';
     document.body.classList.toggle('sidebar-open', SIDEBAR_PAGES.includes(page));
+    _ensureSidebarLoaded();
   }
 
   if (page === 'graph')      drawGraph();
@@ -2566,6 +2567,31 @@ const _SUBJECT_ID_MAP = {
   math: 'linear', stats: 'stats', ml: 'ml', dl: 'dl', cv: 'cv', nlp: 'nlp',
 };
 
+function _fillSbSubjectList(courses) {
+  const sbList = document.getElementById('sbSubjectList');
+  if (!sbList || sbList.dataset.filled) return;
+  sbList.innerHTML = courses.map((c, i) => {
+    const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
+    const pct  = Math.round(c.progress_pct);
+    const sid  = _SUBJECT_ID_MAP[c.category] || c.category;
+    return `<div class="sb-item${i===0?' active':''}" id="si-${sid}"
+      onclick="selectSubject('${sid}', '${c.id}')"
+      >${icon} ${c.title.split(' (')[0]} <span class="sb-pct">${pct > 0 ? pct+'%' : '—'}</span></div>`;
+  }).join('');
+  sbList.dataset.filled = '1';
+}
+
+async function _ensureSidebarLoaded() {
+  if (_allCourses.length > 0) { _fillSbSubjectList(_allCourses); return; }
+  try {
+    const res = await fetch('/api/v1/curriculum/');
+    if (!res.ok) return;
+    const courses = await res.json();
+    _allCourses = courses;
+    _fillSbSubjectList(courses);
+  } catch (e) { console.warn('sidebar load failed', e); }
+}
+
 async function initHome() {
   try {
     const res = await fetch('/api/v1/curriculum/');
@@ -2590,16 +2616,8 @@ async function initHome() {
 
     // 사이드바 과목 목록
     const sbList = document.getElementById('sbSubjectList');
-    if (sbList) {
-      sbList.innerHTML = courses.map((c, i) => {
-        const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
-        const pct  = Math.round(c.progress_pct);
-        const sid  = _SUBJECT_ID_MAP[c.category] || c.category;
-        return `<div class="sb-item${i===0?' active':''}" id="si-${sid}"
-          onclick="selectSubject('${sid}', '${c.id}')"
-          >${icon} ${c.title.split(' (')[0]} <span class="sb-pct">${pct > 0 ? pct+'%' : '—'}</span></div>`;
-      }).join('');
-    }
+    if (sbList) sbList.dataset.filled = '';  // 홈 방문 시 항상 갱신
+    _fillSbSubjectList(courses);
 
     // 프로필 드롭다운
     const totalPct = courses.length
