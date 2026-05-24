@@ -839,9 +839,8 @@ async function backfillMetadata() {
     const data = await res.json();
     alert(data.message || `${data.updated}개 강의에 모듈 + 난이도가 배정되었습니다.`);
     if (_currentCourseId) {
-      const lecsEl = document.getElementById('lecs-' + _currentCourseId);
-      if (lecsEl) lecsEl.dataset.loaded = '';
-      await loadCourse(_currentCourseId);
+      delete _courseLectures[_currentCourseId];
+      await selectCourse(_currentCourseId);
     }
   } catch (e) {
     alert('AI 배정 실패. 다시 시도해주세요.');
@@ -870,6 +869,80 @@ async function rescanPlaylists() {
   }
 }
 
+let _cgDragSrc = null;
+
+function _cdCardHtml(c) {
+  const prefix = c.code.split('-')[0];
+  const tagCls = _CODE_TAG_COLOR[prefix] || 't-gray';
+  const pct = Math.round(c.progress_pct);
+  const statusHtml = c.status === 'done'
+    ? `<span class="s-done">✓ 완료</span>`
+    : c.status === 'active'
+      ? `<span class="s-active">● 진행 중</span>`
+      : `<span class="s-todo">○ 예정</span>`;
+  return `<div class="course-card" draggable="true" data-course-id="${c.id}"
+      onclick="openCourseGraph('${c.id}')"
+      ondragstart="_cdDragStart(event,this)"
+      ondragover="_cdDragOver(event)"
+      ondrop="_cdDrop(event,this)"
+      ondragend="_cdDragEnd()">
+    <span class="course-tag ${tagCls}">${c.code}</span>
+    <div class="course-drag-handle">⠿</div>
+    <div class="course-title">${c.title}</div>
+    <div class="course-source">${c.source}</div>
+    <div class="course-bar"><div class="course-fill" style="width:${pct}%"></div></div>
+    <div class="course-foot"><span class="course-pct">${pct > 0 ? pct+'% 완료' : '0%'}</span>${statusHtml}</div>
+  </div>`;
+}
+
+function _cdDragStart(e, el) {
+  _cgDragSrc = el;
+  e.dataTransfer.effectAllowed = 'move';
+  el.classList.add('cd-dragging');
+}
+
+function _cdDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const target = e.currentTarget;
+  document.querySelectorAll('.course-card.cd-drag-over').forEach(c => c.classList.remove('cd-drag-over'));
+  if (target !== _cgDragSrc) target.classList.add('cd-drag-over');
+}
+
+function _cdDrop(e, target) {
+  e.stopPropagation();
+  if (!_cgDragSrc || _cgDragSrc === target) return;
+  const grid = document.getElementById('curriculumGrid');
+  const cards = [...grid.querySelectorAll('.course-card')];
+  const srcIdx = cards.indexOf(_cgDragSrc);
+  const tgtIdx = cards.indexOf(target);
+  if (srcIdx < tgtIdx) grid.insertBefore(_cgDragSrc, target.nextSibling);
+  else                  grid.insertBefore(_cgDragSrc, target);
+  _cdSaveOrder();
+}
+
+function _cdDragEnd() {
+  document.querySelectorAll('.course-card').forEach(c => {
+    c.classList.remove('cd-dragging', 'cd-drag-over');
+  });
+  _cgDragSrc = null;
+}
+
+async function _cdSaveOrder() {
+  const cards = [...document.querySelectorAll('#curriculumGrid .course-card')];
+  const items = cards.map((el, idx) => ({ id: el.dataset.courseId, order_index: idx }));
+  try {
+    await fetch('/api/v1/curriculum/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(items),
+    });
+    // 전역 캐시 순서 동기화
+    const idOrder = Object.fromEntries(items.map(x => [x.id, x.order_index]));
+    _allCourses.sort((a, b) => (idOrder[a.id] ?? 99) - (idOrder[b.id] ?? 99));
+  } catch (e) { console.warn('reorder save failed', e); }
+}
+
 async function initCurriculum() {
   const grid = document.getElementById('curriculumGrid');
   try {
@@ -878,24 +951,8 @@ async function initCurriculum() {
       const courses = await res.json();
       if (courses.length > 0) {
         _curriculumLoaded = true;
-        _allCourses = courses; // 강의 페이지 과목 캐시 공유
-        grid.innerHTML = courses.map(c => {
-          const prefix = c.code.split('-')[0];
-          const tagCls = _CODE_TAG_COLOR[prefix] || 't-gray';
-          const pct = Math.round(c.progress_pct);
-          const statusHtml = c.status === 'done'
-            ? `<span class="s-done">✓ 완료</span>`
-            : c.status === 'active'
-              ? `<span class="s-active">● 진행 중</span>`
-              : `<span class="s-todo">○ 예정</span>`;
-          return `<div class="course-card" onclick="openCourseGraph('${c.id}')">
-            <span class="course-tag ${tagCls}">${c.code}</span>
-            <div class="course-title">${c.title}</div>
-            <div class="course-source">${c.source}</div>
-            <div class="course-bar"><div class="course-fill" style="width:${pct}%"></div></div>
-            <div class="course-foot"><span class="course-pct">${pct > 0 ? pct+'% 완료' : '0%'}</span>${statusHtml}</div>
-          </div>`;
-        }).join('');
+        _allCourses = courses;
+        grid.innerHTML = courses.map(_cdCardHtml).join('');
         return;
       }
     }
@@ -1294,103 +1351,16 @@ async function ytAutoImport() {
   }
 }
 
-/* ── 렉쳐 페이지 탭 전환 ── */
-
-function switchLecTab(n) {
-  const courses = document.getElementById('llTabCourses');
-  const mods    = document.getElementById('llTabModules');
-  const tab1    = document.getElementById('llTab1');
-  const tab2    = document.getElementById('llTab2');
-  if (!courses || !mods) return;
-
-  if (_activeTab === n) {
-    // 같은 탭 재클릭 → 접기/펼치기 토글
-    const content = n === 1 ? courses : mods;
-    const nowHidden = content.style.display === 'none';
-    content.style.display = nowHidden ? '' : 'none';
-    if (tab1) tab1.classList.toggle('active', n === 1 && nowHidden);
-    if (tab2) tab2.classList.toggle('active', n === 2 && nowHidden);
-    _activeTab = nowHidden ? n : null;
-    return;
-  }
-
-  _activeTab = n;
-  if (tab1) tab1.classList.toggle('active', n === 1);
-  if (tab2) tab2.classList.toggle('active', n === 2);
-  courses.style.display = n === 1 ? '' : 'none';
-  mods.style.display    = n === 2 ? '' : 'none';
-
-  if (n === 2 && !mods.dataset.built) _buildModuleTab();
-}
-
-async function _buildModuleTab() {
-  const el = document.getElementById('llTabModules');
-  if (!el) return;
-  el.innerHTML = '<div class="ll-mod-loading">모듈 목록 불러오는 중...</div>';
-
-  const groups = [];
-  for (const c of _allCourses) {
-    let lecs = _courseLectures[c.id];
-    if (!lecs) {
-      try {
-        const r = await fetch(`/api/v1/curriculum/${c.id}/lectures`);
-        lecs = r.ok ? await r.json() : [];
-      } catch { lecs = []; }
-      _courseLectures[c.id] = lecs;
-    }
-
-    const modOrder = [];
-    const modMap   = {};
-    const modDiff  = {};
-    lecs.forEach(l => {
-      const m = l.module_name;
-      if (!m) return;
-      if (!modMap[m]) { modMap[m] = 0; modOrder.push(m); modDiff[m] = []; }
-      modMap[m]++;
-      if (l.difficulty) modDiff[m].push(l.difficulty);
-    });
-
-    if (!modOrder.length) continue;
-    groups.push({ course: c, modOrder, modMap, modDiff });
-  }
-
-  if (!groups.length) {
-    el.innerHTML = '<div class="ll-mod-loading">모듈 정보가 없습니다</div>';
-    el.dataset.built = '1';
-    return;
-  }
-
-  el.innerHTML = groups.map(({ course, modOrder, modMap, modDiff }) =>
-    `<div class="ll-mod-group">
-      <div class="ll-mod-group-hdr">${(course.category||'').toUpperCase()} · ${_esc(course.title)}</div>
-      ${modOrder.map(m => {
-        const diffs = modDiff[m];
-        const avgD  = diffs.length ? Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length) : 2;
-        const dc    = _DIFF_CLASS[avgD] || 'diff-2';
-        const safeM = m.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        return `<div class="ll-mod-item" onclick="openCourseModule('${course.id}','${safeM}')">
-          <span class="ll-mod-dot-sm ${dc}"></span>
-          <span class="ll-mod-name">${_esc(m)}</span>
-          <span class="ll-mod-count">${modMap[m]}강</span>
-        </div>`;
-      }).join('')}
-    </div>`
-  ).join('');
-  el.dataset.built = '1';
-}
-
 async function openCourseModule(courseId, moduleName) {
-  switchLecTab(1);
-  await openCourse(courseId);
-  const lecsEl = document.getElementById('lecs-' + courseId);
-  if (!lecsEl) return;
-  lecsEl.querySelectorAll('.ll-module-section').forEach(sec => {
+  gotoLecture(courseId);
+  await selectCourse(courseId);
+  const modBody = document.getElementById('lmBody');
+  if (!modBody) return;
+  modBody.querySelectorAll('.ll-module-section').forEach(sec => {
     const nameEl = sec.querySelector('.ll-module-name');
-    if (nameEl && nameEl.textContent.trim() === moduleName) {
-      lecsEl.querySelectorAll('.ll-module-section').forEach(s => s.classList.remove('open'));
-      sec.classList.add('open');
-      sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    }
+    const match  = nameEl && nameEl.textContent.trim() === moduleName;
+    sec.classList.toggle('open', match);
+    if (match) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
   });
 }
 
@@ -2044,7 +2014,6 @@ let _currentLectures = [];
 let _allCourses = [];
 let _pendingCourseId = null;
 let _lectureAccordionBuilt = false;
-let _activeTab = 1;       // 1=과목, 2=모듈, null=접힘
 const _courseLectures = {}; // courseId → lectures 캐시
 
 function youtubeEmbedUrl(url) {
@@ -2067,79 +2036,71 @@ async function initLecture() {
     }
   }
 
-  // 아코디언 헤더는 최초 1회만 빌드
   if (!_lectureAccordionBuilt) {
     const listEl = document.getElementById('lectureList');
     listEl.innerHTML =
       `<div class="ll-panel-ctrl">
-        <div class="ll-tabs">
-          <button class="ll-tab active" id="llTab1" onclick="switchLecTab(1)">과목</button>
-          <button class="ll-tab" id="llTab2" onclick="switchLecTab(2)">모듈</button>
-        </div>
         <button class="ll-collapse-btn" id="llCollapseBtn" onclick="toggleLecturePanel()" title="패널 접기">‹</button>
       </div>` +
-      `<div class="ll-tab-content" id="llTabCourses">` +
       _allCourses.map(c => `
-        <div class="ll-course-row" data-course-id="${c.id}" onclick="toggleCourse('${c.id}')">
+        <div class="ll-course-row" data-course-id="${c.id}" onclick="selectCourse('${c.id}')">
           <span class="ll-course-cat">${(c.category||'').toUpperCase()}</span>
           <span class="ll-course-name">${c.title}</span>
-          <span class="ll-course-arrow">▶</span>
         </div>
-        <div class="ll-course-lecs" id="lecs-${c.id}"></div>
-      `).join('') +
-      `</div>` +
-      `<div class="ll-tab-content" id="llTabModules" style="display:none"></div>`;
+      `).join('');
     _lectureAccordionBuilt = true;
   }
 
   const targetId = _pendingCourseId || _currentCourseId
     || (_allCourses.length > 0 ? _allCourses[0].id : null);
   _pendingCourseId = null;
-  if (targetId) await openCourse(targetId);
+  if (targetId) await selectCourse(targetId);
 }
 
-async function toggleCourse(courseId) {
-  const lecsEl = document.getElementById('lecs-' + courseId);
-  if (!lecsEl) return;
-  if (lecsEl.classList.contains('open')) {
-    lecsEl.classList.remove('open');
-    const row = document.querySelector(`.ll-course-row[data-course-id="${courseId}"]`);
-    if (row) row.classList.remove('open');
-  } else {
-    await openCourse(courseId);
-  }
-}
-
-async function openCourse(courseId) {
-  // 다른 열린 섹션 닫기
-  document.querySelectorAll('.ll-course-lecs.open').forEach(el => el.classList.remove('open'));
-  document.querySelectorAll('.ll-course-row.open').forEach(el => el.classList.remove('open'));
-
+async function selectCourse(courseId) {
+  // 과목 행 하이라이트
+  document.querySelectorAll('.ll-course-row').forEach(r => r.classList.remove('active'));
   const row = document.querySelector(`.ll-course-row[data-course-id="${courseId}"]`);
-  const lecsEl = document.getElementById('lecs-' + courseId);
-  if (!row || !lecsEl) return;
+  if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 
-  row.classList.add('open');
-  lecsEl.classList.add('open');
+  // 모듈 패널 열기
+  const layout = document.getElementById('lectureLayout');
+  if (layout) layout.style.setProperty('--lec-c2', '220px');
 
-  // 열린 과목으로 스크롤
-  row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  const course  = _allCourses.find(c => c.id === courseId);
+  const titleEl = document.getElementById('lmCourseTitle');
+  if (titleEl && course) titleEl.textContent = course.title;
 
-  if (!lecsEl.dataset.loaded) {
-    await loadCourse(courseId);
-  } else {
-    _currentCourseId = courseId;
-    // 이미 로드된 강의들로 _currentLectures 복원
-    const items = lecsEl.querySelectorAll('.ll-item');
-    if (items.length > 0 && _currentCourseId !== courseId) {
-      // 첫 강의 로드
-      const firstId = items[0].dataset.lectureId;
-      if (firstId) loadLecture(firstId, items[0]);
+  _currentCourseId = courseId;
+  const modBody = document.getElementById('lmBody');
+  if (!modBody) return;
+
+  let lectures = _courseLectures[courseId];
+  if (!lectures) {
+    modBody.innerHTML = '<div class="lm-loading">불러오는 중...</div>';
+    try {
+      const res = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
+      if (!res.ok) throw new Error('fetch failed');
+      lectures = await res.json();
+      _courseLectures[courseId] = lectures;
+    } catch (e) {
+      modBody.innerHTML = '<div class="lm-loading">강의 목록을 불러올 수 없습니다</div>';
+      return;
     }
   }
+
+  _currentLectures = lectures;
+  modBody.innerHTML = _buildLecList(lectures, course);
+  if (lectures.length > 0 && !_currentLectureId) loadLecture(lectures[0].id);
+}
+
+function closeModulePanel() {
+  const layout = document.getElementById('lectureLayout');
+  if (layout) layout.style.setProperty('--lec-c2', '0px');
 }
 
 let _savedLecC1 = null;
+let _savedLecC2 = null;
 
 function toggleLecturePanel() {
   const layout = document.getElementById('lectureLayout');
@@ -2150,15 +2111,16 @@ function toggleLecturePanel() {
   const collapsed = list.classList.contains('ll-collapsed');
   if (collapsed) {
     list.classList.remove('ll-collapsed');
-    layout.style.setProperty('--lec-c1', _savedLecC1 || '200px');
-    if (btn) btn.textContent = '‹';
-    if (btn) btn.title = '패널 접기';
+    layout.style.setProperty('--lec-c1', _savedLecC1 || '150px');
+    if (_savedLecC2 && _savedLecC2 !== '0px') layout.style.setProperty('--lec-c2', _savedLecC2);
+    if (btn) { btn.textContent = '‹'; btn.title = '패널 접기'; }
   } else {
-    _savedLecC1 = getComputedStyle(layout).getPropertyValue('--lec-c1').trim() || '200px';
+    _savedLecC1 = getComputedStyle(layout).getPropertyValue('--lec-c1').trim() || '150px';
+    _savedLecC2 = getComputedStyle(layout).getPropertyValue('--lec-c2').trim() || '0px';
     layout.style.setProperty('--lec-c1', '28px');
+    layout.style.setProperty('--lec-c2', '0px');
     list.classList.add('ll-collapsed');
-    if (btn) btn.textContent = '›';
-    if (btn) btn.title = '패널 펼치기';
+    if (btn) { btn.textContent = '›'; btn.title = '패널 펼치기'; }
   }
 }
 
@@ -2254,28 +2216,6 @@ function _buildLecList(lectures, course) {
   }).join('');
 }
 
-async function loadCourse(courseId) {
-  _currentCourseId = courseId;
-  const course = _allCourses.find(c => c.id === courseId);
-  const lecsEl = document.getElementById('lecs-' + courseId);
-  if (!lecsEl) return;
-
-  try {
-    const lRes = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
-    if (!lRes.ok) throw new Error('lectures fetch failed');
-    _currentLectures = await lRes.json();
-    _courseLectures[courseId] = _currentLectures;
-    lecsEl.dataset.loaded = '1';
-
-    lecsEl.innerHTML = _buildLecList(_currentLectures, course);
-
-    if (_currentLectures.length > 0) loadLecture(_currentLectures[0].id);
-    return;
-  } catch (e) {
-    console.warn('loadCourse failed', e);
-    lecsEl.innerHTML = '<div class="ln-empty" style="padding:12px 14px">강의 목록을 불러올 수 없습니다</div>';
-  }
-}
 
 async function loadLecture(id, clickedEl) {
   _currentLectureId = id;
@@ -2598,6 +2538,88 @@ function selectSubject(id, courseId) {
   const el = document.getElementById('si-'+id);
   if (el) el.classList.add('active');
   if (courseId) gotoLecture(courseId);
+}
+
+let _sbActiveTab = 1;
+
+function switchSbTab(n) {
+  const tabCourses = document.getElementById('sbTabCourses');
+  const tabModules = document.getElementById('sbTabModules');
+  const btn1 = document.getElementById('sbTab1');
+  const btn2 = document.getElementById('sbTab2');
+  if (!tabCourses || !tabModules) return;
+
+  if (_sbActiveTab === n) {
+    const target = n === 1 ? tabCourses : tabModules;
+    const hidden = target.style.display === 'none';
+    target.style.display = hidden ? '' : 'none';
+    _sbActiveTab = hidden ? n : 0;
+    return;
+  }
+
+  _sbActiveTab = n;
+  tabCourses.style.display = n === 1 ? '' : 'none';
+  tabModules.style.display = n === 2 ? '' : 'none';
+  btn1.classList.toggle('active', n === 1);
+  btn2.classList.toggle('active', n === 2);
+
+  if (n === 2) {
+    const modList = document.getElementById('sbModuleList');
+    if (modList && !modList.dataset.built) _buildSbModuleTab();
+  }
+}
+
+async function _buildSbModuleTab() {
+  const modList = document.getElementById('sbModuleList');
+  if (!modList) return;
+
+  const courses = _allCourses || [];
+  if (!courses.length) {
+    modList.innerHTML = '<div class="sb-loading">과목 데이터 없음</div>';
+    return;
+  }
+
+  const diffClass = { 1: 'diff-1', 2: 'diff-2', 3: 'diff-3' };
+  let html = '';
+
+  for (const c of courses) {
+    let lectures = _courseLectures && _courseLectures[c.id];
+    if (!lectures) {
+      try {
+        const res = await fetch(`/api/v1/curriculum/${c.id}/lectures`);
+        if (res.ok) {
+          lectures = await res.json();
+          if (_courseLectures) _courseLectures[c.id] = lectures;
+        }
+      } catch (e) { lectures = []; }
+    }
+
+    const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
+    const modMap = {};
+    (lectures || []).forEach(l => {
+      const mod = l.module_name || '기타';
+      if (!modMap[mod]) modMap[mod] = { diff: l.difficulty || 0, count: 0 };
+      modMap[mod].count++;
+      if (l.difficulty && l.difficulty > modMap[mod].diff) modMap[mod].diff = l.difficulty;
+    });
+
+    if (!Object.keys(modMap).length) continue;
+
+    html += `<div class="sb-mod-group">
+      <div class="sb-mod-group-hdr">${icon} ${c.title.split(' (')[0]}</div>
+      ${Object.entries(modMap).map(([mod, info]) => {
+        const dc = diffClass[info.diff] || 'diff-0';
+        return `<div class="sb-mod-item" onclick="gotoLecture('${c.id}')">
+          <span class="sb-mod-dot ${dc}"></span>
+          <span class="sb-mod-name">${mod}</span>
+          <span class="sb-mod-cnt">${info.count}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  modList.innerHTML = html || '<div class="sb-loading">모듈 없음</div>';
+  modList.dataset.built = '1';
 }
 
 let _blogSourceFilter = 'all';

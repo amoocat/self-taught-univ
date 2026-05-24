@@ -192,6 +192,21 @@ async def get_lecture_detail(lecture_id: str, db: AsyncSession = Depends(get_db)
     )
 
 
+class CourseReorderItem(BaseModel):
+    id: str
+    order_index: int
+
+
+@router.put("/reorder", status_code=200)
+async def reorder_courses(items: list[CourseReorderItem], db: AsyncSession = Depends(get_db)):
+    for item in items:
+        course = (await db.execute(select(Course).where(Course.id == item.id))).scalar_one_or_none()
+        if course:
+            course.order_index = item.order_index
+    await db.commit()
+    return {"ok": True, "updated": len(items)}
+
+
 @router.patch("/{course_id}", status_code=200)
 async def update_course(course_id: str, body: CourseUpdateIn, db: AsyncSession = Depends(get_db)):
     course = await get_or_404(db, Course, course_id, "Course")
