@@ -16,7 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <!-- marked (마크다운 렌더러) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -493,12 +493,21 @@
     <!-- ══ P2: LECTURE + MY NOTES (반반) ══ -->
     <div class="page" id="page-lecture">
       <div class="lecture-layout" id="lectureLayout">
-        <!-- 강의 목록 -->
+        <!-- 강의 목록 (과목만) -->
         <div class="lecture-list" id="lectureList">
           <!-- 동적 렌더링 (initLecture) -->
         </div>
 
-        <div class="resizer" data-target="--lec-c1" data-min="120" data-max="400"></div>
+        <!-- 모듈 패널 (과목 클릭 시 등장) -->
+        <div class="lecture-modules" id="lectureModules">
+          <div class="lm-header">
+            <span class="lm-title" id="lmCourseTitle"></span>
+            <button class="lm-close-btn" onclick="closeModulePanel()" title="닫기">✕</button>
+          </div>
+          <div class="lm-body" id="lmBody"></div>
+        </div>
+
+        <div class="resizer" data-target="--lec-c1" data-min="100" data-max="300"></div>
 
         <!-- 렉쳐 노트 패널 -->
         <div class="lecture-content">
@@ -905,6 +914,6 @@
 
 </div>
 
-<script src="app.js?v=4" defer></script>
+<script src="app.js?v=5" defer></script>
 </body>
 </html>
