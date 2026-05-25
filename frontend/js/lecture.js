@@ -419,9 +419,26 @@ function lnShowView(v) {
   if (!lv || !ev) return;
   lv.style.display = v === 'list'   ? 'flex' : 'none';
   ev.style.display = v === 'editor' ? 'flex' : 'none';
+  if (v === 'editor') lnSetMode('edit');
 }
 
 function lnMarkDirty() { _lnDirty = true; }
+
+function lnSetMode(mode) {
+  document.getElementById('lnBtnEdit').classList.toggle('active', mode === 'edit');
+  document.getElementById('lnBtnPreview').classList.toggle('active', mode === 'preview');
+  const ta  = document.getElementById('lnTextArea');
+  const pre = document.getElementById('lnPreview');
+  if (mode === 'preview') {
+    pre.innerHTML = marked.parse(ta.value || '');
+    ta.style.display = 'none';
+    pre.style.display = 'block';
+  } else {
+    pre.style.display = 'none';
+    ta.style.display = '';
+    ta.focus();
+  }
+}
 
 async function lnNewNote() {
   if (!_currentLectureId) return;

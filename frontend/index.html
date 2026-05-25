@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="css/shared.css?v=1">
 <link rel="stylesheet" href="css/home.css?v=1">
 <link rel="stylesheet" href="css/curriculum.css?v=1">
-<link rel="stylesheet" href="css/lecture.css?v=3">
+<link rel="stylesheet" href="css/lecture.css?v=4">
 <link rel="stylesheet" href="css/notes.css?v=1">
 <link rel="stylesheet" href="css/papers.css?v=1">
 <link rel="stylesheet" href="css/chat.css?v=1">
@@ -565,6 +565,10 @@
           <div id="lnEditorView" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
             <div class="ln-editor-toolbar">
               <button class="ln-back-btn" onclick="lnBackToList()">← 목록</button>
+              <div class="ln-mode-tabs">
+                <button class="ln-mode-btn active" id="lnBtnEdit" onclick="lnSetMode('edit')">편집</button>
+                <button class="ln-mode-btn" id="lnBtnPreview" onclick="lnSetMode('preview')">미리보기</button>
+              </div>
               <button class="ln-save-btn" id="lnSaveBtn" onclick="lnSave()">저장</button>
             </div>
             <input type="text" id="lnTitleInput" class="ln-title-input" placeholder="제목...">
@@ -572,6 +576,7 @@
               placeholder="마크다운으로 노트를 작성하세요... (Ctrl+S 저장)"
               onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='s'){event.preventDefault();lnSave()}"
               oninput="lnMarkDirty()"></textarea>
+            <div id="lnPreview" class="ln-preview" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -934,7 +939,7 @@
 <script src="js/notes.js?v=1" defer></script>
 <script src="js/graph.js?v=1" defer></script>
 <script src="js/curriculum.js?v=2" defer></script>
-<script src="js/lecture.js?v=3" defer></script>
+<script src="js/lecture.js?v=4" defer></script>
 <script src="js/blog.js?v=1" defer></script>
 <script src="js/papers.js?v=1" defer></script>
 </body>
