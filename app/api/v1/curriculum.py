@@ -223,6 +223,7 @@ class LectureMetaPatch(BaseModel):
     module_name: Optional[str] = None
     difficulty: Optional[int] = None
     meta_source: Optional[str] = None
+    number: Optional[int] = None
 
 
 @router.patch("/lectures/batch-meta", status_code=200)
@@ -247,6 +248,8 @@ async def batch_update_lecture_meta(
             lec.module_name = item.module_name
         if item.difficulty is not None:
             lec.difficulty = item.difficulty
+        if item.number is not None:
+            lec.number = item.number
         effective_source = item.meta_source if item.meta_source is not None else source
         if effective_source is not None:
             lec.meta_source = effective_source
