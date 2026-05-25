@@ -129,6 +129,15 @@
 
 ## ✅ 완료된 것들
 
+### 렉쳐 뷰 + 노트 + 커리큘럼 고도화 (이번 세션)
+- [x] video_inbox 삭제 시 varchar=uuid 타입 오류 수정 (text() 쿼리로 우회)
+- [x] GPT 쿼터 초과 시 키워드 분류 폴백 추가 (`_classify_video`)
+- [x] 렉쳐 탭 사이드바(과목/모듈 탭) 완전 제거 → 아코디언 단일 패널
+- [x] 렉쳐 뷰 인라인 노트 에디터 (목록 ↔ 에디터 2단계 뷰 전환)
+- [x] 인라인 노트 에디터 마크다운 미리보기 탭 (편집/미리보기, marked.js)
+- [x] 커리큘럼 재정렬 스크립트 v2 실행 — 쓰레기 109개 삭제, 109개 강의 재분류
+  - actuary/ie 보호, LLM keep-in-current 규칙, 이동 대상도 보호 카테고리 제외
+
 ### 강의 메타데이터 고도화 (이번 세션)
 - [x] `lectures.created_at` → `crawled_at` 리네임 + `published_at` 컬럼 추가 (migration 0011)
 - [x] 기존 강의 282개 `published_at` YouTube API 백필
