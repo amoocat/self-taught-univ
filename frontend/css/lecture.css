@@ -3,7 +3,7 @@
 ══════════════════════════════════════ */
 #page-lecture { overflow: hidden; }
 
-.lecture-layout { display: grid; grid-template-columns: var(--lec-c1,150px) var(--lec-c2,0px) 5px 1fr 5px var(--lec-c3,400px); flex: 1; overflow: hidden; }
+.lecture-layout { display: grid; grid-template-columns: var(--lec-c1,240px) 5px 1fr 5px var(--lec-c3,400px); flex: 1; overflow: hidden; }
 
 /* lecture list */
 .lecture-list {
@@ -11,52 +11,56 @@
   background: var(--navy);
 }
 
-/* lecture modules panel */
-.lecture-modules {
-  overflow: hidden;
-  background: var(--navy);
-  border-right: 1px solid rgba(255,255,255,0.08);
-  display: flex;
-  flex-direction: column;
-}
-.lm-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+/* 과목 아코디언 */
+.ll-course-group { border-bottom: 1px solid rgba(255,255,255,0.06); }
+
+.ll-course-hdr {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: #07101e;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding: 0 6px 0 12px;
-  min-height: 32px;
-  flex-shrink: 0;
+  gap: 7px;
+  padding: 9px 10px 9px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+  background: rgba(255,255,255,0.02);
 }
-.lm-title {
+.ll-course-hdr:hover { background: rgba(255,255,255,0.06); }
+.ll-course-group.open > .ll-course-hdr { background: rgba(180,150,60,0.12); }
+
+.ll-course-cat {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  padding: 2px 5px;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: var(--gold2);
+  border-color: var(--gold);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.ll-course-title-text {
   flex: 1;
   font-family: var(--font-serif);
   font-size: 11px;
-  font-style: italic;
   color: var(--gold2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.lm-close-btn {
-  background: none;
-  border: none;
+
+.ll-caret {
+  font-size: 8px;
   color: var(--gray3);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 5px 6px;
-  opacity: 0.5;
-  transition: opacity 0.15s;
-  line-height: 1;
+  transition: transform 0.2s;
   flex-shrink: 0;
 }
-.lm-close-btn:hover { opacity: 1; color: var(--text); }
-.lm-body { flex: 1; overflow-y: auto; }
-.lm-loading { padding: 14px; color: var(--gray3); font-size: 12px; text-align: center; }
+.ll-course-group.open .ll-caret { transform: rotate(90deg); }
+
+.ll-course-body { display: none; background: var(--white); }
+.ll-course-group.open .ll-course-body { display: block; }
+
+.lm-loading { padding: 14px; color: var(--gray); font-size: 12px; text-align: center; }
 
 .ll-head {
   padding: 12px 14px;

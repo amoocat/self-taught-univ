@@ -41,12 +41,17 @@ async function initLecture() {
       `<div class="ll-panel-ctrl">
         <button class="ll-collapse-btn" id="llCollapseBtn" onclick="toggleLecturePanel()" title="패널 접기">‹</button>
       </div>` +
-      _allCourses.map(c => `
-        <div class="ll-course-row" data-course-id="${c.id}" onclick="selectCourse('${c.id}')">
-          <span class="ll-course-cat">${(c.category||'').toUpperCase()}</span>
-          <span class="ll-course-name">${c.title}</span>
-        </div>
-      `).join('');
+      _allCourses.map(c => {
+        const cat = (c.category || '').toUpperCase().slice(0, 6);
+        return `<div class="ll-course-group" data-course-id="${c.id}">
+          <div class="ll-course-hdr" onclick="selectCourse('${c.id}')">
+            <span class="ll-course-cat">${cat}</span>
+            <span class="ll-course-title-text">${_esc(c.title.split(' (')[0])}</span>
+            <span class="ll-caret">▶</span>
+          </div>
+          <div class="ll-course-body"></div>
+        </div>`;
+      }).join('');
     _lectureAccordionBuilt = true;
   }
 
@@ -57,45 +62,42 @@ async function initLecture() {
 }
 
 async function selectCourse(courseId) {
-  // 과목 행 하이라이트
-  document.querySelectorAll('.ll-course-row').forEach(r => r.classList.remove('active'));
-  const row = document.querySelector(`.ll-course-row[data-course-id="${courseId}"]`);
-  if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  const group = document.querySelector(`.ll-course-group[data-course-id="${courseId}"]`);
+  if (!group) return;
 
-  // 모듈 패널 열기
-  const layout = document.getElementById('lectureLayout');
-  if (layout) layout.style.setProperty('--lec-c2', '220px');
+  const isOpen = group.classList.contains('open');
 
-  const course  = _allCourses.find(c => c.id === courseId);
-  const titleEl = document.getElementById('lmCourseTitle');
-  if (titleEl && course) titleEl.textContent = course.title;
+  // 같은 과목 클릭 → 토글
+  if (isOpen) {
+    group.classList.remove('open');
+    return;
+  }
+
+  // 다른 과목 열기
+  group.classList.add('open');
+  group.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
   _currentCourseId = courseId;
-  const modBody = document.getElementById('lmBody');
-  if (!modBody) return;
+  const course = _allCourses.find(c => c.id === courseId);
+  const body = group.querySelector('.ll-course-body');
 
   let lectures = _courseLectures[courseId];
   if (!lectures) {
-    modBody.innerHTML = '<div class="lm-loading">불러오는 중...</div>';
+    if (body) body.innerHTML = '<div class="lm-loading">불러오는 중...</div>';
     try {
       const res = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
-      if (!res.ok) throw new Error('fetch failed');
+      if (!res.ok) throw new Error();
       lectures = await res.json();
       _courseLectures[courseId] = lectures;
     } catch (e) {
-      modBody.innerHTML = '<div class="lm-loading">강의 목록을 불러올 수 없습니다</div>';
+      if (body) body.innerHTML = '<div class="lm-loading">강의 목록을 불러올 수 없습니다</div>';
       return;
     }
   }
 
   _currentLectures = lectures;
-  modBody.innerHTML = _buildLecList(lectures, course);
+  if (body) body.innerHTML = _buildLecList(lectures, course);
   if (lectures.length > 0 && !_currentLectureId) loadLecture(lectures[0].id);
-}
-
-function closeModulePanel() {
-  const layout = document.getElementById('lectureLayout');
-  if (layout) layout.style.setProperty('--lec-c2', '0px');
 }
 
 function toggleLecturePanel() {
@@ -107,14 +109,11 @@ function toggleLecturePanel() {
   const collapsed = list.classList.contains('ll-collapsed');
   if (collapsed) {
     list.classList.remove('ll-collapsed');
-    layout.style.setProperty('--lec-c1', _savedLecC1 || '150px');
-    if (_savedLecC2 && _savedLecC2 !== '0px') layout.style.setProperty('--lec-c2', _savedLecC2);
+    layout.style.setProperty('--lec-c1', _savedLecC1 || '240px');
     if (btn) { btn.textContent = '‹'; btn.title = '패널 접기'; }
   } else {
-    _savedLecC1 = getComputedStyle(layout).getPropertyValue('--lec-c1').trim() || '150px';
-    _savedLecC2 = getComputedStyle(layout).getPropertyValue('--lec-c2').trim() || '0px';
+    _savedLecC1 = getComputedStyle(layout).getPropertyValue('--lec-c1').trim() || '240px';
     layout.style.setProperty('--lec-c1', '28px');
-    layout.style.setProperty('--lec-c2', '0px');
     list.classList.add('ll-collapsed');
     if (btn) { btn.textContent = '›'; btn.title = '패널 펼치기'; }
   }

@@ -108,6 +108,23 @@ async def classify_and_promote(db: AsyncSession) -> dict:
             for v in batch:
                 all_results.append({"id": v.video_id, "course_id": None, "difficulty": 2, "new_course": None})
 
+    # GPT 실패 폴백: course_id 없는 영상은 제목 키워드로 재분류 시도
+    from app.crawlers.youtube import _classify_video as _kw_classify
+    cat_to_course = {}
+    for c in courses:
+        if c.category not in cat_to_course:
+            cat_to_course[c.category] = c
+    inbox_by_vid = {v.video_id: v for v in inbox}
+
+    for item in all_results:
+        if not item.get("course_id"):
+            v = inbox_by_vid.get(item["id"])
+            if v:
+                cat = _kw_classify(v.title, v.description or "")
+                if cat and cat in cat_to_course:
+                    item["course_id"] = cat_to_course[cat].id
+                    item["difficulty"] = item.get("difficulty") or 2
+
     # video_id → classification 매핑
     result_map = {r["id"]: r for r in all_results}
 

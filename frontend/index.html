@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="css/shared.css?v=1">
 <link rel="stylesheet" href="css/home.css?v=1">
 <link rel="stylesheet" href="css/curriculum.css?v=1">
-<link rel="stylesheet" href="css/lecture.css?v=2">
+<link rel="stylesheet" href="css/lecture.css?v=3">
 <link rel="stylesheet" href="css/notes.css?v=1">
 <link rel="stylesheet" href="css/papers.css?v=1">
 <link rel="stylesheet" href="css/chat.css?v=1">
@@ -502,21 +502,12 @@
     <!-- ══ P2: LECTURE + MY NOTES (반반) ══ -->
     <div class="page" id="page-lecture">
       <div class="lecture-layout" id="lectureLayout">
-        <!-- 강의 목록 (과목만) -->
+        <!-- 강의 내비게이션 (과목 아코디언) -->
         <div class="lecture-list" id="lectureList">
           <!-- 동적 렌더링 (initLecture) -->
         </div>
 
-        <!-- 모듈 패널 (과목 클릭 시 등장) -->
-        <div class="lecture-modules" id="lectureModules">
-          <div class="lm-header">
-            <span class="lm-title" id="lmCourseTitle"></span>
-            <button class="lm-close-btn" onclick="closeModulePanel()" title="닫기">✕</button>
-          </div>
-          <div class="lm-body" id="lmBody"></div>
-        </div>
-
-        <div class="resizer" data-target="--lec-c1" data-min="100" data-max="300"></div>
+        <div class="resizer" data-target="--lec-c1" data-min="160" data-max="400"></div>
 
         <!-- 렉쳐 노트 패널 -->
         <div class="lecture-content">
@@ -938,12 +929,12 @@
 
 </div>
 
-<script src="js/core.js?v=1" defer></script>
+<script src="js/core.js?v=2" defer></script>
 <script src="js/chat.js?v=1" defer></script>
 <script src="js/notes.js?v=1" defer></script>
 <script src="js/graph.js?v=1" defer></script>
-<script src="js/curriculum.js?v=1" defer></script>
-<script src="js/lecture.js?v=2" defer></script>
+<script src="js/curriculum.js?v=2" defer></script>
+<script src="js/lecture.js?v=3" defer></script>
 <script src="js/blog.js?v=1" defer></script>
 <script src="js/papers.js?v=1" defer></script>
 </body>

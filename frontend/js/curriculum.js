@@ -845,15 +845,21 @@ async function ytRegisterOne(idx) {
       if (btn) { btn.disabled = false; btn.textContent = '등록'; }
       return;
     }
-    const saved = (data.llm || {}).promoted || 0;
+    const saved   = (data.llm || {}).promoted || 0;
+    const skipped = (data.llm || {}).skipped  || 0;
     if (btn) {
-      btn.textContent = '등록됨';
+      btn.textContent = saved > 0 ? '등록됨' : '스킵됨';
       btn.disabled = true;
-      btn.className = 'yt-pl-reg-badge';
+      btn.className = saved > 0 ? 'yt-pl-reg-badge' : 'yt-pl-reg-now-btn';
     }
-    _registeredPlaylistIds.add(pl.playlist_id);
-    alert(`완료! ${saved}개 강의가 저장되었습니다.`);
-    initCurriculum();
+    if (saved > 0) _registeredPlaylistIds.add(pl.playlist_id);
+    if (saved === 0) {
+      alert(`저장된 강의 없음 (스킵: ${skipped}개)\n이미 등록된 강의이거나 학습 무관 영상일 수 있습니다.\nGPT 쿼터 초과 시 키워드 분류로 재시도됩니다.`);
+      if (btn) { btn.disabled = false; btn.textContent = '재시도'; }
+    } else {
+      alert(`완료! ${saved}개 강의가 저장되었습니다.`);
+      initCurriculum();
+    }
   } catch (e) {
     console.error('ytRegisterOne error:', e);
     alert(`저장 실패: ${e.message}`);

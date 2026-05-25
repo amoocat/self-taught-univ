@@ -15,8 +15,8 @@ const _DIFF_CLASS = { 1: 'diff-1', 2: 'diff-2', 3: 'diff-3' };
 /* ════════════════════════════════════════
    NAVIGATION + EVENTS
 ════════════════════════════════════════ */
-const SIDEBAR_PAGES = ['lecture','mynotes','graph'];
-const NO_SIDEBAR    = ['home','about','curriculum','papers','blog'];
+const SIDEBAR_PAGES = ['mynotes','graph'];
+const NO_SIDEBAR    = ['home','about','curriculum','lecture','papers','blog'];
 const ALL_PAGES     = ['home','about','curriculum','lecture','mynotes','papers','blog','graph'];
 
 let BLOG_POSTS = [];
