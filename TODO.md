@@ -46,6 +46,8 @@
 
 - [ ] 정기 동기화 — 이미 등록한 플리에 새 영상 추가됐을 때 자동 반영 (일 1회 배치)
 - [x] GPT 기반 플리 자동 선별 — discover 결과를 GPT-4o-mini에 넘겨 학습 관련도 높은 플리 자동 선택 → VideoInbox 저장 (`POST /discover/auto-import` + "AI 자동 가져오기" 버튼)
+- [x] 좋아요 기반 채널 자동 수집 스케줄러 — 매주 일 03:30 자동 실행, 수동 트리거 버튼 ("🔄 자동 수집 지금 실행")
+- [x] sync-liked 엔드포인트 블로킹 타임아웃 수정 — asyncio.create_task 백그라운드 실행, 즉시 응답 반환
 
 ## 참고 자료 추가
 - [ ] medium 계정도 연동해서 관심 및 구독중인 포스팅 크롤링하기
@@ -137,6 +139,13 @@
 - [x] `batch-meta` 엔드포인트: `meta_source` 필드 + `?source=` 쿼리 파라미터 지원
 - [x] `backfill_metadata` (GPT) 자동으로 `meta_source="llm"` 기록
 - [x] `video_classifier.py` / `scheduler.py`: 신규 강의 생성 시 `published_at` 저장
+
+### 커리큘럼 / 강의 UX 고도화 (이번 세션)
+- [x] 커리큘럼 DB 재구성 — `reorg_curriculum.py` v2 실행, 109개 강의 삭제·이동 (llm 222→145, nlp 94→126, mlops 66→74)
+- [x] 인라인 강의 노트 마크다운 미리보기 — 편집/미리보기 탭 전환 (marked.js)
+- [x] 커리큘럼 모듈 클릭 → 강의 뷰 자동 이동 + 해당 모듈 자동 펼침 (`gotoLecture(courseId, moduleName)`)
+- [x] 모듈별 추천 강의 필터 — youtube_url + 5분~3시간 조건, "전체 N강 보기" 토글 버튼
+- [x] 프론트엔드 파일 분리 — `app.js` → `js/` 디렉토리 내 페이지별 모듈로 분리
 
 ### YouTube 연동 (이번 작업)
 - [x] 플레이리스트 URL 직접 입력 — `GET /api/v1/youtube/playlist-meta`
