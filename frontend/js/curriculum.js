@@ -539,17 +539,8 @@ async function ytAutoImport() {
   }
 }
 
-async function openCourseModule(courseId, moduleName) {
-  gotoLecture(courseId);
-  await selectCourse(courseId);
-  const modBody = document.getElementById('lmBody');
-  if (!modBody) return;
-  modBody.querySelectorAll('.ll-module-section').forEach(sec => {
-    const nameEl = sec.querySelector('.ll-module-name');
-    const match  = nameEl && nameEl.textContent.trim() === moduleName;
-    sec.classList.toggle('open', match);
-    if (match) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  });
+function openCourseModule(courseId, moduleName) {
+  gotoLecture(courseId, moduleName);
 }
 
 async function ytDiscoverRun(btn) {
@@ -964,12 +955,16 @@ function _cdBuildModuleNodes(lectures) {
     const dl      = _DIFF_LABEL[avgD] || '중급';
     const doneN   = lecs.filter(l => l.completed).length;
 
+    const safeM = m.replace(/'/g, "\\'");
     return `<div class="cd-mod-node${idx === 0 ? ' open' : ''}">
-      <div class="cd-mod-node-head" onclick="this.closest('.cd-mod-node').classList.toggle('open')">
-        <span class="cd-mod-dot ${dc}"></span>
-        <span class="cd-mod-node-name">${_esc(m)}</span>
-        <span class="cd-mod-node-count">${doneN}/${lecs.length}강 · ${dl}</span>
-        <span class="cd-mod-node-arrow">▶</span>
+      <div class="cd-mod-node-head">
+        <div class="cd-mod-node-toggle" onclick="this.closest('.cd-mod-node').classList.toggle('open')">
+          <span class="cd-mod-dot ${dc}"></span>
+          <span class="cd-mod-node-name">${_esc(m)}</span>
+          <span class="cd-mod-node-count">${doneN}/${lecs.length}강 · ${dl}</span>
+          <span class="cd-mod-node-arrow">▶</span>
+        </div>
+        <button class="cd-mod-goto-btn" onclick="openCourseModule('${_cdCourseId}','${safeM}')">강의 보기 →</button>
       </div>
       <div class="cd-mod-lecs">
         ${lecs.map(l =>
@@ -1126,10 +1121,13 @@ async function openCourseGraph(courseId) {
     return `${arrow}
       <div class="cg-node${idx === 0 ? ' open' : ''}" data-idx="${idx}" data-module="${safeM}"
           ondragover="_cgNodeDragOver(event)" ondrop="_cgNodeDrop(event,this,'${_cgCourseId}')">
-        <div class="cg-node-head ${dc}" onclick="cgToggleNode(${idx})">
-          <div class="cg-node-title">${safeM}</div>
-          <div class="cg-node-sub">${dl} · ${lecs.length}강</div>
-          <div class="cg-node-done">${doneN > 0 ? `${doneN}/${lecs.length} 완료` : '미시작'}</div>
+        <div class="cg-node-head ${dc}">
+          <div class="cg-node-head-main" onclick="cgToggleNode(${idx})">
+            <div class="cg-node-title">${safeM}</div>
+            <div class="cg-node-sub">${dl} · ${lecs.length}강</div>
+            <div class="cg-node-done">${doneN > 0 ? `${doneN}/${lecs.length} 완료` : '미시작'}</div>
+          </div>
+          <button class="cg-mod-goto-btn" onclick="openCourseModule('${_cgCourseId}','${safeM}')">▶ 강의</button>
         </div>
         <div class="cg-node-lecs">
           ${lecs.map(l =>

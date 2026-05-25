@@ -725,6 +725,36 @@
 }
 .ln-textarea:focus { background: var(--cream); }
 
+/* 추천 필터 배지 + 전체 보기 버튼 */
+.ll-rec-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  background: rgba(200,151,15,0.18);
+  color: var(--gold2);
+  border: 1px solid rgba(200,151,15,0.3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+  letter-spacing: 0.02em;
+}
+.ll-show-all-btn {
+  display: block;
+  width: 100%;
+  padding: 7px 12px;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gray2);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s, background 0.15s;
+  letter-spacing: 0.02em;
+  box-sizing: border-box;
+}
+.ll-show-all-btn:hover { color: var(--gold2); background: rgba(255,200,60,0.04); }
+
 .ln-mode-tabs {
   display: flex;
   gap: 2px;

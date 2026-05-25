@@ -5,6 +5,7 @@ let _currentCourseId = null;
 let _currentLectureId = null;
 let _currentLectures = [];
 let _pendingCourseId = null;
+let _pendingModuleName = null;
 let _lectureAccordionBuilt = false;
 const _courseLectures = {}; // courseId → lectures 캐시
 
@@ -20,8 +21,9 @@ function youtubeEmbedUrl(url) {
   return m ? `https://www.youtube.com/embed/${m[1]}` : url;
 }
 
-function gotoLecture(courseId) {
+function gotoLecture(courseId, moduleName) {
   _pendingCourseId = courseId;
+  _pendingModuleName = moduleName || null;
   goto('lecture');
 }
 
@@ -58,22 +60,22 @@ async function initLecture() {
   const targetId = _pendingCourseId || _currentCourseId
     || (_allCourses.length > 0 ? _allCourses[0].id : null);
   _pendingCourseId = null;
-  if (targetId) await selectCourse(targetId);
+  if (targetId) await selectCourse(targetId, _pendingModuleName);
+  _pendingModuleName = null;
 }
 
-async function selectCourse(courseId) {
+async function selectCourse(courseId, targetModule) {
   const group = document.querySelector(`.ll-course-group[data-course-id="${courseId}"]`);
   if (!group) return;
 
   const isOpen = group.classList.contains('open');
 
-  // 같은 과목 클릭 → 토글
-  if (isOpen) {
+  // 같은 과목 클릭이고 모듈 타겟 없으면 토글
+  if (isOpen && !targetModule) {
     group.classList.remove('open');
     return;
   }
 
-  // 다른 과목 열기
   group.classList.add('open');
   group.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
@@ -97,7 +99,36 @@ async function selectCourse(courseId) {
 
   _currentLectures = lectures;
   if (body) body.innerHTML = _buildLecList(lectures, course);
+
+  // 특정 모듈로 스크롤 + 열기
+  if (targetModule && body) {
+    const sec = [...body.querySelectorAll('.ll-module-section')]
+      .find(s => s.querySelector('.ll-module-name')?.textContent.trim() === targetModule);
+    if (sec) {
+      sec.classList.add('open');
+      setTimeout(() => sec.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80);
+      // 해당 모듈 첫 강의 자동 로드
+      const first = sec.querySelector('.ll-item');
+      if (first) first.click();
+      return;
+    }
+  }
+
   if (lectures.length > 0 && !_currentLectureId) loadLecture(lectures[0].id);
+}
+
+function llToggleAll(btn) {
+  const body = btn.closest('.ll-module-body');
+  const wrap = body.querySelector('.ll-hidden-wrap');
+  if (!wrap) return;
+  const expanded = btn.dataset.expanded === '1';
+  wrap.style.display = expanded ? 'none' : '';
+  btn.dataset.expanded = expanded ? '0' : '1';
+  const total = btn.dataset.total;
+  const rec   = btn.dataset.rec;
+  btn.textContent = expanded
+    ? `전체 ${total}강 보기 (+${total - rec}강)`
+    : `추천만 보기 (${rec}강)`;
 }
 
 function toggleLecturePanel() {
@@ -180,30 +211,50 @@ function _buildLecList(lectures, course) {
 
   return moduleOrder.map((mod, idx) => {
     const lecs = moduleMap[mod];
-    // 모듈 안에서 난이도별 서브그룹
+
+    // 추천 필터: youtube 있고, 사용가능, 5분~3시간 (없으면 포함)
+    const recLecs = lecs.filter(l =>
+      l.youtube_url &&
+      l.is_available !== false &&
+      (l.duration_sec == null || (l.duration_sec >= 300 && l.duration_sec <= 10800))
+    );
+    const useFilter = recLecs.length >= 1 && recLecs.length < lecs.length;
+    const shown  = useFilter ? recLecs : lecs;
+    const hidden = useFilter ? lecs.filter(l => !recLecs.includes(l)) : [];
+
     const hasDiffInMod = lecs.some(l => l.difficulty);
-    let inner;
-    if (hasDiffInMod) {
+
+    function buildItems(items) {
+      if (!hasDiffInMod) return items.map(_lecItemHtml).join('');
       const sub = { 1: [], 2: [], 3: [] };
-      lecs.forEach(l => { (sub[l.difficulty] || sub[2]).push(l); });
-      inner = [1, 2, 3].map(d => {
+      items.forEach(l => { (sub[l.difficulty] || sub[2]).push(l); });
+      return [1, 2, 3].map(d => {
         if (!sub[d].length) return '';
         return `<div class="ll-diff-sub">
           <span class="ll-diff-dot ${_DIFF_CLASS[d]}" title="${_DIFF_LABEL[d]}"></span>
           ${sub[d].map(_lecItemHtml).join('')}
         </div>`;
       }).join('');
-    } else {
-      inner = lecs.map(_lecItemHtml).join('');
     }
+
+    const shownHtml  = buildItems(shown);
+    const hiddenHtml = hidden.length
+      ? `<div class="ll-hidden-wrap" style="display:none">${buildItems(hidden)}</div>
+         <button class="ll-show-all-btn" data-total="${lecs.length}" data-rec="${shown.length}"
+           onclick="llToggleAll(this)">전체 ${lecs.length}강 보기 (+${hidden.length}강)</button>`
+      : '';
+
+    const countLabel = useFilter
+      ? `<span class="ll-rec-badge">${shown.length}개 추천</span><span class="ll-module-count">${lecs.length}강</span>`
+      : `<span class="ll-module-count">${lecs.length}강</span>`;
 
     return `<div class="ll-module-section${idx === 0 ? ' open' : ''}">
       <div class="ll-module-header" onclick="this.parentElement.classList.toggle('open')">
         <span class="ll-module-arrow">▶</span>
         <span class="ll-module-name">${_esc(mod)}</span>
-        <span class="ll-module-count">${lecs.length}강</span>
+        ${countLabel}
       </div>
-      <div class="ll-module-body">${inner}</div>
+      <div class="ll-module-body">${shownHtml}${hiddenHtml}</div>
     </div>`;
   }).join('');
 }

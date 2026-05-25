@@ -157,14 +157,6 @@
   transition: box-shadow 0.15s;
 }
 .cg-node:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.13); }
-.cg-node-head {
-  padding: 10px 12px;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  user-select: none;
-  transition: filter 0.1s;
-}
-.cg-node-head:hover { filter: brightness(0.97); }
 .cg-node-head.diff-1 { background: #edfaee; border-bottom-color: #3a8a3a; }
 .cg-node-head.diff-2 { background: #fffaed; border-bottom-color: #c8970f; }
 .cg-node-head.diff-3 { background: #fff0f0; border-bottom-color: #c0392b; }
@@ -1012,3 +1004,70 @@
   margin-left: auto;
 }
 .cd-goto-btn:hover { background: var(--navy); color: var(--gold2); }
+
+/* 모달 모듈 노드 — 강의 보기 버튼 */
+.cd-mod-node-head {
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.cd-mod-node-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  cursor: pointer;
+  user-select: none;
+  min-width: 0;
+}
+.cd-mod-goto-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gray2);
+  cursor: pointer;
+  padding: 2px 7px;
+  white-space: nowrap;
+  transition: all 0.15s;
+  margin-left: 6px;
+}
+.cd-mod-goto-btn:hover { background: var(--navy); color: var(--gold2); border-color: var(--navy); }
+
+/* 그래프 뷰 노드 — 강의 보기 버튼 */
+.cg-node-head {
+  padding: 10px 12px;
+  border-bottom: 3px solid transparent;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  transition: filter 0.1s;
+}
+.cg-node-head:hover { filter: brightness(0.97); }
+.cg-node-head.diff-1 { background: #edfaee; border-bottom-color: #3a8a3a; }
+.cg-node-head.diff-2 { background: #fffaed; border-bottom-color: #c8970f; }
+.cg-node-head.diff-3 { background: #fff0f0; border-bottom-color: #c0392b; }
+.cg-node-head-main {
+  flex: 1;
+  cursor: pointer;
+  user-select: none;
+  min-width: 0;
+}
+.cg-mod-goto-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid rgba(0,0,0,0.15);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gray2);
+  cursor: pointer;
+  padding: 3px 7px;
+  white-space: nowrap;
+  transition: all 0.15s;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.cg-mod-goto-btn:hover { background: var(--navy); color: var(--gold2); border-color: var(--navy); }
