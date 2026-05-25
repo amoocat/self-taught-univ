@@ -839,6 +839,12 @@ async function ytRegisterOne(idx) {
       body:    JSON.stringify([pl.playlist_id]),
     });
     const data = await res.json();
+    if (!res.ok) {
+      const msg = data.detail || `서버 오류 (${res.status})`;
+      alert(`등록 실패: ${msg}`);
+      if (btn) { btn.disabled = false; btn.textContent = '등록'; }
+      return;
+    }
     const saved = (data.llm || {}).promoted || 0;
     if (btn) {
       btn.textContent = '등록됨';
@@ -849,7 +855,8 @@ async function ytRegisterOne(idx) {
     alert(`완료! ${saved}개 강의가 저장되었습니다.`);
     initCurriculum();
   } catch (e) {
-    alert('저장 실패. 다시 시도해주세요.');
+    console.error('ytRegisterOne error:', e);
+    alert(`저장 실패: ${e.message}`);
     if (btn) { btn.disabled = false; btn.textContent = '등록'; }
   }
 }
