@@ -1361,7 +1361,6 @@ async function ytSyncLiked() {
   const btn = document.getElementById('ytSyncLikedBtn');
   const origText = btn.textContent;
   btn.disabled = true;
-  btn.textContent = '수집 중...';
 
   try {
     const res  = await fetch('/api/v1/youtube/jobs/sync-liked', { method: 'POST' });
@@ -1369,25 +1368,27 @@ async function ytSyncLiked() {
 
     if (!res.ok) {
       alert(data.detail || '자동 수집 실패. YouTube 계정 연결을 확인해주세요.');
+      btn.disabled = false;
+      btn.textContent = origText;
       return;
     }
 
-    if (data.skipped) {
-      const reason = data.skipped === 'no_token' ? 'YouTube 계정 미연결' : 'API 키 없음';
-      alert(`자동 수집 스킵됨: ${reason}`);
+    if (data.status === 'already_running') {
+      alert(data.message);
+      btn.disabled = false;
+      btn.textContent = origText;
       return;
     }
 
-    alert(
-      `자동 수집 완료!\n\n`
-      + `발견: ${data.discovered}개 플리\n`
-      + `선택: ${data.selected}개 플리\n`
-      + `새 강의: ${data.promoted}개 추가됨`
-    );
-    if (data.promoted > 0) initCurriculum();
+    // 백그라운드 시작됨 — 버튼을 "수집 중" 상태로 두고 30초 후 재활성화
+    btn.textContent = '수집 중... (백그라운드)';
+    alert('수집이 시작되었습니다.\n수 분 후 커리큘럼 페이지에서 새 강의를 확인하세요.');
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = origText;
+    }, 30000);
   } catch (e) {
     alert('네트워크 오류. 다시 시도해주세요.');
-  } finally {
     btn.disabled = false;
     btn.textContent = origText;
   }

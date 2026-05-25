@@ -647,12 +647,29 @@ async def discover_auto_import(
     }
 
 
+_sync_liked_running = False
+
+
 @router.post("/jobs/sync-liked")
 async def trigger_sync_liked():
-    """좋아요 기반 자동 수집 잡 수동 즉시 실행 (스케줄러와 동일 로직)."""
-    from app.crawlers.scheduler import job_liked_videos_auto_import
-    result = await job_liked_videos_auto_import()
-    return result
+    """좋아요 기반 자동 수집 잡 백그라운드 실행. 즉시 202 반환."""
+    import asyncio
+    global _sync_liked_running
+
+    if _sync_liked_running:
+        return {"status": "already_running", "message": "이미 수집 중입니다. 잠시 후 다시 확인해주세요."}
+
+    async def _run():
+        global _sync_liked_running
+        _sync_liked_running = True
+        try:
+            from app.crawlers.scheduler import job_liked_videos_auto_import
+            await job_liked_videos_auto_import()
+        finally:
+            _sync_liked_running = False
+
+    asyncio.create_task(_run())
+    return {"status": "started", "message": "수집이 백그라운드에서 시작되었습니다. 수 분 후 커리큘럼에서 확인하세요."}
 
 @router.post("/playlists/sync-llm")
 async def sync_playlists_llm(playlist_ids: list[str], db: AsyncSession = Depends(get_db)):
