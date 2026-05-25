@@ -647,6 +647,13 @@ async def discover_auto_import(
     }
 
 
+@router.post("/jobs/sync-liked")
+async def trigger_sync_liked():
+    """좋아요 기반 자동 수집 잡 수동 즉시 실행 (스케줄러와 동일 로직)."""
+    from app.crawlers.scheduler import job_liked_videos_auto_import
+    result = await job_liked_videos_auto_import()
+    return result
+
 @router.post("/playlists/sync-llm")
 async def sync_playlists_llm(playlist_ids: list[str], db: AsyncSession = Depends(get_db)):
     """플레이리스트 영상 → VideoInbox 저장 → GPT-4o-mini LLM 분류 → Lecture 승격.

@@ -4054,6 +4054,8 @@ body.sidebar-open .sidebar { width: var(--sidebar-expanded); }
 .yt-discover-cancel-btn:hover { border-color: var(--gray3); color: var(--gray2); }
 .yt-auto-import-btn { border-color: #5b3fa0; color: #a98fe0; }
 .yt-auto-import-btn:hover { border-color: #a98fe0; color: #c4aff0; }
+.yt-sync-liked-btn { border-color: #1a6b3a; color: #4db87a; }
+.yt-sync-liked-btn:hover { border-color: #4db87a; color: #7dd4a0; }
 
 .yt-discover-pl-picker {
   display: flex;

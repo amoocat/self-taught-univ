@@ -1357,6 +1357,42 @@ async function ytAutoImport() {
   }
 }
 
+async function ytSyncLiked() {
+  const btn = document.getElementById('ytSyncLikedBtn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '수집 중...';
+
+  try {
+    const res  = await fetch('/api/v1/youtube/jobs/sync-liked', { method: 'POST' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail || '자동 수집 실패. YouTube 계정 연결을 확인해주세요.');
+      return;
+    }
+
+    if (data.skipped) {
+      const reason = data.skipped === 'no_token' ? 'YouTube 계정 미연결' : 'API 키 없음';
+      alert(`자동 수집 스킵됨: ${reason}`);
+      return;
+    }
+
+    alert(
+      `자동 수집 완료!\n\n`
+      + `발견: ${data.discovered}개 플리\n`
+      + `선택: ${data.selected}개 플리\n`
+      + `새 강의: ${data.promoted}개 추가됨`
+    );
+    if (data.promoted > 0) initCurriculum();
+  } catch (e) {
+    alert('네트워크 오류. 다시 시도해주세요.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
 async function openCourseModule(courseId, moduleName) {
   gotoLecture(courseId);
   await selectCourse(courseId);

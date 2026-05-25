@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
-from app.crawlers.youtube import YouTubeCrawler, YOUTUBE_PLAYLISTS
+from app.crawlers.youtube import YouTubeCrawler, YOUTUBE_PLAYLISTS, _classify_video
 from app.crawlers.blog import BlogCrawler
 from app.crawlers.arxiv import ArxivCrawler
 from app.models.models import FeedItem, Paper, Lecture, Course, VideoInbox
@@ -76,6 +76,15 @@ def init_scheduler():
         job_check_video_availability,
         CronTrigger(day_of_week="tue", hour=4, minute=0),
         id="check_video_availability",
+        replace_existing=True,
+        misfire_grace_time=7200,
+    )
+
+    # 매주 일요일 새벽 3시 30분 — 좋아요 영상 채널 탐색 → 자동 수집
+    scheduler.add_job(
+        job_liked_videos_auto_import,
+        CronTrigger(day_of_week="sun", hour=3, minute=30),
+        id="liked_videos_auto_import",
         replace_existing=True,
         misfire_grace_time=7200,
     )
@@ -396,6 +405,151 @@ async def _save_lectures(videos) -> int:
 
         await db.commit()
     return saved
+
+
+async def job_liked_videos_auto_import() -> dict:
+    """좋아요 영상 채널 탐색 → GPT 선별 → VideoInbox → Lecture 자동 수집.
+    스케줄러(매주 일요일 03:30) 및 수동 트리거(`POST /api/v1/youtube/jobs/sync-liked`) 양쪽에서 호출.
+    반환: {"discovered", "selected", "promoted", "discarded"}
+    """
+    import asyncio
+    import json
+    import openai as _openai
+
+    # OAuth 토큰 — 파일 직접 읽기 (API 모듈 순환참조 방지)
+    from app.api.v1.youtube import _get_access_token
+
+    access_token = await _get_access_token()
+    if not access_token:
+        logger.warning("[Job:LikedImport] OAuth 토큰 없음 — 스킵")
+        return {"discovered": 0, "selected": 0, "promoted": 0, "discarded": 0, "skipped": "no_token"}
+
+    if not settings.YOUTUBE_API_KEY:
+        logger.warning("[Job:LikedImport] YOUTUBE_API_KEY 없음 — 스킵")
+        return {"discovered": 0, "selected": 0, "promoted": 0, "discarded": 0, "skipped": "no_api_key"}
+
+    logger.info("[Job:LikedImport] 시작")
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    all_playlists: list[dict] = []
+
+    try:
+        # 좋아요 영상 최대 5페이지(~250개) 순회 → 채널 목록 수집
+        channel_map: dict[str, dict] = {}
+        page_token = None
+        for _ in range(5):
+            liked, page_token = await crawler.fetch_liked_videos_page(
+                access_token, page_token=page_token
+            )
+            for v in liked:
+                cid = v["channel_id"]
+                if cid not in channel_map:
+                    channel_map[cid] = {"channel_id": cid, "channel_title": v["channel_title"]}
+            if not page_token:
+                break
+
+        logger.info(f"[Job:LikedImport] 발견 채널 {len(channel_map)}개")
+
+        # 채널별 학습 관련 플리 수집 (병렬)
+        async def _fetch_pls(ch: dict) -> list[dict]:
+            try:
+                pls = await crawler.get_channel_playlists(ch["channel_id"], max_pages=1)
+                result = []
+                for pl in pls:
+                    cat = _classify_video(pl["title"], pl.get("description", ""))
+                    if cat is not None:
+                        result.append({**pl, "category": cat, "channel_title": ch["channel_title"]})
+                return result
+            except Exception:
+                return []
+
+        raw = await asyncio.gather(*[_fetch_pls(ch) for ch in channel_map.values()])
+        for pls in raw:
+            all_playlists.extend(pls)
+    finally:
+        await crawler.close()
+
+    logger.info(f"[Job:LikedImport] 학습 플리 {len(all_playlists)}개 발견")
+
+    if not all_playlists:
+        return {"discovered": 0, "selected": 0, "promoted": 0, "discarded": 0}
+
+    # 이미 등록된 플리 제외
+    async with AsyncSessionLocal() as db:
+        existing_ids = set(
+            (await db.execute(
+                select(Lecture.playlist_id).where(Lecture.playlist_id.isnot(None)).distinct()
+            )).scalars().all()
+        )
+    new_playlists = [p for p in all_playlists if p["playlist_id"] not in existing_ids]
+    logger.info(f"[Job:LikedImport] 신규 {len(new_playlists)}개 (기등록 {len(all_playlists) - len(new_playlists)}개 제외)")
+
+    if not new_playlists:
+        return {"discovered": len(all_playlists), "selected": 0, "promoted": 0, "discarded": 0}
+
+    # GPT-4o-mini 선별 (쿼터 초과 시 video_count 순 fallback)
+    MAX_SELECT = 30
+    selected_ids: list[str] = []
+    if settings.CHATGPT_API_KEY:
+        try:
+            payload = [
+                {
+                    "id": p["playlist_id"],
+                    "title": p["title"],
+                    "channel": p.get("channel_title", ""),
+                    "category": p["category"],
+                    "video_count": p.get("video_count", 0),
+                    "description": (p.get("description") or "")[:120],
+                }
+                for p in new_playlists
+            ]
+            gpt = _openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
+            resp = await gpt.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": (
+                    "You are curating an AI/ML self-study curriculum. "
+                    f"Select up to {MAX_SELECT} most valuable playlists.\n"
+                    "Prefer structured lecture series, reputable channels, many videos, diverse topics.\n"
+                    "Exclude short clip collections and duplicate playlists from same channel.\n\n"
+                    "Playlists:\n" + json.dumps(payload, ensure_ascii=False) +
+                    '\n\nReturn JSON: {"selected_ids": ["PL...", ...]}'
+                )}],
+                response_format={"type": "json_object"},
+            )
+            selected_ids = json.loads(resp.choices[0].message.content).get("selected_ids", [])[:MAX_SELECT]
+            logger.info(f"[Job:LikedImport] GPT 선택 {len(selected_ids)}개")
+        except Exception as e:
+            logger.warning(f"[Job:LikedImport] GPT 실패 — fallback 사용: {e}")
+
+    if not selected_ids:
+        sorted_pls = sorted(new_playlists, key=lambda p: p.get("video_count", 0), reverse=True)
+        selected_ids = [p["playlist_id"] for p in sorted_pls[:MAX_SELECT]]
+        logger.info(f"[Job:LikedImport] fallback 선택 {len(selected_ids)}개 (video_count 순)")
+
+    selected_pls = [p for p in new_playlists if p["playlist_id"] in selected_ids]
+
+    # 선택된 플리 영상 → VideoInbox 저장
+    crawler2 = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    try:
+        for pl in selected_pls:
+            videos = await crawler2.fetch_playlist_videos(
+                pl["playlist_id"], filter_ai=False, access_token=access_token
+            )
+            await _save_to_inbox(videos)
+    finally:
+        await crawler2.close()
+
+    # VideoInbox → Lecture 승격
+    promoted, discarded = await _promote_inbox_to_lectures()
+    logger.info(
+        f"[Job:LikedImport] 완료 — 발견 {len(all_playlists)}, 선택 {len(selected_pls)}, "
+        f"승격 {promoted}강, 폐기 {discarded}개"
+    )
+    return {
+        "discovered": len(all_playlists),
+        "selected": len(selected_pls),
+        "promoted": promoted,
+        "discarded": discarded,
+    }
 
 
 async def _save_to_inbox(videos) -> int:
