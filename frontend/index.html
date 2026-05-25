@@ -16,7 +16,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <!-- marked (마크다운 렌더러) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/shared.css">
+<link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/curriculum.css">
+<link rel="stylesheet" href="css/lecture.css">
+<link rel="stylesheet" href="css/notes.css">
+<link rel="stylesheet" href="css/papers.css">
+<link rel="stylesheet" href="css/chat.css">
+<link rel="stylesheet" href="css/graph.css">
+<link rel="stylesheet" href="css/blog.css">
+<link rel="stylesheet" href="css/about.css">
 </head>
 <body>
 
@@ -116,11 +127,6 @@
   <!-- ── SIDEBAR ── -->
   <aside class="sidebar">
     <div class="sidebar-inner">
-      <div class="sb-head">
-        <div class="sb-head-title">나의 전공</div>
-        <div class="sb-head-sub">Artificial Intelligence</div>
-      </div>
-
       <div class="sb-tabs">
         <button class="sb-tab active" id="sbTab1" onclick="switchSbTab(1)">과목</button>
         <button class="sb-tab" id="sbTab2" onclick="switchSbTab(2)">모듈</button>
@@ -468,7 +474,10 @@
               <button id="ytSelectAllBtn" class="yt-select-all-btn" onclick="ytSelectAll()">모두 선택</button>
               <span id="ytSelectedCount" class="yt-sel-count">0개 선택</span>
             </div>
-            <button id="ytFilterBtn" class="yt-modal-btn-primary" onclick="ytFilterSelected()" disabled>필터링 미리보기 →</button>
+            <div class="yt-save-btns">
+              <button id="ytSaveNowBtn" class="yt-modal-btn-secondary" onclick="ytSaveNow()" disabled>바로 등록</button>
+              <button id="ytFilterBtn" class="yt-modal-btn-primary" onclick="ytFilterSelected()" disabled>미리보기 후 등록 →</button>
+            </div>
           </div>
         </div>
 
@@ -654,8 +663,6 @@
           <div class="reader-body" id="paperReaderBody">
             <div class="ln-empty">왼쪽에서 논문을 선택하면 내용이 표시됩니다</div>
           </div>
-        </div>
-      </div>
         </div>
       </div>
     </div>
@@ -914,6 +921,13 @@
 
 </div>
 
-<script src="app.js?v=9" defer></script>
+<script src="js/core.js" defer></script>
+<script src="js/chat.js" defer></script>
+<script src="js/notes.js" defer></script>
+<script src="js/graph.js" defer></script>
+<script src="js/curriculum.js" defer></script>
+<script src="js/lecture.js" defer></script>
+<script src="js/blog.js" defer></script>
+<script src="js/papers.js" defer></script>
 </body>
 </html>

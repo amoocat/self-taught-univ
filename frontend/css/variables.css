@@ -1,0 +1,38 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:    #0a1628;
+  --navy2:   #122040;
+  --navy3:   #1a2d55;
+  --gold:    #b8952a;
+  --gold2:   #d4af3a;
+  --gold3:   #f0d060;
+  --cream:   #f5f0e8;
+  --cream2:  #ede7d9;
+  --cream3:  #e0d8c8;
+  --white:   #fdfcfa;
+  --black:   #1a1a18;
+  --gray:    #6a6860;
+  --gray2:   #9a9890;
+  --gray3:   #c8c5bc;
+  --red:     #8b1a1a;
+  --border:  #c8c0a8;
+  --sidebar-collapsed: 0px;
+  --sidebar-expanded:  220px;
+  --topbar-h: 100px;
+  --font-serif: 'EB Garamond', 'Georgia', serif;
+  --font-mono:  'Courier Prime', 'Courier New', monospace;
+  --font-ui:    'Noto Sans KR', 'Verdana', sans-serif;
+}
+
+body {
+  background: var(--cream);
+  color: var(--black);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.6;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

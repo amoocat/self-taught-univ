@@ -1897,7 +1897,9 @@ async function openCourseGraph(courseId) {
             `<div class="cg-lec-item${l.completed ? ' done' : ''}" draggable="true"
                 data-lec-id="${l.id}" data-module="${safeM}"
                 ondragstart="_cgLecDragStart(event,this)"
-                ondragend="_cgLecDragEnd()">
+                ondragend="_cgLecDragEnd()"
+                ondragover="_cgLecItemDragOver(event,this)"
+                ondrop="_cgLecItemDrop(event,this,'${_cgCourseId}')">
               <span class="cg-lec-drag">⠿</span>
               <span class="cg-lec-num">${l.number}</span>
               <span class="cg-lec-title">${_esc(l.title)}</span>
@@ -1949,6 +1951,7 @@ function _cgLecDragEnd() {
   if (_cgLecDragEl) _cgLecDragEl.classList.remove('cg-lec-dragging');
   _cgLecDragEl = null;
   document.querySelectorAll('.cg-node.cg-drop-target').forEach(n => n.classList.remove('cg-drop-target'));
+  document.querySelectorAll('.cg-lec-item').forEach(i => i.classList.remove('cg-lec-drop-before', 'cg-lec-drop-after'));
 }
 
 function _cgNodeDragOver(e) {
@@ -1967,42 +1970,99 @@ async function _cgNodeDrop(e, nodeEl, courseId) {
 
   const targetModule = nodeEl.dataset.module;
   const srcModule    = _cgLecDragEl.dataset.module;
-  if (!targetModule || targetModule === srcModule) { _cgLecDragEnd(); return; }
+
+  if (!targetModule) { _cgLecDragEnd(); return; }
 
   const lecId = _cgLecDragEl.dataset.lecId;
-
-  // DOM 이동
   const targetLecs = nodeEl.querySelector('.cg-node-lecs');
-  if (targetLecs) {
-    _cgLecDragEl.dataset.module = targetModule;
-    targetLecs.appendChild(_cgLecDragEl);
-    nodeEl.classList.add('open');
+
+  if (targetModule === srcModule) {
+    // 같은 모듈: 맨 끝에 추가 (lec-item 위에 드롭된 경우는 _cgLecItemDrop이 처리)
+    if (targetLecs) targetLecs.appendChild(_cgLecDragEl);
+  } else {
+    // 다른 모듈로 이동
+    if (targetLecs) {
+      _cgLecDragEl.dataset.module = targetModule;
+      targetLecs.appendChild(_cgLecDragEl);
+      nodeEl.classList.add('open');
+    }
+    const lecs = _courseLectures[courseId];
+    if (lecs) {
+      const lec = lecs.find(l => l.id === lecId);
+      if (lec) lec.module_name = targetModule;
+    }
   }
 
   _cgLecDragEnd();
+  _cgUpdateNodeCounts();
+  await _cgRenumberAllAndSave(courseId);
+}
 
-  // 카운트 업데이트
+function _cgLecItemDragOver(e, el) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!_cgLecDragEl || el === _cgLecDragEl) return;
+  e.dataTransfer.dropEffect = 'move';
+
+  document.querySelectorAll('.cg-lec-item').forEach(i => i.classList.remove('cg-lec-drop-before', 'cg-lec-drop-after'));
+  document.querySelectorAll('.cg-node.cg-drop-target').forEach(n => n.classList.remove('cg-drop-target'));
+
+  const rect = el.getBoundingClientRect();
+  const before = e.clientY < rect.top + rect.height / 2;
+  el.classList.add(before ? 'cg-lec-drop-before' : 'cg-lec-drop-after');
+}
+
+async function _cgLecItemDrop(e, el, courseId) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!_cgLecDragEl || el === _cgLecDragEl) { _cgLecDragEnd(); return; }
+
+  const rect = el.getBoundingClientRect();
+  const before = e.clientY < rect.top + rect.height / 2;
+  const targetModule = el.dataset.module;
+
+  _cgLecDragEl.dataset.module = targetModule;
+  if (before) {
+    el.parentNode.insertBefore(_cgLecDragEl, el);
+  } else {
+    el.parentNode.insertBefore(_cgLecDragEl, el.nextSibling);
+  }
+
+  el.closest('.cg-node')?.classList.add('open');
+  _cgLecDragEnd();
+  _cgUpdateNodeCounts();
+  await _cgRenumberAllAndSave(courseId);
+}
+
+function _cgUpdateNodeCounts() {
   document.querySelectorAll('.cg-node').forEach(n => {
     const cnt = n.querySelectorAll('.cg-lec-item').length;
     const sub = n.querySelector('.cg-node-sub');
     if (sub) sub.textContent = sub.textContent.replace(/\d+강/, cnt + '강');
   });
+}
 
-  // 캐시 업데이트
-  const lecs = _courseLectures[courseId];
-  if (lecs) {
-    const lec = lecs.find(l => l.id === lecId);
-    if (lec) lec.module_name = targetModule;
-  }
+async function _cgRenumberAllAndSave(courseId) {
+  const allItems = [...document.querySelectorAll('.cg-node .cg-lec-item')];
+  const updates = allItems.map((item, idx) => {
+    const newNum = idx + 1;
+    const numEl = item.querySelector('.cg-lec-num');
+    if (numEl) numEl.textContent = newNum;
+    const lecs = _courseLectures[courseId];
+    if (lecs) {
+      const lec = lecs.find(l => l.id === item.dataset.lecId);
+      if (lec) lec.number = newNum;
+    }
+    return { id: item.dataset.lecId, number: newNum };
+  });
 
-  // API 저장
   try {
     await fetch('/api/v1/curriculum/lectures/batch-meta', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify([{ id: lecId, module_name: targetModule }]),
+      body: JSON.stringify(updates),
     });
-  } catch (err) { console.warn('module update failed', err); }
+  } catch (err) { console.warn('renumber failed', err); }
 }
 
 function cdClose() {
