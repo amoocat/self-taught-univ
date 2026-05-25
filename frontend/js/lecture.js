@@ -407,12 +407,95 @@ async function markLectureComplete() {
   }
 }
 
-function addLectureNote() {
-  goto('mynotes');
-  setTimeout(() => obsNewNote(_currentLectureId), 300);
+function addLectureNote() { lnNewNote(); }
+function openNoteInEditor(noteId) { lnOpenNote(noteId); }
+
+/* ── 인라인 노트 에디터 ── */
+let _lnCurrentId = null;
+let _lnDirty = false;
+
+function lnShowView(v) {
+  const lv = document.getElementById('lnListView');
+  const ev = document.getElementById('lnEditorView');
+  if (!lv || !ev) return;
+  lv.style.display = v === 'list'   ? 'flex' : 'none';
+  ev.style.display = v === 'editor' ? 'flex' : 'none';
 }
 
-function openNoteInEditor(noteId) {
-  goto('mynotes');
-  setTimeout(() => obsOpenNote(noteId), 300);
+function lnMarkDirty() { _lnDirty = true; }
+
+async function lnNewNote() {
+  if (!_currentLectureId) return;
+  try {
+    const res = await fetch('/api/v1/notes/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: '새 노트', content_md: '', tags: [], lecture_id: _currentLectureId }),
+    });
+    if (res.ok) {
+      const note = await res.json();
+      _lnCurrentId = note.id;
+      document.getElementById('lnTitleInput').value = note.title;
+      document.getElementById('lnTextArea').value = '';
+      _lnDirty = false;
+      lnShowView('editor');
+      const ti = document.getElementById('lnTitleInput');
+      ti.focus(); ti.select();
+      return;
+    }
+  } catch (e) { console.warn('lnNewNote failed', e); }
+  _lnCurrentId = 'tmp_' + Date.now();
+  document.getElementById('lnTitleInput').value = '새 노트';
+  document.getElementById('lnTextArea').value = '';
+  _lnDirty = false;
+  lnShowView('editor');
+}
+
+async function lnOpenNote(noteId) {
+  try {
+    const res = await fetch(`/api/v1/notes/${noteId}`);
+    if (!res.ok) throw new Error();
+    const note = await res.json();
+    _lnCurrentId = note.id;
+    document.getElementById('lnTitleInput').value = note.title || '';
+    document.getElementById('lnTextArea').value = note.content_md || note.content || '';
+    _lnDirty = false;
+    lnShowView('editor');
+  } catch (e) { console.warn('lnOpenNote failed', e); }
+}
+
+async function lnSave() {
+  const title   = (document.getElementById('lnTitleInput').value || '').trim() || '새 노트';
+  const content = document.getElementById('lnTextArea').value;
+  const btn     = document.getElementById('lnSaveBtn');
+  const isTemp  = String(_lnCurrentId).startsWith('tmp_');
+  const body    = { title, content_md: content, tags: [] };
+  if (isTemp && _currentLectureId) body.lecture_id = _currentLectureId;
+
+  btn.disabled = true; btn.textContent = '저장 중...';
+  try {
+    const res = await fetch(
+      isTemp ? '/api/v1/notes/' : `/api/v1/notes/${_lnCurrentId}`,
+      { method: isTemp ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) }
+    );
+    if (!res.ok) throw new Error();
+    const saved = await res.json();
+    _lnCurrentId = saved.id;
+    _lnDirty = false;
+    btn.textContent = '✓ 저장됨';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '저장'; }, 1500);
+  } catch (e) {
+    btn.textContent = '실패';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '저장'; }, 1500);
+  }
+}
+
+function lnBackToList() {
+  if (_lnDirty) {
+    if (!confirm('저장하지 않은 내용이 있습니다. 목록으로 돌아갈까요?')) return;
+  }
+  lnShowView('list');
+  loadLectureNotes(_currentLectureId);
 }

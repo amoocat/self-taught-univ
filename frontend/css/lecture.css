@@ -652,3 +652,71 @@
   gap: 8px;
   flex-shrink: 0;
 }
+
+/* ── 인라인 노트 에디터 ── */
+.ln-editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--cream2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ln-back-btn {
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--gray2);
+  cursor: pointer;
+  padding: 3px 6px;
+}
+.ln-back-btn:hover { color: var(--navy); }
+
+.ln-save-btn {
+  background: var(--navy);
+  color: var(--gold2);
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 12px;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+}
+.ln-save-btn:hover { background: var(--navy2); }
+.ln-save-btn:disabled { opacity: 0.6; cursor: default; }
+
+.ln-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--white);
+  outline: none;
+  flex-shrink: 0;
+}
+.ln-title-input:focus { border-bottom-color: var(--gold); }
+
+.ln-textarea {
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: none;
+  resize: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  overflow-y: auto;
+}
+.ln-textarea:focus { background: var(--cream); }
