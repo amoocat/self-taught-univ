@@ -131,6 +131,15 @@
 
 ## ✅ 완료된 것들
 
+### 강의 제목 동기화 도구
+- [x] `sync_titles.py` — DB 강의 제목을 YouTube 실제 제목으로 일괄 덮어쓰기
+  - YouTube Data API v3 `videos.list` 50개 배치 요청 (1,200개 = 24회 호출)
+  - `checkpoint.json` 중간 저장 → 중단 재시작 가능
+  - `--dry-run` / `--course_id` / `--retry-failed` 옵션
+  - 결과 파일: `update_result.json` / `failed.json` / `skipped.json`
+- [x] `PATCH /api/v1/curriculum/lectures/{lecture_id}` 엔드포인트 추가 (`LecturePatch` 스키마 — title, module_name, difficulty, tags 부분 수정 가능)
+- [x] `psycopg2-binary==2.9.10` requirements.txt 추가 (스크립트 DB 직접 접근용)
+
 ### 강의 메타데이터 고도화 (이번 세션)
 - [x] `lectures.created_at` → `crawled_at` 리네임 + `published_at` 컬럼 추가 (migration 0011)
 - [x] 기존 강의 282개 `published_at` YouTube API 백필
