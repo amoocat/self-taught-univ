@@ -218,6 +218,28 @@ async def update_course(course_id: str, body: CourseUpdateIn, db: AsyncSession =
     return {"ok": True}
 
 
+class LecturePatch(BaseModel):
+    title: Optional[str] = None
+    module_name: Optional[str] = None
+    difficulty: Optional[int] = None
+    tags: Optional[list[str]] = None
+
+
+@router.patch("/lectures/{lecture_id}", status_code=200)
+async def update_lecture(lecture_id: str, body: LecturePatch, db: AsyncSession = Depends(get_db)):
+    lecture = await get_or_404(db, Lecture, lecture_id, "Lecture")
+    if body.title is not None:
+        lecture.title = body.title
+    if body.module_name is not None:
+        lecture.module_name = body.module_name
+    if body.difficulty is not None:
+        lecture.difficulty = body.difficulty
+    if body.tags is not None:
+        lecture.tags = body.tags
+    await db.commit()
+    return {"ok": True, "id": lecture_id}
+
+
 class LectureMetaPatch(BaseModel):
     id: str
     module_name: Optional[str] = None
