@@ -1699,11 +1699,12 @@ function _cdBuildModuleNodes(lectures) {
   if (!hasModules) {
     // 모듈 없으면 기존 flat list
     return lectures.map(l =>
-      `<div class="cd-lec-item${l.completed ? ' done' : ''}">
+      `<div class="cd-lec-item${l.completed ? ' done' : ''}"
+          onclick="gotoLectureWithId('${_cdCourseId}','${l.id}')" style="cursor:pointer">
         <span class="cd-lec-num">${l.number}</span>
         <span class="cd-lec-check">${l.completed ? '✓' : '○'}</span>
         <span class="cd-lec-title">${_esc(l.title)}</span>
-        ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+        ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link" onclick="event.stopPropagation()">▶</a>` : ''}
       </div>`
     ).join('');
   }
@@ -1734,10 +1735,11 @@ function _cdBuildModuleNodes(lectures) {
       </div>
       <div class="cd-mod-lecs">
         ${lecs.map(l =>
-          `<div class="cd-mod-lec${l.completed ? ' done' : ''}">
+          `<div class="cd-mod-lec${l.completed ? ' done' : ''}"
+              onclick="gotoLectureWithId('${_cdCourseId}','${l.id}')" style="cursor:pointer">
             <span class="cd-mod-lec-num">${l.number}</span>
             <span class="cd-mod-lec-title">${_esc(l.title)}</span>
-            ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+            ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link" onclick="event.stopPropagation()">▶</a>` : ''}
           </div>`
         ).join('')}
       </div>
@@ -1855,10 +1857,11 @@ async function openCourseGraph(courseId) {
   if (!hasModules) {
     wrap.innerHTML = `<div class="cg-flat-grid">${
       lectures.map(l =>
-        `<div class="cg-flat-lec${l.completed ? ' done' : ''}">
+        `<div class="cg-flat-lec${l.completed ? ' done' : ''}"
+            onclick="gotoLectureWithId('${courseId}','${l.id}')" style="cursor:pointer">
           <span class="cg-flat-num">${l.number}</span>
           <span class="cg-flat-title">${_esc(l.title)}</span>
-          ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+          ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link" onclick="event.stopPropagation()">▶</a>` : ''}
         </div>`
       ).join('')
     }</div>`;
@@ -1897,11 +1900,12 @@ async function openCourseGraph(courseId) {
             `<div class="cg-lec-item${l.completed ? ' done' : ''}" draggable="true"
                 data-lec-id="${l.id}" data-module="${safeM}"
                 ondragstart="_cgLecDragStart(event,this)"
-                ondragend="_cgLecDragEnd()">
+                ondragend="_cgLecDragEnd()"
+                onclick="_cgLecClick(event,'${courseId}','${l.id}')">
               <span class="cg-lec-drag">⠿</span>
               <span class="cg-lec-num">${l.number}</span>
               <span class="cg-lec-title">${_esc(l.title)}</span>
-              ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
+              ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link" onclick="event.stopPropagation()">▶</a>` : ''}
             </div>`
           ).join('')}
         </div>
@@ -1918,6 +1922,12 @@ function closeCourseGraph() {
 
 function cgToggleNode(idx) {
   document.querySelector(`.cg-node[data-idx="${idx}"]`)?.classList.toggle('open');
+}
+
+function _cgLecClick(event, courseId, lectureId) {
+  // 편집/드래그 모드에서는 무시
+  if (document.getElementById('cgNodesWrap')?.classList.contains('cg-arrange-mode')) return;
+  gotoLectureWithId(courseId, lectureId);
 }
 
 function cgToggleArrange() {
@@ -2113,8 +2123,10 @@ let _currentLectureId = null;
 let _currentLectures = [];
 let _allCourses = [];
 let _pendingCourseId = null;
+let _pendingLectureId = null;
 let _lectureAccordionBuilt = false;
 const _courseLectures = {}; // courseId → lectures 캐시
+let _sbOpenCourseId = null;  // 사이드바에서 열린 과목 ID
 
 function youtubeEmbedUrl(url) {
   const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
@@ -2123,6 +2135,15 @@ function youtubeEmbedUrl(url) {
 
 function gotoLecture(courseId) {
   _pendingCourseId = courseId;
+  goto('lecture');
+}
+
+function gotoLectureWithId(courseId, lectureId) {
+  _pendingCourseId  = courseId;
+  _pendingLectureId = lectureId;
+  // 커리큘럼 모달이 열려있으면 닫기
+  const modal = document.getElementById('courseDetailModal');
+  if (modal?.style.display === 'flex') cdClose();
   goto('lecture');
 }
 
@@ -2191,7 +2212,27 @@ async function selectCourse(courseId) {
 
   _currentLectures = lectures;
   modBody.innerHTML = _buildLecList(lectures, course);
-  if (lectures.length > 0 && !_currentLectureId) loadLecture(lectures[0].id);
+
+  // 사이드바 트리 — 이 과목 열기 + 강의 목록 렌더
+  _sbOpenCourseId = courseId;
+  const sbCourseItem = document.getElementById(`sbt-c-${courseId}`);
+  if (sbCourseItem) {
+    document.querySelectorAll('.sbt-course-item.open').forEach(el => {
+      if (el !== sbCourseItem) el.classList.remove('open');
+    });
+    sbCourseItem.classList.add('open');
+    _sbRenderBody(courseId);
+  }
+
+  // 대기 중인 특정 강의 또는 첫 강의 로드
+  const targetLec = _pendingLectureId;
+  _pendingLectureId = null;
+  if (targetLec) {
+    const el = document.querySelector(`.ll-item[data-lecture-id="${targetLec}"]`);
+    loadLecture(targetLec, el);
+  } else if (lectures.length > 0 && !_currentLectureId) {
+    loadLecture(lectures[0].id);
+  }
 }
 
 function closeModulePanel() {
@@ -2368,6 +2409,7 @@ async function loadLecture(id, clickedEl) {
   }
 
   loadLectureNotes(id);
+  sbSyncHighlight(_currentCourseId, id);
 }
 
 async function loadLectureNotes(lectureId) {
@@ -2585,28 +2627,126 @@ const _SUBJECT_ID_MAP = {
   math: 'linear', stats: 'stats', ml: 'ml', dl: 'dl', cv: 'cv', nlp: 'nlp',
 };
 
-function _fillSbSubjectList(courses) {
-  const sbList = document.getElementById('sbSubjectList');
-  if (!sbList || sbList.dataset.filled) return;
-  sbList.innerHTML = courses.map((c, i) => {
-    const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
-    const pct  = Math.round(c.progress_pct);
-    const sid  = _SUBJECT_ID_MAP[c.category] || c.category;
-    return `<div class="sb-item${i===0?' active':''}" id="si-${sid}"
-      onclick="selectSubject('${sid}', '${c.id}')"
-      >${icon} ${c.title.split(' (')[0]} <span class="sb-pct">${pct > 0 ? pct+'%' : '—'}</span></div>`;
+/* ────────────────────────────────────────
+   SIDEBAR ACCORDION TREE
+──────────────────────────────────────── */
+
+function _buildSbTree() {
+  const tree = document.getElementById('sbTree');
+  if (!tree || !_allCourses.length) return;
+
+  tree.innerHTML = _allCourses.map((c, i) => {
+    const pct = Math.round(c.progress_pct);
+    return `<div class="sbt-course-item${c.id === _sbOpenCourseId ? ' open' : ''}" id="sbt-c-${c.id}">
+      <div class="sbt-course-hdr" onclick="sbToggleCourse('${c.id}')">
+        <span class="sbt-arrow">▶</span>
+        <span class="sbt-num">${String(i + 1).padStart(2, '0')}</span>
+        <span class="sbt-name">${c.title.split(' (')[0]}</span>
+        ${pct > 0 ? `<span class="sbt-pct">${pct}%</span>` : ''}
+      </div>
+      <div class="sbt-body" id="sbt-b-${c.id}"></div>
+    </div>`;
   }).join('');
-  sbList.dataset.filled = '1';
+
+  // 열려있는 과목이 있으면 바로 렌더
+  if (_sbOpenCourseId) _sbRenderBody(_sbOpenCourseId);
+}
+
+function _sbRenderBody(courseId) {
+  const body = document.getElementById(`sbt-b-${courseId}`);
+  if (!body) return;
+  const lectures = _courseLectures[courseId];
+
+  if (!lectures) {
+    body.innerHTML = '<div class="sbt-loading-row">불러오는 중...</div>';
+    return;
+  }
+  if (!lectures.length) {
+    body.innerHTML = '<div class="sbt-loading-row">강의가 없습니다</div>';
+    return;
+  }
+
+  const modOrder = [], modMap = {};
+  lectures.forEach(l => {
+    const m = l.module_name || '';
+    if (!modMap[m]) { modMap[m] = []; modOrder.push(m); }
+    modMap[m].push(l);
+  });
+  const hasModules = lectures.some(l => l.module_name);
+
+  let html = '';
+  for (const m of modOrder) {
+    if (hasModules && m) html += `<div class="sbt-module-label">${m}</div>`;
+    html += '<div class="sbt-lec-list">';
+    for (const l of modMap[m]) {
+      const done   = l.completed ? ' done' : '';
+      const active = l.id === _currentLectureId ? ' active' : '';
+      html += `<div class="sbt-lec-row${done}${active}" id="sbt-l-${l.id}"
+        onclick="sbSelectLecture('${courseId}','${l.id}')">
+        <span class="sbt-lec-bullet"></span>
+        <span class="sbt-lec-title">Lec ${String(l.number).padStart(2, '0')} · ${l.title}</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  body.innerHTML = html;
+}
+
+async function sbToggleCourse(courseId) {
+  const item = document.getElementById(`sbt-c-${courseId}`);
+  if (!item) return;
+  const isOpen = item.classList.contains('open');
+
+  // 다른 열린 과목 닫기
+  if (_sbOpenCourseId && _sbOpenCourseId !== courseId) {
+    document.getElementById(`sbt-c-${_sbOpenCourseId}`)?.classList.remove('open');
+  }
+  if (isOpen) {
+    item.classList.remove('open');
+    _sbOpenCourseId = null;
+    return;
+  }
+
+  item.classList.add('open');
+  _sbOpenCourseId = courseId;
+
+  // 아직 강의 목록이 없으면 fetch
+  if (!_courseLectures[courseId]) {
+    const body = document.getElementById(`sbt-b-${courseId}`);
+    if (body) body.innerHTML = '<div class="sbt-loading-row">불러오는 중...</div>';
+    try {
+      const res = await fetch(`/api/v1/curriculum/${courseId}/lectures`);
+      _courseLectures[courseId] = res.ok ? await res.json() : [];
+    } catch (e) { _courseLectures[courseId] = []; }
+  }
+  _sbRenderBody(courseId);
+}
+
+function sbSelectLecture(courseId, lectureId) {
+  const onLecturePage = document.getElementById('page-lecture')?.classList.contains('active');
+  if (onLecturePage && _currentCourseId === courseId) {
+    const el = document.querySelector(`.ll-item[data-lecture-id="${lectureId}"]`);
+    loadLecture(lectureId, el);
+    return;
+  }
+  _pendingCourseId  = courseId;
+  _pendingLectureId = lectureId;
+  goto('lecture');
+}
+
+function sbSyncHighlight(courseId, lectureId) {
+  document.querySelectorAll('.sbt-lec-row.active').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`sbt-l-${lectureId}`);
+  if (el) { el.classList.add('active'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 }
 
 async function _ensureSidebarLoaded() {
-  if (_allCourses.length > 0) { _fillSbSubjectList(_allCourses); return; }
+  if (_allCourses.length > 0) { _buildSbTree(); return; }
   try {
     const res = await fetch('/api/v1/curriculum/');
     if (!res.ok) return;
-    const courses = await res.json();
-    _allCourses = courses;
-    _fillSbSubjectList(courses);
+    _allCourses = await res.json();
+    _buildSbTree();
   } catch (e) { console.warn('sidebar load failed', e); }
 }
 
@@ -2632,11 +2772,6 @@ async function initHome() {
       }).join('');
     }
 
-    // 사이드바 과목 목록
-    const sbList = document.getElementById('sbSubjectList');
-    if (sbList) sbList.dataset.filled = '';  // 홈 방문 시 항상 갱신
-    _fillSbSubjectList(courses);
-
     // 프로필 드롭다운
     const totalPct = courses.length
       ? Math.round(courses.reduce((s, c) => s + c.progress_pct, 0) / courses.length)
@@ -2658,87 +2793,6 @@ function selectSubject(id, courseId) {
   if (courseId) gotoLecture(courseId);
 }
 
-let _sbActiveTab = 1;
-
-function switchSbTab(n) {
-  const tabCourses = document.getElementById('sbTabCourses');
-  const tabModules = document.getElementById('sbTabModules');
-  const btn1 = document.getElementById('sbTab1');
-  const btn2 = document.getElementById('sbTab2');
-  if (!tabCourses || !tabModules) return;
-
-  if (_sbActiveTab === n) {
-    const target = n === 1 ? tabCourses : tabModules;
-    const hidden = target.style.display === 'none';
-    target.style.display = hidden ? '' : 'none';
-    _sbActiveTab = hidden ? n : 0;
-    return;
-  }
-
-  _sbActiveTab = n;
-  tabCourses.style.display = n === 1 ? '' : 'none';
-  tabModules.style.display = n === 2 ? '' : 'none';
-  btn1.classList.toggle('active', n === 1);
-  btn2.classList.toggle('active', n === 2);
-
-  if (n === 2) {
-    const modList = document.getElementById('sbModuleList');
-    if (modList && !modList.dataset.built) _buildSbModuleTab();
-  }
-}
-
-async function _buildSbModuleTab() {
-  const modList = document.getElementById('sbModuleList');
-  if (!modList) return;
-
-  const courses = _allCourses || [];
-  if (!courses.length) {
-    modList.innerHTML = '<div class="sb-loading">과목 데이터 없음</div>';
-    return;
-  }
-
-  const diffClass = { 1: 'diff-1', 2: 'diff-2', 3: 'diff-3' };
-  let html = '';
-
-  for (const c of courses) {
-    let lectures = _courseLectures && _courseLectures[c.id];
-    if (!lectures) {
-      try {
-        const res = await fetch(`/api/v1/curriculum/${c.id}/lectures`);
-        if (res.ok) {
-          lectures = await res.json();
-          if (_courseLectures) _courseLectures[c.id] = lectures;
-        }
-      } catch (e) { lectures = []; }
-    }
-
-    const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
-    const modMap = {};
-    (lectures || []).forEach(l => {
-      const mod = l.module_name || '기타';
-      if (!modMap[mod]) modMap[mod] = { diff: l.difficulty || 0, count: 0 };
-      modMap[mod].count++;
-      if (l.difficulty && l.difficulty > modMap[mod].diff) modMap[mod].diff = l.difficulty;
-    });
-
-    if (!Object.keys(modMap).length) continue;
-
-    html += `<div class="sb-mod-group">
-      <div class="sb-mod-group-hdr">${icon} ${c.title.split(' (')[0]}</div>
-      ${Object.entries(modMap).map(([mod, info]) => {
-        const dc = diffClass[info.diff] || 'diff-0';
-        return `<div class="sb-mod-item" onclick="gotoLecture('${c.id}')">
-          <span class="sb-mod-dot ${dc}"></span>
-          <span class="sb-mod-name">${mod}</span>
-          <span class="sb-mod-cnt">${info.count}</span>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }
-
-  modList.innerHTML = html || '<div class="sb-loading">모듈 없음</div>';
-  modList.dataset.built = '1';
-}
 
 let _blogSourceFilter = 'all';
 let _blogTabFilter    = 'all';

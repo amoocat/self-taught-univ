@@ -116,21 +116,7 @@
   <!-- ── SIDEBAR ── -->
   <aside class="sidebar">
     <div class="sidebar-inner">
-      <div class="sb-head">
-        <div class="sb-head-title">나의 전공</div>
-        <div class="sb-head-sub">Artificial Intelligence</div>
-      </div>
-
-      <div class="sb-tabs">
-        <button class="sb-tab active" id="sbTab1" onclick="switchSbTab(1)">과목</button>
-        <button class="sb-tab" id="sbTab2" onclick="switchSbTab(2)">모듈</button>
-      </div>
-      <div id="sbTabCourses">
-        <div id="sbSubjectList"></div>
-      </div>
-      <div id="sbTabModules" style="display:none">
-        <div id="sbModuleList"><div class="sb-loading">모듈 목록 불러오는 중...</div></div>
-      </div>
+      <div id="sbTree" class="sbt-tree"></div>
 
       <div class="sb-chatbot" onclick="chatToggle()">★ AI 학습봇 열기</div>
     </div>

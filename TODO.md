@@ -27,6 +27,7 @@
 - [ ] `POST /api/v1/curriculum/build-all` — 전체 카테고리 일괄 생성
 
 **v2 — LLM 고도화 (나중에)**
+- [ ] 미분류 강의 제목을 쿼리로, 기존에 모듈이 배정된 강의들을 벡터 DB에 넣어서 "이 강의랑 비슷한 강의들은 어떤 모듈에 있더라?"를 찾는 방식 (RAG)
 - [ ] GPT에게 영상 목록 넘겨서 챕터 자동 생성 + 영상 배정
 - [ ] 난이도 자동 추론, 선수지식 관계 그래프 자동 생성
 
@@ -39,6 +40,8 @@
 - [ ] **취약 개념 칩 하드코딩** — 동적 생성 미구현
 - [x] 프론트 UI 강의 구조 반영 — 모듈 아코디언 첫 번째 자동 펼침 + 강의 아이템 난이도 배지(입문/중급/고급)
 - [x] 사이드바 "나의 전공" [과목][모듈] 탭 분리 — 탭 클릭으로 접기/펼치기 + 모듈탭 난이도 도트
+- [x] 사이드바 아코디언 트리 재구성 — 과목→모듈→강의 토글 구조 (Coursera/Udemy 스타일), 현재 강의 하이라이트
+- [x] 커리큘럼 강의 클릭 → 렉쳐노트 직행 딥링크 — 과목 그래프·모달 강의 항목 onclick 추가, `_pendingLectureId` 상태 연동
 
 ---
 
@@ -87,7 +90,8 @@
 - [ ] **Step 5** GitHub Webhook → Jenkins 연결
 - [ ] **Step 6** ArgoCD Application 등록 (`kubectl apply -f argocd/app-dev.yaml`)
 - [ ] **Step 7** 엔드투엔드 테스트 — push → Jenkins → ArgoCD sync → Pod 롤링업데이트 확인
-
+- [ ] **Step 8** CD 모니터링 연동 — ArgoCD sync 이벤트를 GitHub Status/Slack으로 전달해서 Claude Code가 배포 결과를 자동 감지할 수 있도록 설정 (CI처럼 `<ci-monitor-event>` 방식으로)
+- [ ] 시크릿 키 보관 -> gcp secret
 ---
 
 ## 🔵 Phase 3 — 벡터 임베딩 & RAG
