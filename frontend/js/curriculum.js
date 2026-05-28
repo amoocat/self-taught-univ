@@ -51,23 +51,33 @@ function _cdCardHtml(c) {
   const prefix = c.code.split('-')[0];
   const tagCls = _CODE_TAG_COLOR[prefix] || 't-gray';
   const pct = Math.round(c.progress_pct);
+  const isTodo = c.status !== 'active' && c.status !== 'done';
   const statusHtml = c.status === 'done'
     ? `<span class="s-done">✓ 완료</span>`
     : c.status === 'active'
       ? `<span class="s-active">● 진행 중</span>`
-      : `<span class="s-todo">○ 예정</span>`;
-  return `<div class="course-card" draggable="true" data-course-id="${c.id}"
+      : `<span class="s-todo">— 미개설</span>`;
+  const lecCountHtml = c.lecture_count > 0
+    ? `<span class="course-lec-count">${c.completed_count}/${c.lecture_count}강</span>`
+    : '';
+  return `<div class="course-card status-${c.status}" draggable="true" data-course-id="${c.id}"
       onclick="openCourseGraph('${c.id}')"
       ondragstart="_cdDragStart(event,this)"
       ondragover="_cdDragOver(event)"
       ondrop="_cdDrop(event,this)"
       ondragend="_cdDragEnd()">
-    <span class="course-tag ${tagCls}">${c.code}</span>
-    <div class="course-drag-handle">⠿</div>
+    <div class="course-card-top">
+      <span class="course-tag ${tagCls}">${c.code}</span>
+      ${isTodo ? '<span class="course-locked-badge">미개설</span>' : ''}
+      <div class="course-drag-handle">⠿</div>
+    </div>
     <div class="course-title">${c.title}</div>
     <div class="course-source">${c.source}</div>
     <div class="course-bar"><div class="course-fill" style="width:${pct}%"></div></div>
-    <div class="course-foot"><span class="course-pct">${pct > 0 ? pct+'% 완료' : '0%'}</span>${statusHtml}</div>
+    <div class="course-foot">
+      <span class="course-pct">${pct > 0 ? pct+'% 완료' : lecCountHtml || '0%'}</span>
+      ${statusHtml}
+    </div>
   </div>`;
 }
 
@@ -125,6 +135,14 @@ async function _cdSaveOrder() {
   } catch (e) { console.warn('reorder save failed', e); }
 }
 
+function _sectionLabel(text, count, future = false) {
+  return `<div class="curriculum-section-label${future ? ' future' : ''}">
+    <span class="curriculum-section-label-text">${text}</span>
+    <span class="curriculum-section-label-count">(${count}과목)</span>
+    <span class="curriculum-section-label-line"></span>
+  </div>`;
+}
+
 async function initCurriculum() {
   const grid = document.getElementById('curriculumGrid');
   try {
@@ -134,7 +152,20 @@ async function initCurriculum() {
       if (courses.length > 0) {
         _curriculumLoaded = true;
         _allCourses = courses;
-        grid.innerHTML = courses.map(_cdCardHtml).join('');
+
+        const opened = courses.filter(c => c.status === 'active' || c.status === 'done');
+        const todo   = courses.filter(c => c.status !== 'active' && c.status !== 'done');
+
+        let html = '';
+        if (opened.length > 0) {
+          html += _sectionLabel('개설 과목', opened.length);
+          html += opened.map(_cdCardHtml).join('');
+        }
+        if (todo.length > 0) {
+          html += _sectionLabel('미개설 과목', todo.length, true);
+          html += todo.map(_cdCardHtml).join('');
+        }
+        grid.innerHTML = html;
         return;
       }
     }
@@ -143,10 +174,7 @@ async function initCurriculum() {
   }
   // fallback
   grid.innerHTML = `
-    <div class="course-card"><span class="course-tag t-navy">MATH-101</span><div class="course-title">선형대수학 (Linear Algebra)</div><div class="course-source">MIT 18.06 · Gilbert Strang</div><div class="course-bar"><div class="course-fill" style="width:42%"></div></div><div class="course-foot"><span class="course-pct">42% 완료</span><span class="s-active">● 진행 중</span></div></div>
-    <div class="course-card"><span class="course-tag t-gold">STAT-201</span><div class="course-title">확률론과 통계</div><div class="course-source">Stanford CS109 · KAIST 강의</div><div class="course-bar"><div class="course-fill" style="width:18%"></div></div><div class="course-foot"><span class="course-pct">18% 완료</span><span class="s-active">● 진행 중</span></div></div>
-    <div class="course-card"><span class="course-tag t-green">ML-301</span><div class="course-title">머신러닝 기초</div><div class="course-source">Stanford CS229 · Andrew Ng</div><div class="course-bar"><div class="course-fill" style="width:5%"></div></div><div class="course-foot"><span class="course-pct">5% 완료</span><span class="s-active">● 진행 중</span></div></div>
-    <div class="course-card"><span class="course-tag t-gray">DL-401</span><div class="course-title">딥러닝</div><div class="course-source">Stanford CS231n · deeplearning.ai</div><div class="course-bar"><div class="course-fill" style="width:0%"></div></div><div class="course-foot"><span class="course-pct">0%</span><span class="s-todo">○ 예정</span></div></div>
-    <div class="course-card"><span class="course-tag t-gray">CV-402</span><div class="course-title">컴퓨터 비전</div><div class="course-source">Stanford CS231n</div><div class="course-bar"><div class="course-fill" style="width:0%"></div></div><div class="course-foot"><span class="course-pct">0%</span><span class="s-todo">○ 예정</span></div></div>
-    <div class="course-card"><span class="course-tag t-gray">NLP-403</span><div class="course-title">자연어처리</div><div class="course-source">Stanford CS224n</div><div class="course-bar"><div class="course-fill" style="width:0%"></div></div><div class="course-foot"><span class="course-pct">0%</span><span class="s-todo">○ 예정</span></div></div>`;
+    <div class="course-card status-active"><span class="course-tag t-navy">MATH-101</span><div class="course-title">선형대수학 (Linear Algebra)</div><div class="course-source">MIT 18.06 · Gilbert Strang</div><div class="course-bar"><div class="course-fill" style="width:42%"></div></div><div class="course-foot"><span class="course-pct">42% 완료</span><span class="s-active">● 진행 중</span></div></div>
+    <div class="course-card status-active"><span class="course-tag t-gold">STAT-201</span><div class="course-title">확률론과 통계</div><div class="course-source">Stanford CS109 · KAIST 강의</div><div class="course-bar"><div class="course-fill" style="width:18%"></div></div><div class="course-foot"><span class="course-pct">18% 완료</span><span class="s-active">● 진행 중</span></div></div>
+    <div class="course-card status-todo"><span class="course-tag t-gray">DL-401</span><div class="course-title">딥러닝</div><div class="course-source">Stanford CS231n · deeplearning.ai</div><div class="course-bar"><div class="course-fill" style="width:0%"></div></div><div class="course-foot"><span class="course-pct">0%</span><span class="s-todo">— 미개설</span></div></div>`;
 }
