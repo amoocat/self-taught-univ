@@ -8,3 +8,9 @@ venv/
 .claude/
 oauth_tokens/
 
+# sync_titles.py 출력 파일
+checkpoint.json
+failed.json
+skipped.json
+update_result.json
+
