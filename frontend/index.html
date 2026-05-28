@@ -898,6 +898,19 @@
 
 </div>
 
-<script src="app.js?v=9" defer></script>
+<!-- 모듈 파일 (로딩 순서 중요) -->
+<script src="js/chat.js" defer></script>
+<script src="js/notes.js" defer></script>
+<script src="js/graph.js" defer></script>
+<script src="js/curriculum.js" defer></script>
+<script src="js/youtube.js" defer></script>
+<script src="js/lecture.js" defer></script>
+<script src="js/course-detail.js" defer></script>
+<script src="js/blog.js" defer></script>
+<script src="js/home-sidebar.js" defer></script>
+<script src="js/papers.js" defer></script>
+<script src="js/panels.js" defer></script>
+<!-- 라우터 (모든 모듈 로드 후 마지막) -->
+<script src="app.js" defer></script>
 </body>
 </html>
