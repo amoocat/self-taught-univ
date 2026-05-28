@@ -12,7 +12,7 @@ import logging
 import openai
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, text
 
 from app.core.config import settings
 from app.models.models import Course, Lecture, VideoInbox
@@ -42,15 +42,16 @@ async def classify_and_promote(db: AsyncSession) -> dict:
 
     # 5분(300초) 이하 영상 사전 필터링
     MIN_DURATION_SEC = 300
-    short_ids = [v.id for v in inbox if (v.duration_sec or 0) < MIN_DURATION_SEC]
-    if short_ids:
-        from sqlalchemy import delete as sa_delete
-        await db.execute(sa_delete(VideoInbox).where(VideoInbox.id.in_(short_ids)))
+    short_videos = [v for v in inbox if (v.duration_sec or 0) < MIN_DURATION_SEC]
+    if short_videos:
+        for v in short_videos:
+            await db.execute(text("DELETE FROM video_inbox WHERE id = :id"), {"id": v.id})
         await db.flush()
-        inbox = [v for v in inbox if v.id not in set(short_ids)]
+        short_id_set = {v.id for v in short_videos}
+        inbox = [v for v in inbox if v.id not in short_id_set]
 
     if not inbox:
-        return {"classified": 0, "promoted": 0, "new_courses": [], "skipped": len(short_ids)}
+        return {"classified": 0, "promoted": 0, "new_courses": [], "skipped": len(short_videos)}
 
     courses = (await db.execute(select(Course))).scalars().all()
     course_map = {c.id: c for c in courses}
@@ -107,13 +108,30 @@ async def classify_and_promote(db: AsyncSession) -> dict:
             for v in batch:
                 all_results.append({"id": v.video_id, "course_id": None, "difficulty": 2, "new_course": None})
 
+    # GPT 실패 폴백: course_id 없는 영상은 제목 키워드로 재분류 시도
+    from app.crawlers.youtube import _classify_video as _kw_classify
+    cat_to_course = {}
+    for c in courses:
+        if c.category not in cat_to_course:
+            cat_to_course[c.category] = c
+    inbox_by_vid = {v.video_id: v for v in inbox}
+
+    for item in all_results:
+        if not item.get("course_id"):
+            v = inbox_by_vid.get(item["id"])
+            if v:
+                cat = _kw_classify(v.title, v.description or "")
+                if cat and cat in cat_to_course:
+                    item["course_id"] = cat_to_course[cat].id
+                    item["difficulty"] = item.get("difficulty") or 2
+
     # video_id → classification 매핑
     result_map = {r["id"]: r for r in all_results}
 
     promoted = 0
     skipped = 0
     new_courses_created: list[str] = []
-    inbox_ids_to_delete = [v.id for v in inbox]
+    inbox_to_delete = list(inbox)
 
     for v in inbox:
         info = result_map.get(v.video_id)
@@ -180,8 +198,9 @@ async def classify_and_promote(db: AsyncSession) -> dict:
         ))
         promoted += 1
 
-    # 처리한 inbox 전부 삭제
-    await db.execute(delete(VideoInbox).where(VideoInbox.id.in_(inbox_ids_to_delete)))
+    # 처리한 inbox 전부 삭제 (id는 varchar — text() 사용으로 UUID 캐스팅 우회)
+    for v in inbox_to_delete:
+        await db.execute(text("DELETE FROM video_inbox WHERE id = :id"), {"id": v.id})
     await db.commit()
 
     return {

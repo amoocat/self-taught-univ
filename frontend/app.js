@@ -896,6 +896,12 @@ function _cdCardHtml(c) {
 }
 
 function _cdDragStart(e, el) {
+  // 드래그 핸들에서 시작한 경우만 허용
+  const handle = el.querySelector('.course-drag-handle');
+  if (!e.composedPath().includes(handle)) {
+    e.preventDefault();
+    return;
+  }
   _cgDragSrc = el;
   e.dataTransfer.effectAllowed = 'move';
   el.classList.add('cd-dragging');
@@ -1825,7 +1831,8 @@ async function openCourseGraph(courseId) {
       <span class="course-tag ${tagCls}">${course.code}</span>
       <span class="cg-title">${_esc(course.title)}</span>
       <span class="cg-meta">${course.lecture_count}강 · ${pct}% 완료</span>
-      <button class="cg-edit-btn" onclick="courseModalOpen('${course.id}')">편집</button>
+      <button class="cg-edit-btn" onclick="courseModalOpen('${course.id}')">과목 정보</button>
+      <button class="cg-edit-btn cg-arrange-btn" id="cgArrangeBtn" onclick="cgToggleArrange()">✎ 편집</button>
     </div>
     <div class="cg-prog-bar"><div class="cg-prog-fill" style="width:${pct}%"></div></div>
     <div id="cgNodesWrap" class="cg-nodes-wrap"><div class="cd-loading">불러오는 중...</div></div>
@@ -1866,6 +1873,8 @@ async function openCourseGraph(courseId) {
     modMap[m].push(l);
   });
 
+  const _cgCourseId = courseId;
+
   const nodeItems = modOrder.map((m, idx) => {
     const lecs  = modMap[m];
     const diffs = lecs.map(l => l.difficulty).filter(Boolean);
@@ -1873,17 +1882,25 @@ async function openCourseGraph(courseId) {
     const dc    = _DIFF_CLASS[avgD] || 'diff-2';
     const dl    = _DIFF_LABEL[avgD] || '중급';
     const doneN = lecs.filter(l => l.completed).length;
+    const safeM = _esc(m);
     const arrow = idx > 0 ? '<div class="cg-arrow">→</div>' : '';
     return `${arrow}
-      <div class="cg-node${idx === 0 ? ' open' : ''}" data-idx="${idx}">
+      <div class="cg-node${idx === 0 ? ' open' : ''}" data-idx="${idx}" data-module="${safeM}"
+          ondragover="_cgNodeDragOver(event)" ondrop="_cgNodeDrop(event,this,'${_cgCourseId}')">
         <div class="cg-node-head ${dc}" onclick="cgToggleNode(${idx})">
-          <div class="cg-node-title">${_esc(m)}</div>
+          <div class="cg-node-title">${safeM}</div>
           <div class="cg-node-sub">${dl} · ${lecs.length}강</div>
           <div class="cg-node-done">${doneN > 0 ? `${doneN}/${lecs.length} 완료` : '미시작'}</div>
         </div>
         <div class="cg-node-lecs">
           ${lecs.map(l =>
-            `<div class="cg-lec-item${l.completed ? ' done' : ''}">
+            `<div class="cg-lec-item${l.completed ? ' done' : ''}" draggable="true"
+                data-lec-id="${l.id}" data-module="${safeM}"
+                ondragstart="_cgLecDragStart(event,this)"
+                ondragend="_cgLecDragEnd()"
+                ondragover="_cgLecItemDragOver(event,this)"
+                ondrop="_cgLecItemDrop(event,this,'${_cgCourseId}')">
+              <span class="cg-lec-drag">⠿</span>
               <span class="cg-lec-num">${l.number}</span>
               <span class="cg-lec-title">${_esc(l.title)}</span>
               ${l.youtube_url ? `<a href="${l.youtube_url}" target="_blank" class="cd-yt-link">▶</a>` : ''}
@@ -1903,6 +1920,149 @@ function closeCourseGraph() {
 
 function cgToggleNode(idx) {
   document.querySelector(`.cg-node[data-idx="${idx}"]`)?.classList.toggle('open');
+}
+
+function cgToggleArrange() {
+  const wrap = document.getElementById('cgNodesWrap');
+  const btn  = document.getElementById('cgArrangeBtn');
+  if (!wrap || !btn) return;
+  const editing = wrap.classList.toggle('cg-arrange-mode');
+  btn.textContent = editing ? '✔ 완료' : '✎ 편집';
+  btn.classList.toggle('active', editing);
+  // 편집 모드 진입 시 모든 노드 열기
+  if (editing) {
+    document.querySelectorAll('.cg-node').forEach(n => n.classList.add('open'));
+  }
+}
+
+let _cgLecDragEl = null;
+
+function _cgLecDragStart(e, el) {
+  if (!document.getElementById('cgNodesWrap')?.classList.contains('cg-arrange-mode')) {
+    e.preventDefault();
+    return;
+  }
+  _cgLecDragEl = el;
+  e.dataTransfer.effectAllowed = 'move';
+  el.classList.add('cg-lec-dragging');
+}
+
+function _cgLecDragEnd() {
+  if (_cgLecDragEl) _cgLecDragEl.classList.remove('cg-lec-dragging');
+  _cgLecDragEl = null;
+  document.querySelectorAll('.cg-node.cg-drop-target').forEach(n => n.classList.remove('cg-drop-target'));
+  document.querySelectorAll('.cg-lec-item').forEach(i => i.classList.remove('cg-lec-drop-before', 'cg-lec-drop-after'));
+}
+
+function _cgNodeDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const node = e.currentTarget.closest?.('.cg-node') || e.currentTarget;
+  document.querySelectorAll('.cg-node.cg-drop-target').forEach(n => n.classList.remove('cg-drop-target'));
+  if (node && _cgLecDragEl && node.dataset.module !== _cgLecDragEl.dataset.module) {
+    node.classList.add('cg-drop-target');
+  }
+}
+
+async function _cgNodeDrop(e, nodeEl, courseId) {
+  e.preventDefault();
+  if (!_cgLecDragEl) return;
+
+  const targetModule = nodeEl.dataset.module;
+  const srcModule    = _cgLecDragEl.dataset.module;
+
+  if (!targetModule) { _cgLecDragEnd(); return; }
+
+  const lecId = _cgLecDragEl.dataset.lecId;
+  const targetLecs = nodeEl.querySelector('.cg-node-lecs');
+
+  if (targetModule === srcModule) {
+    // 같은 모듈: 맨 끝에 추가 (lec-item 위에 드롭된 경우는 _cgLecItemDrop이 처리)
+    if (targetLecs) targetLecs.appendChild(_cgLecDragEl);
+  } else {
+    // 다른 모듈로 이동
+    if (targetLecs) {
+      _cgLecDragEl.dataset.module = targetModule;
+      targetLecs.appendChild(_cgLecDragEl);
+      nodeEl.classList.add('open');
+    }
+    const lecs = _courseLectures[courseId];
+    if (lecs) {
+      const lec = lecs.find(l => l.id === lecId);
+      if (lec) lec.module_name = targetModule;
+    }
+  }
+
+  _cgLecDragEnd();
+  _cgUpdateNodeCounts();
+  await _cgRenumberAllAndSave(courseId);
+}
+
+function _cgLecItemDragOver(e, el) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!_cgLecDragEl || el === _cgLecDragEl) return;
+  e.dataTransfer.dropEffect = 'move';
+
+  document.querySelectorAll('.cg-lec-item').forEach(i => i.classList.remove('cg-lec-drop-before', 'cg-lec-drop-after'));
+  document.querySelectorAll('.cg-node.cg-drop-target').forEach(n => n.classList.remove('cg-drop-target'));
+
+  const rect = el.getBoundingClientRect();
+  const before = e.clientY < rect.top + rect.height / 2;
+  el.classList.add(before ? 'cg-lec-drop-before' : 'cg-lec-drop-after');
+}
+
+async function _cgLecItemDrop(e, el, courseId) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!_cgLecDragEl || el === _cgLecDragEl) { _cgLecDragEnd(); return; }
+
+  const rect = el.getBoundingClientRect();
+  const before = e.clientY < rect.top + rect.height / 2;
+  const targetModule = el.dataset.module;
+
+  _cgLecDragEl.dataset.module = targetModule;
+  if (before) {
+    el.parentNode.insertBefore(_cgLecDragEl, el);
+  } else {
+    el.parentNode.insertBefore(_cgLecDragEl, el.nextSibling);
+  }
+
+  el.closest('.cg-node')?.classList.add('open');
+  _cgLecDragEnd();
+  _cgUpdateNodeCounts();
+  await _cgRenumberAllAndSave(courseId);
+}
+
+function _cgUpdateNodeCounts() {
+  document.querySelectorAll('.cg-node').forEach(n => {
+    const cnt = n.querySelectorAll('.cg-lec-item').length;
+    const sub = n.querySelector('.cg-node-sub');
+    if (sub) sub.textContent = sub.textContent.replace(/\d+강/, cnt + '강');
+  });
+}
+
+async function _cgRenumberAllAndSave(courseId) {
+  const allItems = [...document.querySelectorAll('.cg-node .cg-lec-item')];
+  const updates = allItems.map((item, idx) => {
+    const newNum = idx + 1;
+    const numEl = item.querySelector('.cg-lec-num');
+    if (numEl) numEl.textContent = newNum;
+    const lecs = _courseLectures[courseId];
+    if (lecs) {
+      const lec = lecs.find(l => l.id === item.dataset.lecId);
+      if (lec) lec.number = newNum;
+    }
+    return { id: item.dataset.lecId, number: newNum };
+  });
+
+  try {
+    await fetch('/api/v1/curriculum/lectures/batch-meta', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+  } catch (err) { console.warn('renumber failed', err); }
 }
 
 function cdClose() {
@@ -2445,6 +2605,7 @@ function goto(page, pushState = true) {
   } else {
     sidebar.style.display = '';
     document.body.classList.toggle('sidebar-open', SIDEBAR_PAGES.includes(page));
+    _ensureSidebarLoaded();
   }
 
   if (page === 'graph')      drawGraph();
@@ -2484,6 +2645,31 @@ const _SUBJECT_ID_MAP = {
   math: 'linear', stats: 'stats', ml: 'ml', dl: 'dl', cv: 'cv', nlp: 'nlp',
 };
 
+function _fillSbSubjectList(courses) {
+  const sbList = document.getElementById('sbSubjectList');
+  if (!sbList || sbList.dataset.filled) return;
+  sbList.innerHTML = courses.map((c, i) => {
+    const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
+    const pct  = Math.round(c.progress_pct);
+    const sid  = _SUBJECT_ID_MAP[c.category] || c.category;
+    return `<div class="sb-item${i===0?' active':''}" id="si-${sid}"
+      onclick="selectSubject('${sid}', '${c.id}')"
+      >${icon} ${c.title.split(' (')[0]} <span class="sb-pct">${pct > 0 ? pct+'%' : '—'}</span></div>`;
+  }).join('');
+  sbList.dataset.filled = '1';
+}
+
+async function _ensureSidebarLoaded() {
+  if (_allCourses.length > 0) { _fillSbSubjectList(_allCourses); return; }
+  try {
+    const res = await fetch('/api/v1/curriculum/');
+    if (!res.ok) return;
+    const courses = await res.json();
+    _allCourses = courses;
+    _fillSbSubjectList(courses);
+  } catch (e) { console.warn('sidebar load failed', e); }
+}
+
 async function initHome() {
   try {
     const res = await fetch('/api/v1/curriculum/');
@@ -2508,16 +2694,8 @@ async function initHome() {
 
     // 사이드바 과목 목록
     const sbList = document.getElementById('sbSubjectList');
-    if (sbList) {
-      sbList.innerHTML = courses.map((c, i) => {
-        const icon = { math:'📐', stats:'📊', ml:'🤖', dl:'🧠', cv:'👁', nlp:'💬' }[c.category] || '📚';
-        const pct  = Math.round(c.progress_pct);
-        const sid  = _SUBJECT_ID_MAP[c.category] || c.category;
-        return `<div class="sb-item${i===0?' active':''}" id="si-${sid}"
-          onclick="selectSubject('${sid}', '${c.id}')"
-          >${icon} ${c.title.split(' (')[0]} <span class="sb-pct">${pct > 0 ? pct+'%' : '—'}</span></div>`;
-      }).join('');
-    }
+    if (sbList) sbList.dataset.filled = '';  // 홈 방문 시 항상 갱신
+    _fillSbSubjectList(courses);
 
     // 프로필 드롭다운
     const totalPct = courses.length

@@ -16,7 +16,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <!-- marked (마크다운 렌더러) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="css/variables.css?v=1">
+<link rel="stylesheet" href="css/layout.css?v=1">
+<link rel="stylesheet" href="css/shared.css?v=1">
+<link rel="stylesheet" href="css/home.css?v=1">
+<link rel="stylesheet" href="css/curriculum.css?v=2">
+<link rel="stylesheet" href="css/lecture.css?v=5">
+<link rel="stylesheet" href="css/notes.css?v=1">
+<link rel="stylesheet" href="css/papers.css?v=1">
+<link rel="stylesheet" href="css/chat.css?v=1">
+<link rel="stylesheet" href="css/graph.css?v=1">
+<link rel="stylesheet" href="css/blog.css?v=1">
+<link rel="stylesheet" href="css/about.css?v=1">
 </head>
 <body>
 
@@ -116,11 +127,6 @@
   <!-- ── SIDEBAR ── -->
   <aside class="sidebar">
     <div class="sidebar-inner">
-      <div class="sb-head">
-        <div class="sb-head-title">나의 전공</div>
-        <div class="sb-head-sub">Artificial Intelligence</div>
-      </div>
-
       <div class="sb-tabs">
         <button class="sb-tab active" id="sbTab1" onclick="switchSbTab(1)">과목</button>
         <button class="sb-tab" id="sbTab2" onclick="switchSbTab(2)">모듈</button>
@@ -468,7 +474,10 @@
               <button id="ytSelectAllBtn" class="yt-select-all-btn" onclick="ytSelectAll()">모두 선택</button>
               <span id="ytSelectedCount" class="yt-sel-count">0개 선택</span>
             </div>
-            <button id="ytFilterBtn" class="yt-modal-btn-primary" onclick="ytFilterSelected()" disabled>필터링 미리보기 →</button>
+            <div class="yt-save-btns">
+              <button id="ytSaveNowBtn" class="yt-modal-btn-secondary" onclick="ytSaveNow()" disabled>바로 등록</button>
+              <button id="ytFilterBtn" class="yt-modal-btn-primary" onclick="ytFilterSelected()" disabled>미리보기 후 등록 →</button>
+            </div>
           </div>
         </div>
 
@@ -493,21 +502,12 @@
     <!-- ══ P2: LECTURE + MY NOTES (반반) ══ -->
     <div class="page" id="page-lecture">
       <div class="lecture-layout" id="lectureLayout">
-        <!-- 강의 목록 (과목만) -->
+        <!-- 강의 내비게이션 (과목 아코디언) -->
         <div class="lecture-list" id="lectureList">
           <!-- 동적 렌더링 (initLecture) -->
         </div>
 
-        <!-- 모듈 패널 (과목 클릭 시 등장) -->
-        <div class="lecture-modules" id="lectureModules">
-          <div class="lm-header">
-            <span class="lm-title" id="lmCourseTitle"></span>
-            <button class="lm-close-btn" onclick="closeModulePanel()" title="닫기">✕</button>
-          </div>
-          <div class="lm-body" id="lmBody"></div>
-        </div>
-
-        <div class="resizer" data-target="--lec-c1" data-min="100" data-max="300"></div>
+        <div class="resizer" data-target="--lec-c1" data-min="160" data-max="400"></div>
 
         <!-- 렉쳐 노트 패널 -->
         <div class="lecture-content">
@@ -549,12 +549,34 @@
             <div class="pane-header-title">내 노트</div>
             <div class="pane-header-meta" id="lectureNotesMeta">이 강의 관련 노트</div>
           </div>
-          <div class="note-editor-area" id="lectureNotesList">
-            <div class="ln-empty">강의를 선택하면 관련 노트가 표시됩니다</div>
+
+          <!-- 목록 뷰 -->
+          <div id="lnListView" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+            <div class="note-editor-area" id="lectureNotesList">
+              <div class="ln-empty">강의를 선택하면 관련 노트가 표시됩니다</div>
+            </div>
+            <div class="pane-toolbar">
+              <button class="btn btn-gold" onclick="lnNewNote()">+ 새 노트</button>
+              <button class="btn" onclick="goto('mynotes')">전체 노트 보기</button>
+            </div>
           </div>
-          <div class="pane-toolbar">
-            <button class="btn btn-gold" onclick="addLectureNote()">+ 새 노트</button>
-            <button class="btn" onclick="goto('mynotes')">전체 노트 보기</button>
+
+          <!-- 인라인 에디터 뷰 -->
+          <div id="lnEditorView" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+            <div class="ln-editor-toolbar">
+              <button class="ln-back-btn" onclick="lnBackToList()">← 목록</button>
+              <div class="ln-mode-tabs">
+                <button class="ln-mode-btn active" id="lnBtnEdit" onclick="lnSetMode('edit')">편집</button>
+                <button class="ln-mode-btn" id="lnBtnPreview" onclick="lnSetMode('preview')">미리보기</button>
+              </div>
+              <button class="ln-save-btn" id="lnSaveBtn" onclick="lnSave()">저장</button>
+            </div>
+            <input type="text" id="lnTitleInput" class="ln-title-input" placeholder="제목...">
+            <textarea id="lnTextArea" class="ln-textarea"
+              placeholder="마크다운으로 노트를 작성하세요... (Ctrl+S 저장)"
+              onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='s'){event.preventDefault();lnSave()}"
+              oninput="lnMarkDirty()"></textarea>
+            <div id="lnPreview" class="ln-preview" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -654,8 +676,6 @@
           <div class="reader-body" id="paperReaderBody">
             <div class="ln-empty">왼쪽에서 논문을 선택하면 내용이 표시됩니다</div>
           </div>
-        </div>
-      </div>
         </div>
       </div>
     </div>
@@ -914,6 +934,13 @@
 
 </div>
 
-<script src="app.js?v=5" defer></script>
+<script src="js/core.js?v=2" defer></script>
+<script src="js/chat.js?v=1" defer></script>
+<script src="js/notes.js?v=1" defer></script>
+<script src="js/graph.js?v=1" defer></script>
+<script src="js/curriculum.js?v=3" defer></script>
+<script src="js/lecture.js?v=5" defer></script>
+<script src="js/blog.js?v=1" defer></script>
+<script src="js/papers.js?v=1" defer></script>
 </body>
 </html>

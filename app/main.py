@@ -55,5 +55,13 @@ async def spa_fallback(full_path: str):
     if full_path:
         static_file = os.path.join("frontend", full_path)
         if os.path.isfile(static_file):
-            return FileResponse(static_file)
-    return FileResponse("frontend/index.html")
+            resp = FileResponse(static_file)
+            # JS/CSS는 쿼리 버전으로 관리하므로 캐시 허용, HTML은 항상 최신
+            if not full_path.endswith(".html"):
+                resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            else:
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return resp
+    resp = FileResponse("frontend/index.html")
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
