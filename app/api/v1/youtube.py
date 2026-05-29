@@ -31,6 +31,94 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+_PLAYLIST_CATEGORIES = "MATH|STAT|ML|DL|CV|NLP|LLM|RL|DATA|MLOPS|PROG|ACTUARY|IE|OTHER"
+
+async def _classify_playlists_gpt(playlists: list[dict]) -> list[dict]:
+    """GPT-4o-mini로 플레이리스트 학습 관련 여부를 분류.
+
+    각 플리에 is_study(bool) + category(str|None) 필드를 붙여 반환.
+    GPT 실패(API 오류, 키 없음 등) 시 키워드 기반 폴백.
+    """
+    if not playlists:
+        return []
+
+    # GPT 키 없으면 바로 폴백
+    if not settings.CHATGPT_API_KEY:
+        return _classify_playlists_keyword(playlists)
+
+    payload = [
+        {
+            "id":    p["playlist_id"],
+            "title": p["title"],
+            "desc":  (p.get("description") or "")[:120],
+            "count": p.get("video_count", 0),
+        }
+        for p in playlists
+    ]
+
+    # 50개씩 배치 (토큰 한도 방어)
+    _BATCH = 50
+    result_map: dict[str, dict] = {}
+
+    gpt = openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
+    for i in range(0, len(payload), _BATCH):
+        batch = payload[i : i + _BATCH]
+        prompt = (
+            "You are filtering YouTube playlists for an AI/ML/math self-study platform.\n\n"
+            "Classify each playlist as study/learning content or not.\n\n"
+            "✅ Study content includes:\n"
+            "  - Math (linear algebra, calculus, statistics, probability, optimization, information theory)\n"
+            "  - CS fundamentals (algorithms, data structures, OS, networks, C/C++, Python)\n"
+            "  - ML/DL/CV/NLP/LLM/RL/Data Engineering/MLOps\n"
+            "  - Any structured lecture series or academic course\n\n"
+            "❌ NOT study content:\n"
+            "  - Music, entertainment, travel, vlogs, personal/lifestyle videos\n"
+            "  - Random video collections with no learning structure\n\n"
+            f"For study playlists assign a category: {_PLAYLIST_CATEGORIES}\n\n"
+            "Playlists:\n"
+            + json.dumps(batch, ensure_ascii=False)
+            + '\n\nReturn JSON: {"results": [{"id":"PL...","is_study":true,"category":"ML"}]}\n'
+            'Set category to null for non-study playlists.'
+        )
+        try:
+            resp = await gpt.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+            )
+            raw = json.loads(resp.choices[0].message.content)
+            for r in raw.get("results", []):
+                result_map[r["id"]] = r
+        except Exception as e:
+            logger.warning("[YouTube] GPT 플리 분류 배치 %d 실패: %s", i // _BATCH, e)
+
+    if not result_map:
+        logger.warning("[YouTube] GPT 분류 결과 없음 — 키워드 폴백")
+        return _classify_playlists_keyword(playlists)
+
+    classified = []
+    for p in playlists:
+        info = result_map.get(p["playlist_id"])
+        if info is None:
+            # 이 플리는 GPT 응답에 없음 → 키워드로 보완
+            cat = _classify_video(p["title"], p.get("description", ""))
+            classified.append({**p, "is_study": cat is not None, "category": cat})
+        else:
+            is_study  = bool(info.get("is_study", False))
+            category  = (info.get("category") or "").lower().strip() or None
+            classified.append({**p, "is_study": is_study, "category": category})
+
+    return classified
+
+
+def _classify_playlists_keyword(playlists: list[dict]) -> list[dict]:
+    """키워드 기반 폴백 분류 (GPT 실패 시 사용)."""
+    result = []
+    for p in playlists:
+        cat = _classify_video(p["title"], p.get("description", ""))
+        result.append({**p, "is_study": cat is not None, "category": cat})
+    return result
+
 _TOKEN_FILE = Path("oauth_tokens/youtube.json")
 _GOOGLE_AUTH_URL   = "https://accounts.google.com/o/oauth2/v2/auth"
 _GOOGLE_TOKEN_URL  = "https://oauth2.googleapis.com/token"
@@ -197,15 +285,11 @@ async def list_my_playlists():
     finally:
         await crawler.close()
 
-    # 학습 관련 플리만 반환 (비학습 플리는 제외)
-    result = []
-    for pl in all_pls:
-        cat = _classify_video(pl["title"], pl.get("description", ""))
-        if cat is not None:
-            result.append({**pl, "category": cat})
-
-    result.sort(key=lambda p: p["title"])
-    return {"playlists": result, "total": len(result)}
+    # GPT로 학습 관련 여부 분류 (실패 시 키워드 폴백)
+    classified = await _classify_playlists_gpt(all_pls)
+    study_pls = [p for p in classified if p.get("is_study")]
+    study_pls.sort(key=lambda p: p["title"])
+    return {"playlists": study_pls, "total": len(study_pls)}
 
 
 _PLAYLIST_ID_RE = re.compile(r"(?:list=|/playlist/|youtu\.be/)([A-Za-z0-9_-]{10,})")
