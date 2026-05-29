@@ -6,6 +6,19 @@
 
 ---
 
+## 🛠️ 백엔드 API 품질 개선 (React 전환 전 필수)
+
+> 프론트를 React로 전면 재구현하기 전에 API를 탄탄하게 만들기.
+> 지금 API가 동작은 하지만 React 앱에서 편하게 쓰려면 아래가 필요함.
+
+- [ ] **Pydantic response 스키마 명시** — 현재 일부 엔드포인트가 `dict` 그대로 반환. `response_model=` 전부 붙이기
+- [ ] **페이지네이션** — 강의/노트/논문 목록에 `?limit=&offset=` (또는 cursor 방식) 추가
+- [ ] **JWT 인증 기초** — React 앱은 토큰 기반 인증 필요. `POST /auth/login`, `POST /auth/refresh`, 미들웨어 `get_current_user` 뼈대만
+- [ ] **API 에러 응답 통일** — `{"detail": "...", "code": "NOT_FOUND"}` 형태로 표준화
+- [ ] **전역 검색 엔드포인트** — `GET /api/v1/search?q=&type=` (강의/노트/논문 통합, 아래 🔍 섹션과 연동)
+
+---
+
 ## 🔥 지금 할 것 (Current Sprint)
 
 ### 1. 커리큘럼 자동 구성 — 키워드 기반 v1
