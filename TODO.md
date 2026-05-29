@@ -57,8 +57,9 @@
 
 ## 📺 YouTube 연동 — 추가 고도화
 
-- [ ] 정기 동기화 — 이미 등록한 플리에 새 영상 추가됐을 때 자동 반영 (일 1회 배치)
+- [x] 정기 동기화 — 이미 등록한 플리에 새 영상 추가됐을 때 자동 반영 (일 1회 배치 `job_sync_registered_playlists`)
 - [x] GPT 기반 플리 자동 선별 — discover 결과를 GPT-4o-mini에 넘겨 학습 관련도 높은 플리 자동 선택 → VideoInbox 저장 (`POST /discover/auto-import` + "AI 자동 가져오기" 버튼)
+- [x] YouTube OAuth 에러 응답 정비 — `invalid_grant` 감지 시 토큰 자동 삭제 + 모든 인증 필요 엔드포인트 HTTP 401 통일
 
 ## 참고 자료 추가
 - [ ] medium 계정도 연동해서 관심 및 구독중인 포스팅 크롤링하기

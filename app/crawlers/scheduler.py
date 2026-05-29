@@ -80,6 +80,15 @@ def init_scheduler():
         misfire_grace_time=7200,
     )
 
+    # 매일 새벽 3시 30분 — 등록된 플레이리스트 정기 동기화 (신규 영상 자동 반영)
+    scheduler.add_job(
+        job_sync_registered_playlists,
+        CronTrigger(hour=3, minute=30),
+        id="sync_registered_playlists",
+        replace_existing=True,
+        misfire_grace_time=7200,
+    )
+
     scheduler.start()
     logger.info("[Scheduler] 시작 완료")
 
@@ -118,7 +127,7 @@ async def job_crawl_arxiv():
 
 
 async def job_crawl_youtube():
-    """YouTube 강의 메타데이터 수집"""
+    """YouTube 강의 메타데이터 수집 (고정 플리 상수 기반)"""
     if not settings.YOUTUBE_API_KEY:
         logger.warning("[Job] YOUTUBE_API_KEY 없음 — 스킵")
         return
@@ -134,6 +143,74 @@ async def job_crawl_youtube():
             logger.info(f"[Job] YouTube {playlist['name']}: {saved}개 저장")
     finally:
         await crawler.close()
+
+
+async def job_sync_registered_playlists():
+    """등록된 플레이리스트 정기 동기화 — 신규 영상 자동 감지 후 VideoInbox → Lecture 승격.
+
+    이미 DB에 있는 youtube_video_id는 스킵하므로 중복 없음.
+    OAuth 토큰 없거나 만료 시 조용히 스킵 (공개 플리 전용).
+    """
+    if not settings.YOUTUBE_API_KEY:
+        logger.warning("[Job] sync_registered_playlists: YOUTUBE_API_KEY 없음 — 스킵")
+        return
+
+    async with AsyncSessionLocal() as db:
+        # DB에 등록된 playlist_id 수집
+        rows = (await db.execute(
+            select(Lecture.playlist_id)
+            .where(Lecture.playlist_id.isnot(None))
+            .distinct()
+        )).scalars().all()
+        playlist_ids = [r for r in rows if r]
+
+        if not playlist_ids:
+            logger.info("[Job] sync_registered_playlists: 등록된 플리 없음 — 스킵")
+            return
+
+        # 이미 있는 video_id — 중복 방지
+        existing_vids = set(
+            (await db.execute(
+                select(Lecture.youtube_video_id)
+                .where(Lecture.youtube_video_id.isnot(None))
+            )).scalars().all()
+        )
+
+    # OAuth 토큰 (없어도 공개 플리는 동작)
+    access_token = None
+    try:
+        from app.api.v1.youtube import _get_access_token, OAuthExpiredError
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        logger.warning("[Job] sync_registered_playlists: OAuth 만료 — API key만으로 공개 플리 처리")
+    except Exception as e:
+        logger.warning(f"[Job] sync_registered_playlists: token 로드 실패 ({e}) — API key만으로 진행")
+
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    total_new = 0
+    try:
+        for pid in playlist_ids:
+            try:
+                videos = await crawler.fetch_playlist_videos(
+                    pid, filter_ai=False, access_token=access_token
+                )
+                new_videos = [v for v in videos if v.video_id not in existing_vids]
+                if new_videos:
+                    saved = await _save_to_inbox(new_videos)
+                    total_new += saved
+                    logger.info(f"[Job] sync_registered_playlists: {pid} → {saved}개 신규")
+            except Exception as e:
+                logger.warning(f"[Job] sync_registered_playlists: {pid} 실패 — {e}")
+    finally:
+        await crawler.close()
+
+    if total_new > 0:
+        from app.services.video_classifier import classify_and_promote
+        async with AsyncSessionLocal() as db:
+            result = await classify_and_promote(db)
+        logger.info(f"[Job] sync_registered_playlists: 승격 {result.get('promoted', 0)}개, 폐기 {result.get('discarded', 0)}개")
+    else:
+        logger.info(f"[Job] sync_registered_playlists 완료: 신규 영상 없음 ({len(playlist_ids)}개 플리 확인)")
 
 
 async def job_seed_papers():

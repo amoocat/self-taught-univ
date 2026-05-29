@@ -51,8 +51,15 @@ def _save_token(data: dict):
     _TOKEN_FILE.write_text(json.dumps(data, indent=2))
 
 
+class OAuthExpiredError(Exception):
+    """refresh_token이 폐기/만료된 경우 — 재인증 필요"""
+    pass
+
+
 async def _refresh_if_needed(token: dict) -> str:
-    """access_token 만료 시 refresh_token으로 재발급"""
+    """access_token 만료 시 refresh_token으로 재발급.
+    invalid_grant(토큰 폐기) 시 토큰 파일 삭제 후 OAuthExpiredError 발생.
+    """
     async with httpx.AsyncClient() as client:
         resp = await client.post(_GOOGLE_TOKEN_URL, data={
             "client_id":     settings.YOUTUBE_OAUTH_CLIENT,
@@ -60,6 +67,13 @@ async def _refresh_if_needed(token: dict) -> str:
             "refresh_token": token["refresh_token"],
             "grant_type":    "refresh_token",
         })
+        if resp.status_code == 400:
+            err = resp.json().get("error", "")
+            if err == "invalid_grant":
+                # 토큰 폐기됨 — 파일 삭제하고 재인증 요구
+                _TOKEN_FILE.unlink(missing_ok=True)
+                logger.warning("[YouTube OAuth] refresh_token 폐기됨 — 재인증 필요")
+                raise OAuthExpiredError("refresh_token이 폐기됐습니다. 재인증이 필요합니다.")
         resp.raise_for_status()
         new = resp.json()
         token["access_token"] = new["access_token"]
@@ -68,13 +82,37 @@ async def _refresh_if_needed(token: dict) -> str:
 
 
 async def _get_access_token() -> str | None:
+    """저장된 토큰에서 유효한 access_token 반환.
+    토큰 없음 → None, 토큰 폐기 → OAuthExpiredError 발생.
+    """
     token = _load_token()
     if not token:
         return None
-    try:
-        return await _refresh_if_needed(token)
-    except Exception:
-        return token.get("access_token")
+    return await _refresh_if_needed(token)
+
+
+def _auth_error() -> HTTPException:
+    """OAuth 인증 필요 시 반환할 표준 401"""
+    return HTTPException(
+        status_code=401,
+        detail={
+            "code": "YOUTUBE_AUTH_REQUIRED",
+            "message": "YouTube 인증이 필요합니다.",
+            "auth_url": "/api/v1/youtube/oauth",
+        },
+    )
+
+
+def _auth_expired_error() -> HTTPException:
+    """OAuth 토큰 만료/폐기 시 반환할 표준 401"""
+    return HTTPException(
+        status_code=401,
+        detail={
+            "code": "YOUTUBE_AUTH_EXPIRED",
+            "message": "YouTube 인증이 만료됐습니다. 재인증이 필요합니다.",
+            "auth_url": "/api/v1/youtube/oauth",
+        },
+    )
 
 
 # ── OAuth 엔드포인트 ────────────────────────────────────────────
@@ -127,9 +165,18 @@ async def youtube_oauth_callback(code: str = Query(...), state: str = Query(...)
 
 @router.get("/oauth/status")
 async def oauth_status():
-    """토큰 저장 여부 확인"""
+    """토큰 저장 여부 + 실제 유효성 확인"""
     token = _load_token()
-    return {"authenticated": bool(token and token.get("refresh_token"))}
+    if not token or not token.get("refresh_token"):
+        return {"authenticated": False, "reason": "no_token"}
+    try:
+        await _refresh_if_needed(token)
+        return {"authenticated": True}
+    except OAuthExpiredError:
+        return {"authenticated": False, "reason": "token_expired"}
+    except Exception:
+        # 네트워크 오류 등 — 토큰은 있지만 검증 불가
+        return {"authenticated": True, "reason": "unverified"}
 
 
 # ── 플레이리스트 관리 ───────────────────────────────────────────
@@ -137,9 +184,12 @@ async def oauth_status():
 @router.get("/playlists")
 async def list_my_playlists():
     """내 YouTube 계정 플레이리스트 목록 (OAuth 필요)"""
-    access_token = await _get_access_token()
+    try:
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        raise _auth_expired_error()
     if not access_token:
-        return {"error": "YouTube 인증 필요 — GET /api/v1/youtube/oauth 로 인증해주세요."}
+        raise _auth_error()
 
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     try:
@@ -147,7 +197,6 @@ async def list_my_playlists():
     finally:
         await crawler.close()
 
-    # 학습 카테고리가 감지된 플리만 반환
     filtered = []
     for pl in all_pls:
         cat = _classify_video(pl["title"], pl.get("description", ""))
@@ -212,12 +261,12 @@ async def discover_study_channels(
     """
     import asyncio
 
-    access_token = await _get_access_token()
+    try:
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        raise _auth_expired_error()
     if not access_token:
-        raise HTTPException(
-            status_code=401,
-            detail="YouTube 인증 필요 — GET /api/v1/youtube/oauth 로 인증해주세요.",
-        )
+        raise _auth_error()
 
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     try:
@@ -336,7 +385,10 @@ async def preview_playlist(
     크롤링 전 미리보기 — 어떤 영상이 필터링되고 어떤 카테고리로 분류되는지 확인.
     filter_ai=false 로 호출하면 전체 영상 목록 반환.
     """
-    access_token = await _get_access_token()
+    try:
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        access_token = None  # 공개 플리는 token 없이도 동작
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     try:
         videos = await crawler.fetch_playlist_videos(
@@ -369,7 +421,10 @@ async def filter_playlists(playlist_ids: list[str]):
     저장은 하지 않음 — 미리보기 전용.
     body: ["PLxxxxxx", "PLyyyyyy"]
     """
-    access_token = await _get_access_token()
+    try:
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        access_token = None  # 공개 플리는 token 없이도 동작
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
 
     results = []
@@ -411,7 +466,10 @@ async def sync_playlists(playlist_ids: list[str]):
     학습 관련 선별은 매일 새벽 job_curate_lectures 또는 POST /inbox/curate 로 수행.
     body: ["PLxxxxxx", "PLyyyyyy"]
     """
-    access_token = await _get_access_token()
+    try:
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        access_token = None  # 공개 플리는 token 없이도 동작
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     result = {}
     total_fetched = 0
@@ -484,7 +542,10 @@ async def rescan_known_playlists(db: AsyncSession = Depends(get_db)):
         )).scalars().all()
     )
 
-    access_token = await _get_access_token()
+    try:
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        access_token = None  # 공개 플리는 token 없이도 동작
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     inbox_result = {}
     try:
@@ -518,12 +579,12 @@ async def discover_auto_import(
     """
     import asyncio
 
-    access_token = await _get_access_token()
+    try:
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        raise _auth_expired_error()
     if not access_token:
-        raise HTTPException(
-            status_code=401,
-            detail="YouTube 인증 필요 — GET /api/v1/youtube/oauth 로 인증해주세요.",
-        )
+        raise _auth_error()
 
     # 1. discover와 동일 로직으로 채널 플리 수집
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
@@ -656,7 +717,10 @@ async def sync_playlists_llm(playlist_ids: list[str], db: AsyncSession = Depends
     """
     from app.services.video_classifier import classify_and_promote
 
-    access_token = await _get_access_token()
+    try:
+        access_token = await _get_access_token()
+    except OAuthExpiredError:
+        access_token = None  # 공개 플리는 token 없이도 동작
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     inbox_result = {}
     try:
