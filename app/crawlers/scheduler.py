@@ -206,9 +206,27 @@ async def job_sync_registered_playlists():
 
     if total_new > 0:
         from app.services.video_classifier import classify_and_promote
+        from app.services.curriculum_organizer import reorganize_courses
+
         async with AsyncSessionLocal() as db:
             result = await classify_and_promote(db)
-        logger.info(f"[Job] sync_registered_playlists: 승격 {result.get('promoted', 0)}개, 폐기 {result.get('discarded', 0)}개")
+
+        promoted_count = result.get("promoted", 0)
+        logger.info(
+            f"[Job] sync_registered_playlists: 승격 {promoted_count}개, "
+            f"폐기 {result.get('discarded', 0)}개, "
+            f"신규 강좌 {result.get('new_courses', [])}"
+        )
+
+        # 신규 강의가 추가된 강좌들 커리큘럼 재구성 (module → difficulty → published_at 순 재정렬)
+        if promoted_count > 0:
+            affected_ids = result.get("affected_course_ids", [])
+            async with AsyncSessionLocal() as db:
+                reorg = await reorganize_courses(db, affected_ids)
+            logger.info(
+                f"[Job] 커리큘럼 재구성 완료 — "
+                f"{reorg['courses_reordered']}개 강좌, {reorg['lectures_renumbered']}개 강의 재정렬"
+            )
     else:
         logger.info(f"[Job] sync_registered_playlists 완료: 신규 영상 없음 ({len(playlist_ids)}개 플리 확인)")
 

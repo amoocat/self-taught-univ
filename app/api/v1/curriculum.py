@@ -349,3 +349,25 @@ async def backfill_metadata(reset: bool = False, db: AsyncSession = Depends(get_
 
     await db.commit()
     return {"updated": updated}
+
+
+@router.post("/reorganize", status_code=200)
+async def reorganize_curriculum(
+    course_ids: list[str] | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """강좌 내 강의를 (module_name → difficulty → published_at) 순으로 재정렬 후 번호 재부여.
+
+    - course_ids 미전달: 전체 강좌 재정렬
+    - course_ids 전달: 지정 강좌만 재정렬
+
+    신규 영상 추가 후 자동으로도 호출되지만, 수동으로도 언제든지 실행 가능.
+    """
+    from app.services.curriculum_organizer import reorganize_courses, reorganize_all_courses
+
+    if course_ids:
+        result = await reorganize_courses(db, course_ids)
+    else:
+        result = await reorganize_all_courses(db)
+
+    return result

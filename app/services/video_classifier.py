@@ -131,6 +131,7 @@ async def classify_and_promote(db: AsyncSession) -> dict:
     promoted = 0
     skipped = 0
     new_courses_created: list[str] = []
+    affected_course_ids: set[str] = set()
     inbox_to_delete = list(inbox)
 
     for v in inbox:
@@ -176,7 +177,7 @@ async def classify_and_promote(db: AsyncSession) -> dict:
             skipped += 1
             continue
 
-        # 강의 번호: 해당 강좌의 현재 마지막 번호 + 1
+        # 강의 번호: 해당 강좌의 현재 마지막 번호 + 1 (재정렬 후 덮어씌워짐)
         max_num_row = (await db.execute(
             select(Lecture.number).where(Lecture.course_id == course_id)
             .order_by(Lecture.number.desc()).limit(1)
@@ -187,6 +188,7 @@ async def classify_and_promote(db: AsyncSession) -> dict:
             course_id=course_id,
             title=v.title,
             number=next_num,
+            difficulty=difficulty,  # GPT가 판단한 난이도 저장 (이전엔 누락됐음)
             category=(course_map.get(course_id).category if course_id in course_map else "misc"),
             youtube_url=f"https://youtube.com/watch?v={v.video_id}",
             youtube_video_id=v.video_id,
@@ -196,6 +198,7 @@ async def classify_and_promote(db: AsyncSession) -> dict:
             published_at=_parse_yt_date(v.published_at),
             is_available=True,
         ))
+        affected_course_ids.add(course_id)
         promoted += 1
 
     # 처리한 inbox 전부 삭제 (id는 varchar — text() 사용으로 UUID 캐스팅 우회)
@@ -208,4 +211,5 @@ async def classify_and_promote(db: AsyncSession) -> dict:
         "promoted": promoted,
         "new_courses": new_courses_created,
         "skipped": skipped,
+        "affected_course_ids": list(affected_course_ids),  # 재정렬이 필요한 강좌 목록
     }
