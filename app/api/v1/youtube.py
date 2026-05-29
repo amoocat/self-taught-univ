@@ -197,13 +197,15 @@ async def list_my_playlists():
     finally:
         await crawler.close()
 
-    filtered = []
+    # 전체 플리 반환 — category는 참고용 (null이면 학습 무관)
+    result = []
     for pl in all_pls:
         cat = _classify_video(pl["title"], pl.get("description", ""))
-        if cat is not None:
-            filtered.append({**pl, "category": cat})
+        result.append({**pl, "category": cat, "is_study": cat is not None})
 
-    return {"playlists": filtered}
+    # 학습 관련 플리를 앞으로 정렬
+    result.sort(key=lambda p: (0 if p["is_study"] else 1, p["title"]))
+    return {"playlists": result, "total": len(result)}
 
 
 _PLAYLIST_ID_RE = re.compile(r"(?:list=|/playlist/|youtu\.be/)([A-Za-z0-9_-]{10,})")

@@ -58,7 +58,9 @@ _CATEGORY_RULES: list[tuple[str, set[str]]] = [
         "statistical learning", "hypothesis testing", "a/b test",
         "causal inference", "time series", "cs109", "stochastic",
         "maximum likelihood", "confidence interval", "p-value",
-        "확률", "통계", "베이지안",
+        "information theory", "entropy", "kullback-leibler", "kl divergence",
+        "mutual information", "channel capacity",
+        "확률", "통계", "베이지안", "정보이론",
     }),
     # ── 강화학습
     ("rl", {
@@ -73,7 +75,9 @@ _CATEGORY_RULES: list[tuple[str, set[str]]] = [
         "scikit", "supervised learning", "unsupervised learning",
         "classification", "regression", "cs229", "andrew ng", "feature engineering",
         "decision tree", "naive bayes", "k-means", "svm", "support vector",
-        "머신러닝", "분류", "회귀",
+        "recsys", "recommendation system", "collaborative filtering",
+        "matrix factorization", "content-based filtering",
+        "머신러닝", "분류", "회귀", "추천 시스템", "추천시스템",
     }),
     # ── 컴퓨터 비전 (dl보다 먼저: cs231n은 cv)
     ("cv", {
@@ -100,10 +104,11 @@ _CATEGORY_RULES: list[tuple[str, set[str]]] = [
     }),
     # ── 데이터 엔지니어링
     ("data", {
-        "data engineering", "data pipeline", "apache spark", "kafka",
-        "data lake", "etl", "airflow", "dbt", "data warehouse",
+        "data engineering", "data pipeline", "apache spark", "pyspark",
+        "kafka", "data lake", "etl", "airflow", "dbt", "data warehouse",
         "hadoop", "flink", "bigquery", "snowflake", "data architecture",
         "stream processing", "batch processing", "data modeling",
+        "de/pipeline",  # 개인 플리 이름 패턴
         "데이터 엔지니어링", "파이프라인",
     }),
     # ── MLOps / 인프라
