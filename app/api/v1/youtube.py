@@ -33,31 +33,57 @@ router = APIRouter()
 
 _PLAYLIST_CATEGORIES = "MATH|STAT|ML|DL|CV|NLP|LLM|RL|DATA|MLOPS|PROG|ACTUARY|IE|OTHER"
 
-async def _classify_playlists_gpt(playlists: list[dict]) -> list[dict]:
+async def _classify_playlists_gpt(
+    playlists: list[dict],
+    access_token: str | None = None,
+) -> list[dict]:
     """GPT-4o-mini로 플레이리스트 학습 관련 여부를 분류.
 
+    플리 이름+설명만으로는 판단이 어려우므로, 각 플리에서 영상 제목 샘플을
+    실제로 가져와서 GPT에게 보여줌 (병렬 fetch, 최대 8개/플리).
+
     각 플리에 is_study(bool) + category(str|None) 필드를 붙여 반환.
-    GPT 실패(API 오류, 키 없음 등) 시 키워드 기반 폴백.
+    GPT 실패 시 키워드 기반 폴백.
     """
+    import asyncio
+
     if not playlists:
         return []
 
-    # GPT 키 없으면 바로 폴백
     if not settings.CHATGPT_API_KEY:
         return _classify_playlists_keyword(playlists)
 
+    # ── Step 1: 각 플리의 영상 제목 샘플 병렬 수집 ──────────────────
+    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+    _SEM = asyncio.Semaphore(8)  # 동시 요청 최대 8개 (API rate limit 방어)
+
+    async def _safe_sample(pl: dict) -> tuple[str, list[str]]:
+        async with _SEM:
+            titles = await crawler.fetch_playlist_video_sample(
+                pl["playlist_id"], access_token=access_token, max_count=8
+            )
+        return pl["playlist_id"], titles
+
+    try:
+        sample_results = await asyncio.gather(*[_safe_sample(p) for p in playlists])
+    finally:
+        await crawler.close()
+
+    sample_map: dict[str, list[str]] = dict(sample_results)
+
+    # ── Step 2: GPT에 플리 정보 + 실제 영상 제목 전달 ────────────────
     payload = [
         {
-            "id":    p["playlist_id"],
-            "title": p["title"],
-            "desc":  (p.get("description") or "")[:120],
-            "count": p.get("video_count", 0),
+            "id":     p["playlist_id"],
+            "title":  p["title"],
+            "desc":   (p.get("description") or "")[:80],
+            "count":  p.get("video_count", 0),
+            "sample_videos": sample_map.get(p["playlist_id"], []),
         }
         for p in playlists
     ]
 
-    # 50개씩 배치 (토큰 한도 방어)
-    _BATCH = 50
+    _BATCH = 40  # 영상 샘플 포함 시 토큰 증가 → 배치 줄임
     result_map: dict[str, dict] = {}
 
     gpt = openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
@@ -65,20 +91,21 @@ async def _classify_playlists_gpt(playlists: list[dict]) -> list[dict]:
         batch = payload[i : i + _BATCH]
         prompt = (
             "You are filtering YouTube playlists for an AI/ML/math self-study platform.\n\n"
-            "Classify each playlist as study/learning content or not.\n\n"
-            "✅ Study content includes:\n"
+            "Each playlist entry includes its title, description, and actual video titles sampled from inside.\n"
+            "Use the VIDEO TITLES as the primary signal — they reveal the true content far better than the playlist name.\n\n"
+            "✅ Classify as study if videos are about:\n"
             "  - Math (linear algebra, calculus, statistics, probability, optimization, information theory)\n"
-            "  - CS fundamentals (algorithms, data structures, OS, networks, C/C++, Python)\n"
-            "  - ML/DL/CV/NLP/LLM/RL/Data Engineering/MLOps\n"
-            "  - Any structured lecture series or academic course\n\n"
-            "❌ NOT study content:\n"
-            "  - Music, entertainment, travel, vlogs, personal/lifestyle videos\n"
-            "  - Random video collections with no learning structure\n\n"
+            "  - CS fundamentals (algorithms, data structures, OS, networks, C/C++, Python, etc.)\n"
+            "  - ML / DL / CV / NLP / LLM / Reinforcement Learning\n"
+            "  - Data Engineering (Spark, Kafka, Airflow, SQL, pipelines)\n"
+            "  - MLOps, DevOps, Docker, Kubernetes\n"
+            "  - Any academic/technical lecture series\n\n"
+            "❌ NOT study: music, entertainment, vlogs, travel, food, personal videos.\n\n"
             f"For study playlists assign a category: {_PLAYLIST_CATEGORIES}\n\n"
-            "Playlists:\n"
+            "Playlists (with sampled video titles):\n"
             + json.dumps(batch, ensure_ascii=False)
             + '\n\nReturn JSON: {"results": [{"id":"PL...","is_study":true,"category":"ML"}]}\n'
-            'Set category to null for non-study playlists.'
+            "Set category to null for non-study playlists."
         )
         try:
             resp = await gpt.chat.completions.create(
@@ -100,12 +127,11 @@ async def _classify_playlists_gpt(playlists: list[dict]) -> list[dict]:
     for p in playlists:
         info = result_map.get(p["playlist_id"])
         if info is None:
-            # 이 플리는 GPT 응답에 없음 → 키워드로 보완
             cat = _classify_video(p["title"], p.get("description", ""))
             classified.append({**p, "is_study": cat is not None, "category": cat})
         else:
-            is_study  = bool(info.get("is_study", False))
-            category  = (info.get("category") or "").lower().strip() or None
+            is_study = bool(info.get("is_study", False))
+            category = (info.get("category") or "").lower().strip() or None
             classified.append({**p, "is_study": is_study, "category": category})
 
     return classified
@@ -285,8 +311,8 @@ async def list_my_playlists():
     finally:
         await crawler.close()
 
-    # GPT로 학습 관련 여부 분류 (실패 시 키워드 폴백)
-    classified = await _classify_playlists_gpt(all_pls)
+    # GPT로 학습 관련 여부 분류 — 실제 영상 제목 샘플 포함 (실패 시 키워드 폴백)
+    classified = await _classify_playlists_gpt(all_pls, access_token=access_token)
     study_pls = [p for p in classified if p.get("is_study")]
     study_pls.sort(key=lambda p: p["title"])
     return {"playlists": study_pls, "total": len(study_pls)}

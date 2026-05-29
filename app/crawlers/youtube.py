@@ -334,6 +334,46 @@ class YouTubeCrawler:
 
         return playlists
 
+    async def fetch_playlist_video_sample(
+        self,
+        playlist_id: str,
+        access_token: str | None = None,
+        max_count: int = 8,
+    ) -> list[str]:
+        """플레이리스트에서 영상 제목만 빠르게 샘플링 (분류 판단용).
+
+        duration 처리 없이 playlistItems 1 페이지만 호출.
+        """
+        params: dict = {
+            "part":       "snippet",
+            "playlistId": playlist_id,
+            "maxResults": max_count,
+        }
+        headers: dict = {}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        else:
+            params["key"] = self.api_key
+
+        try:
+            resp = await self.client.get(
+                f"{self.BASE_URL}/playlistItems",
+                params=params,
+                headers=headers,
+            )
+            resp.raise_for_status()
+            items = resp.json().get("items", [])
+            return [
+                item["snippet"].get("title", "")
+                for item in items
+                if item["snippet"].get("title", "").strip()
+                and item["snippet"].get("title") != "Private video"
+                and item["snippet"].get("title") != "Deleted video"
+            ]
+        except Exception as e:
+            logger.debug(f"[YouTube] 샘플 조회 실패 {playlist_id}: {e}")
+            return []
+
     async def _fill_durations(
         self,
         videos: list[YoutubeVideo],
