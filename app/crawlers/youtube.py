@@ -4,6 +4,7 @@ YouTube 강의 크롤러
 - 플레이리스트에서 강의 메타데이터 수집
 - AI/데이터 관련 영상만 키워드 필터링 후 자동 카테고리 분류
 """
+import re
 import httpx
 import logging
 from dataclasses import dataclass, field
@@ -141,12 +142,33 @@ _CATEGORY_RULES: list[tuple[str, set[str]]] = [
 ]
 
 
+# 짧은 약어는 단어 단위로만 매칭 (substring 오탐 방지)
+# "rl"이 "curl"이나 "world"에 매칭되지 않도록
+_WORD_ABBREV_RULES: list[tuple[str, set[str]]] = [
+    ("rl",   {"rl"}),           # reinforcement learning
+    ("data", {"spark", "de"}),  # Apache Spark / Data Engineering
+    ("ie",   {"vrp", "opt"}),   # 운영과학 약어 (vehicle routing, optimization)
+    ("ml",   {"recsys"}),       # 이미 _CATEGORY_RULES에도 있지만 단어 단위로도 체크
+]
+
+_WORD_SPLIT_RE = re.compile(r"[\s/\-_,.()]+")
+
+
 def _classify_video(title: str, description: str) -> str | None:
     """AI/데이터 관련 영상이면 카테고리 반환, 무관하면 None (스킵 대상)."""
     text = f"{title} {description}".lower()
+
+    # 1차: 일반 substring 매칭
     for category, keywords in _CATEGORY_RULES:
         if any(kw in text for kw in keywords):
             return category
+
+    # 2차: 단어 단위 약어 매칭 (짧은 약어 오탐 방지)
+    words = set(_WORD_SPLIT_RE.split(text)) - {""}
+    for category, abbrevs in _WORD_ABBREV_RULES:
+        if abbrevs & words:  # 교집합 있으면 매칭
+            return category
+
     return None
 
 
