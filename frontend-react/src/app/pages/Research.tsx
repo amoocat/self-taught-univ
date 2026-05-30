@@ -114,7 +114,7 @@ export function Research() {
 
       {/* Stats */}
       <section className="bg-muted/30 py-8 border-b">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-2xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
