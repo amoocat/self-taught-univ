@@ -65,7 +65,7 @@ export function MyPage() {
         title: c.title,
         instructor: "Self-Taught University",
         category: c.category?.toUpperCase?.() ?? c.category,
-        progress: 0,
+        progress: Math.round(c.progress_pct ?? 0),
       })));
     }).catch(() => {
       const saved = localStorage.getItem("myCourses");
