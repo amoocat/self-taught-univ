@@ -1,0 +1,349 @@
+import { useState, useEffect } from "react";
+import { api } from "../../lib/api";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Search, ExternalLink, BookOpen, Building2, Calendar, User, TrendingUp } from "lucide-react";
+
+interface Paper {
+  id: string;
+  title: string;
+  authors: string[];
+  abstract: string;
+  date: string;
+  category: string;
+  url: string;
+  citations: number;
+}
+
+interface BlogPost {
+  id: string;
+  title: string;
+  company: string;
+  author: string;
+  excerpt: string;
+  date: string;
+  category: string;
+  url: string;
+  readTime: string;
+}
+
+
+export function Research() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCompany, setSelectedCompany] = useState("All");
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    api.getPapers().then((data: any[]) => setPapers(data.map((p: any, i: number) => ({
+      id: String(p.id ?? i),
+      title: p.title,
+      authors: p.authors ?? [],
+      abstract: p.abstract ?? "",
+      date: p.year ? String(p.year) : "",
+      category: p.venue ?? "Research",
+      url: p.arxiv_id ? `https://arxiv.org/abs/${p.arxiv_id}` : "#",
+      citations: 0,
+    })))).catch(console.error);
+
+    api.getFeed(50).then((data: any[]) => setBlogPosts(data.map((f: any, i: number) => ({
+      id: String(f.id ?? i),
+      title: f.title,
+      company: f.source_name ?? "",
+      author: "",
+      excerpt: f.summary ?? "",
+      date: f.published_at ? new Date(f.published_at).toLocaleDateString() : "",
+      category: f.category ?? f.source_type ?? "Tech",
+      url: f.url ?? "#",
+      readTime: "",
+    })))).catch(console.error);
+  }, []);
+
+  const categories = ["All", ...Array.from(new Set(papers.map(p => p.category)))];
+  const companies = ["All", ...Array.from(new Set(blogPosts.map(b => b.company)))];
+
+  const filteredPapers = papers.filter((paper) => {
+    const matchesSearch = searchQuery === "" ||
+      paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      paper.authors.some(a => a.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === "All" || paper.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const filteredBlogs = blogPosts.filter((post) => {
+    const matchesSearch = searchQuery === "" ||
+      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.company.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || post.category === selectedCategory;
+    const matchesCompany = selectedCompany === "All" || post.company === selectedCompany;
+    return matchesSearch && matchesCategory && matchesCompany;
+  });
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-b from-primary/10 to-background py-16 border-b">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl">
+            <div className="inline-block mb-4 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
+              RESEARCH_HUB.EXE
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+              Research & Innovation
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Stay updated with the latest research papers and tech industry insights from leading companies and institutions.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <section className="bg-muted/30 py-8 border-b">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
+                {papers.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Recent Papers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
+                {blogPosts.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Tech Blog Posts</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
+                8
+              </div>
+              <div className="text-sm text-muted-foreground">Tech Companies</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
+                24/7
+              </div>
+              <div className="text-sm text-muted-foreground">Updated</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <section className="max-w-7xl mx-auto px-6 py-12">
+        {/* Search Bar */}
+        <div className="mb-8">
+          <div className="relative max-w-2xl">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+            <Input
+              type="text"
+              placeholder="Search papers, authors, companies..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 h-12 text-base"
+            />
+          </div>
+        </div>
+
+        <Tabs defaultValue="papers" className="w-full">
+          <TabsList className="mb-8">
+            <TabsTrigger value="papers">Research Papers</TabsTrigger>
+            <TabsTrigger value="blogs">Tech Blogs</TabsTrigger>
+          </TabsList>
+
+          {/* Research Papers Tab */}
+          <TabsContent value="papers" className="space-y-6">
+            {/* Category Filter */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-medium">Category:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <Badge
+                    key={category}
+                    variant={selectedCategory === category ? "default" : "outline"}
+                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                    onClick={() => setSelectedCategory(category)}
+                  >
+                    {category}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {filteredPapers.map((paper) => (
+                <Card key={paper.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="secondary">{paper.category}</Badge>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" />
+                            {paper.citations.toLocaleString()} citations
+                          </span>
+                        </div>
+                        <CardTitle className="text-xl mb-2 hover:text-primary cursor-pointer">
+                          <a href={paper.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                            {paper.title}
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-2 mb-3">
+                          <User className="w-3 h-3" />
+                          {paper.authors.join(", ")}
+                        </CardDescription>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {paper.abstract}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        {formatDate(paper.date)}
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={paper.url} target="_blank" rel="noopener noreferrer">
+                          Read Paper
+                        </a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Tech Blogs Tab */}
+          <TabsContent value="blogs" className="space-y-6">
+            {/* Filters */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-medium">Category:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((category) => (
+                    <Badge
+                      key={category}
+                      variant={selectedCategory === category ? "default" : "outline"}
+                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                      onClick={() => setSelectedCategory(category)}
+                    >
+                      {category}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-medium">Company:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {companies.map((company) => (
+                    <Badge
+                      key={company}
+                      variant={selectedCompany === company ? "default" : "outline"}
+                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                      onClick={() => setSelectedCompany(company)}
+                    >
+                      {company}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              {filteredBlogs.map((post) => (
+                <Card key={post.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="secondary">{post.category}</Badge>
+                          <span className="text-xs text-muted-foreground">{post.readTime} read</span>
+                        </div>
+                        <CardTitle className="text-xl mb-2 hover:text-primary cursor-pointer">
+                          <a href={post.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                            {post.title}
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-3 mb-3">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="w-3 h-3" />
+                            {post.company}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {post.author}
+                          </span>
+                        </CardDescription>
+                        <p className="text-sm text-muted-foreground">
+                          {post.excerpt}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        {formatDate(post.date)}
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={post.url} target="_blank" rel="noopener noreferrer">
+                          Read Article
+                        </a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-accent/20 py-16 border-t">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            Stay Informed
+          </h2>
+          <p className="text-lg text-muted-foreground mb-8">
+            Subscribe to our newsletter to receive weekly updates on the latest research and tech insights.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button size="lg" className="h-12 px-8">
+              Subscribe Now
+            </Button>
+            <Button size="lg" variant="outline" className="h-12 px-8">
+              Browse Archive
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
