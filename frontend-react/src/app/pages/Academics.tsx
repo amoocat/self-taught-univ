@@ -1,14 +1,5 @@
-import { BookOpen, TrendingUp, GraduationCap, Globe, FileText, PenLine } from "lucide-react";
 import { Link } from "react-router";
 
-const STATUS_CARDS = [
-  { icon: BookOpen,      label: "개설 과목",        value: "6개 과목",   sub: "선형대수 · 확률통계 · ML · DL · CV · NLP" },
-  { icon: TrendingUp,    label: "전체 진도율",       value: "23%",        sub: "선형대수학 42% 선도 중" },
-  { icon: GraduationCap, label: "참고 기관",         value: "4개 대학",   sub: "MIT · Stanford · 서울대 · KAIST" },
-  { icon: FileText,      label: "논문 아카이브",     value: "5편",        sub: "Transformer · GPT-3 · ViT · DDPM · Llama 2" },
-  { icon: Globe,         label: "테크 블로그 소스",  value: "17개 채널",  sub: "Karpathy · Chip Huyen · Google · 당근 외" },
-  { icon: PenLine,       label: "내 공부 노트",      value: "3편",        sub: "계속 업데이트 중" },
-];
 
 const VISION = [
   { num: "I",   title: "이론의 내면화",       desc: "MIT·Stanford 강의를 단순히 보는 것에 그치지 않고, 수식을 직접 유도하고 코드로 구현하며 진짜 이해를 추구합니다." },
@@ -94,32 +85,6 @@ export function Academics() {
                 Est. 2025
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* STU 현황 */}
-      <section className="bg-muted/40 border-y py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="mb-10 text-center">
-            <div className="inline-block mb-4 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
-              LOADING... STU_STATUS
-            </div>
-            <h2 className="text-4xl font-bold" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>STU 현황</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-            {STATUS_CARDS.map(({ icon: Icon, label, value, sub }) => (
-              <div key={label} className="bg-background rounded-xl border p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="text-xs text-muted-foreground">{label}</span>
-                </div>
-                <div className="text-2xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>{value}</div>
-                <div className="text-xs text-muted-foreground">{sub}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
