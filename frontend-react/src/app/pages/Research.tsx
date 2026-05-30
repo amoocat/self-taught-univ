@@ -174,50 +174,46 @@ export function Research() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              {filteredPapers.map((paper) => (
-                <Card key={paper.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="secondary">{paper.category}</Badge>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" />
-                            {paper.citations.toLocaleString()} citations
-                          </span>
-                        </div>
-                        <CardTitle className="text-xl mb-2 hover:text-primary cursor-pointer">
-                          <a href={paper.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                            {paper.title}
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-2 mb-3">
-                          <User className="w-3 h-3" />
-                          {paper.authors.join(", ")}
-                        </CardDescription>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {paper.abstract}
-                        </p>
-                      </div>
+            <div className="divide-y">
+              {filteredPapers.map((paper, i) => {
+                const gradients = [
+                  "from-pink-200 via-rose-100 to-pink-50",
+                  "from-violet-200 via-purple-100 to-violet-50",
+                  "from-lime-200 via-green-100 to-lime-50",
+                  "from-sky-200 via-blue-100 to-sky-50",
+                  "from-amber-200 via-yellow-100 to-amber-50",
+                ];
+                const grad = gradients[i % gradients.length];
+                return (
+                  <div key={paper.id} className="flex gap-8 py-10">
+                    <div className={`hidden sm:block flex-shrink-0 w-56 aspect-[4/3] rounded-xl bg-gradient-to-br ${grad}`} />
+                    <div className="flex flex-col justify-center gap-3">
+                      <a
+                        href={paper.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-2xl font-bold leading-snug hover:underline"
+                        style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}
+                      >
+                        {paper.title}
+                      </a>
+                      <p className="text-sm text-muted-foreground">
+                        {paper.authors.slice(0, 3).join(", ")}
+                        {paper.authors.length > 3 && " 외"}
+                        {paper.date && ` · ${paper.date}`}
+                      </p>
+                      <a
+                        href={paper.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-fit px-4 py-1.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition-opacity"
+                      >
+                        Read Paper
+                      </a>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(paper.date)}
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={paper.url} target="_blank" rel="noopener noreferrer">
-                          Read Paper
-                        </a>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </TabsContent>
 
