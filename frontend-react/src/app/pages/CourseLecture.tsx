@@ -282,7 +282,7 @@ export function CourseLecture() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate(`/course/${courseId}`)}
+                onClick={() => navigate(-1)}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Lectures
