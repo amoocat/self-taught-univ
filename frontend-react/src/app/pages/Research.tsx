@@ -113,33 +113,20 @@ export function Research() {
       </section>
 
       {/* Stats */}
-      <section className="bg-muted/30 py-8 border-b">
-        <div className="max-w-2xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
-                {papers.length}
+      <section className="bg-muted/30 py-4 border-b">
+        <div className="max-w-lg mx-auto px-6">
+          <div className="grid grid-cols-4 gap-4">
+            {[
+              { value: papers.length, label: "Papers" },
+              { value: blogPosts.length, label: "Blog Posts" },
+              { value: 8, label: "Companies" },
+              { value: "24/7", label: "Updated" },
+            ].map(({ value, label }) => (
+              <div key={label} className="text-center">
+                <div className="text-xl font-bold" style={{ fontFamily: "'VT323', monospace" }}>{value}</div>
+                <div className="text-xs text-muted-foreground">{label}</div>
               </div>
-              <div className="text-sm text-muted-foreground">Recent Papers</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
-                {blogPosts.length}
-              </div>
-              <div className="text-sm text-muted-foreground">Tech Blog Posts</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
-                8
-              </div>
-              <div className="text-sm text-muted-foreground">Tech Companies</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>
-                24/7
-              </div>
-              <div className="text-sm text-muted-foreground">Updated</div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
