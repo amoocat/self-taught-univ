@@ -1,6 +1,30 @@
 import { Link } from "react-router";
 
 
+const MAJORS = [
+  {
+    code: "AI-001",
+    title: "인공지능",
+    english: "Artificial Intelligence",
+    desc: "머신러닝 이론부터 최신 LLM까지. 수학적 기초 위에 딥러닝, 컴퓨터 비전, 자연어처리, 강화학습을 체계적으로 쌓아 올립니다.",
+    courses: ["선형대수학", "확률통계", "머신러닝", "딥러닝", "컴퓨터 비전", "자연어처리", "LLM", "강화학습"],
+  },
+  {
+    code: "DS-002",
+    title: "데이터 사이언스",
+    english: "Data Science",
+    desc: "데이터를 수집·가공·분석하고 인사이트를 도출하는 전 과정을 다룹니다. 통계적 사고와 ML을 결합해 실무 문제를 해결합니다.",
+    courses: ["확률통계", "머신러닝", "데이터 엔지니어링", "MLOps", "응용 머신러닝"],
+  },
+  {
+    code: "IE-003",
+    title: "산업공학",
+    english: "Industrial Engineering",
+    desc: "시스템 최적화, 운영 효율화, 의사결정 이론을 바탕으로 AI를 실제 산업 현장에 적용하는 방법론을 연구합니다.",
+    courses: ["산업공학", "수치해석·최적화", "인과추론", "ML 시스템 설계"],
+  },
+];
+
 const VISION = [
   { num: "I",   title: "이론의 내면화",       desc: "MIT·Stanford 강의를 단순히 보는 것에 그치지 않고, 수식을 직접 유도하고 코드로 구현하며 진짜 이해를 추구합니다." },
   { num: "II",  title: "최신 논문 독해력",    desc: "저명한 AI 논문을 AI 주석의 도움을 받아 스스로 읽고 요약하는 능력을 기릅니다. Transformer에서 시작해 최신 연구까지." },
@@ -85,6 +109,40 @@ export function Academics() {
                 Est. 2025
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 전공 */}
+      <section className="bg-accent/20 py-20 border-y">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="mb-12 text-center">
+            <div className="inline-block mb-4 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
+              LOADING... DEGREES
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+              개설 전공
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              STU가 운영 중인 자기주도형 학위 과정입니다.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {MAJORS.map((m) => (
+              <div key={m.code} className="bg-background rounded-xl border p-6 flex flex-col gap-4 hover:border-primary/40 transition-colors">
+                <div>
+                  <div className="text-xs text-primary mb-2" style={{ fontFamily: "'Press Start 2P', monospace" }}>{m.code}</div>
+                  <h3 className="text-2xl font-bold leading-tight" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{m.title}</h3>
+                  <div className="text-sm text-muted-foreground">{m.english}</div>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed flex-1">{m.desc}</p>
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t">
+                  {m.courses.map((c) => (
+                    <span key={c} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{c}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
