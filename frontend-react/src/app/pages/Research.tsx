@@ -88,27 +88,6 @@ export function Research() {
     return matchesSearch && matchesCategory && matchesCompany;
   });
 
-  const SidebarItem = ({
-    label,
-    active,
-    onClick,
-  }: {
-    label: string;
-    active: boolean;
-    onClick: () => void;
-  }) => (
-    <button
-      onClick={onClick}
-      className={`text-left px-3 py-1.5 rounded-md text-sm transition-colors w-full truncate ${
-        active
-          ? "bg-primary/10 text-primary font-medium"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-      }`}
-    >
-      {active && <span className="mr-1 text-primary">›</span>}
-      {label}
-    </button>
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -147,40 +126,38 @@ export function Research() {
       <div className="max-w-7xl mx-auto px-6 py-12 flex gap-10 items-start">
 
         {/* Left sidebar */}
-        <aside className="hidden md:flex flex-col w-44 flex-shrink-0 sticky top-[90px] gap-6">
+        <aside className="hidden md:flex flex-col w-44 flex-shrink-0 sticky top-[90px] gap-5">
           {/* Category */}
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
               Category
             </p>
-            <nav className="flex flex-col gap-0.5">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
               {categories.map(cat => (
-                <SidebarItem
-                  key={cat}
-                  label={cat}
-                  active={selectedCategory === cat}
-                  onClick={() => setSelectedCategory(cat)}
-                />
+                <option key={cat} value={cat}>{cat}</option>
               ))}
-            </nav>
+            </select>
           </div>
 
           {/* Company — only for blogs tab */}
           {activeTab === "blogs" && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                 Company
               </p>
-              <nav className="flex flex-col gap-0.5">
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
                 {companies.map(company => (
-                  <SidebarItem
-                    key={company}
-                    label={company}
-                    active={selectedCompany === company}
-                    onClick={() => setSelectedCompany(company)}
-                  />
+                  <option key={company} value={company}>{company}</option>
                 ))}
-              </nav>
+              </select>
             </div>
           )}
         </aside>
