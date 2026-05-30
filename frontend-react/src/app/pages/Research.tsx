@@ -113,8 +113,8 @@ export function Research() {
       </section>
 
       {/* Stats */}
-      <section className="bg-muted/30 py-4 border-b">
-        <div className="max-w-xs mx-auto px-6">
+      <section className="bg-muted/30 py-2 border-b">
+        <div className="max-w-2xl mx-auto px-6">
           <div className="grid grid-cols-4 gap-4">
             {[
               { value: papers.length, label: "Papers" },
