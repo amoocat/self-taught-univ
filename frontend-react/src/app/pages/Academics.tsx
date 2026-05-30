@@ -80,15 +80,12 @@ export function Academics() {
   return (
     <>
       {/* Hero */}
-      <section className="relative bg-gradient-to-b from-accent/30 to-background py-24">
+      <section className="relative bg-gradient-to-b from-primary/10 to-background py-6 border-b">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <div className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
-            STU_ABOUT.EXE
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-            STU 소개
+          <h1 className="text-3xl font-bold mb-1" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            Academics
           </h1>
-          <p className="text-xl text-muted-foreground">Self-Taught University · Founded 2025</p>
+          <p className="text-sm text-muted-foreground">Self-Taught University · Founded 2025</p>
         </div>
       </section>
 
