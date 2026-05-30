@@ -154,43 +154,33 @@ export function CourseCatalog() {
           {/* Category Filter */}
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Category</p>
-            <div className="flex flex-col gap-1">
-              {loading ? (
-                <div className="h-5 w-full bg-muted animate-pulse rounded" />
-              ) : categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`text-left text-sm px-2 py-1 rounded transition-colors ${
-                    selectedCategory === category
-                      ? "bg-primary text-primary-foreground font-medium"
-                      : "hover:bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
+            {loading ? (
+              <div className="h-8 w-full bg-muted animate-pulse rounded" />
+            ) : (
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {categories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Level Filter */}
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Level</p>
-            <div className="flex flex-col gap-1">
+            <select
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+              className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            >
               {levels.map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setSelectedLevel(level)}
-                  className={`text-left text-sm px-2 py-1 rounded transition-colors ${
-                    selectedLevel === level
-                      ? "bg-primary text-primary-foreground font-medium"
-                      : "hover:bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {level}
-                </button>
+                <option key={level} value={level}>{level}</option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* Clear Filters */}
