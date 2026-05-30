@@ -18,7 +18,7 @@
 /* shared header */
 .page-head {
   background: var(--navy);
-  padding: 20px 32px 18px;
+  padding: 12px 24px 10px;
   border-bottom: 3px solid var(--gold);
   flex-shrink: 0;
 }
@@ -36,7 +36,7 @@
 
 .page-title {
   font-family: var(--font-serif);
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--white);
   letter-spacing: 0.01em;

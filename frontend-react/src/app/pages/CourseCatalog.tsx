@@ -118,73 +118,60 @@ export function CourseCatalog() {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-primary/10 to-background py-20 border-b">
+      <section className="relative bg-gradient-to-b from-primary/10 to-background py-6 border-b">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
-              CATALOG_SEARCH.EXE
-            </div>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            <h1 className="text-3xl font-bold mb-1" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
               Course Catalog
             </h1>
-            <p className="text-xl text-muted-foreground leading-relaxed mb-8">
-              Browse our complete collection of courses. Find the perfect program to advance your education and career.
+            <p className="text-sm text-muted-foreground">
+              Browse our complete collection of courses.
             </p>
           </div>
         </div>
       </section>
 
       {/* Search and Filter Section */}
-      <section className="bg-muted/30 py-8 border-b sticky top-[73px] z-40 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
+      <section className="bg-muted/30 py-3 border-b sticky top-[73px] z-40 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
         <div className="max-w-7xl mx-auto px-6">
           {/* Search Bar */}
-          <div className="mb-6">
+          <div className="mb-3">
             <div className="relative max-w-2xl mx-auto">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
                 type="text"
                 placeholder="강좌, 소스, 주제 검색..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 text-base"
+                className="pl-10 h-9 text-sm"
               />
             </div>
           </div>
 
-          {/* Category Filter */}
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Category:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
+          {/* Category + Level Filter */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-medium text-muted-foreground">Category:</span>
               {loading ? (
-                <div className="h-6 w-64 bg-muted animate-pulse rounded" />
+                <div className="h-5 w-48 bg-muted animate-pulse rounded" />
               ) : categories.map((category) => (
                 <Badge
                   key={category}
                   variant={selectedCategory === category ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs py-0"
                   onClick={() => setSelectedCategory(category)}
                 >
                   {category}
                 </Badge>
               ))}
             </div>
-          </div>
-
-          {/* Level Filter */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Level:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-medium text-muted-foreground">Level:</span>
               {levels.map((level) => (
                 <Badge
                   key={level}
                   variant={selectedLevel === level ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs py-0"
                   onClick={() => setSelectedLevel(level)}
                 >
                   {level}
