@@ -1,4 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
 import { useParams, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -85,6 +92,9 @@ export function CourseLecture() {
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [noteSaving, setNoteSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const playerRef = useRef<any>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const completingRef = useRef(false);
 
   useEffect(() => {
     if (!courseId || !lectureId) return;
@@ -177,8 +187,9 @@ export function CourseLecture() {
     }
   };
 
-  const handleMarkComplete = async () => {
-    if (!courseId || !lectureId || !currentLecture) return;
+  const handleMarkComplete = useCallback(async () => {
+    if (!courseId || !lectureId || !currentLecture || completingRef.current) return;
+    completingRef.current = true;
     setCompleting(true);
     try {
       await api.completeLecture(courseId, lectureId);
@@ -189,7 +200,49 @@ export function CourseLecture() {
     } finally {
       setCompleting(false);
     }
-  };
+  }, [courseId, lectureId, currentLecture]);
+
+  // YouTube IFrame Player API — 영상 종료 시 자동 완료
+  useEffect(() => {
+    const videoId = currentLecture?.youtube_url?.match(
+      /(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/
+    )?.[1];
+    if (!videoId || currentLecture?.completed) return;
+
+    completingRef.current = false;
+
+    const initPlayer = () => {
+      if (!playerContainerRef.current) return;
+      playerRef.current?.destroy?.();
+      playerRef.current = new window.YT.Player(playerContainerRef.current, {
+        host: "https://www.youtube-nocookie.com",
+        videoId,
+        playerVars: { rel: 0, modestbranding: 1 },
+        events: {
+          onStateChange: (e: any) => {
+            if (e.data === 0) handleMarkComplete(); // 0 = YT.PlayerState.ENDED
+          },
+        },
+      });
+    };
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      if (!document.getElementById("yt-iframe-api")) {
+        const tag = document.createElement("script");
+        tag.id = "yt-iframe-api";
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+      window.onYouTubeIframeAPIReady = initPlayer;
+    }
+
+    return () => {
+      playerRef.current?.destroy?.();
+      playerRef.current = null;
+    };
+  }, [currentLecture?.id, currentLecture?.completed, handleMarkComplete]);
 
   const handleSaveDrawing = (dataUrl: string) => {
     setSavedDrawings((prev) => [dataUrl, ...prev]);
@@ -251,13 +304,7 @@ export function CourseLecture() {
           <div className="flex flex-col">
             {/* Video Player */}
             <div className="bg-black aspect-video relative">
-              <iframe
-                src={currentLecture.videoUrl}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={currentLecture.title}
-              />
+              <div ref={playerContainerRef} className="w-full h-full" />
             </div>
 
             {/* Current Lecture Info */}
