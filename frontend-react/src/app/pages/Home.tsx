@@ -114,7 +114,7 @@ export function Home() {
           >
             {/* Slide 1 — Welcome */}
             <div className="min-w-full flex justify-center">
-              <div className="flex flex-col items-center justify-center text-center px-8 py-20 max-w-3xl mx-auto">
+              <div className="flex flex-col items-center justify-center text-center px-8 py-16 max-w-3xl mx-auto">
                 <h2 className="text-4xl md:text-5xl font-bold mb-8" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
                   Welcome to EduPrime
                 </h2>
@@ -122,10 +122,24 @@ export function Home() {
                   For over a century and a half, EduPrime University has been dedicated to the pursuit of knowledge
                   and the education of future leaders, scholars, and citizens of the world.
                 </p>
-                <p className="text-lg text-muted-foreground leading-relaxed">
+                <p className="text-lg text-muted-foreground leading-relaxed mb-12">
                   Our historic campus, nestled among classical architecture and verdant quadrangles,
                   provides an inspiring environment where intellectual curiosity flourishes and lifelong learning begins.
                 </p>
+                <div className="grid grid-cols-4 gap-8 w-full border-t pt-10">
+                  {[
+                    { icon: <GraduationCap className="w-8 h-8 text-primary" />, value: "1,200+", label: "Courses Offered" },
+                    { icon: <Users className="w-8 h-8 text-primary" />, value: "850", label: "Faculty Members" },
+                    { icon: <BookOpenCheck className="w-8 h-8 text-primary" />, value: "65", label: "Degree Programs" },
+                    { icon: <Award className="w-8 h-8 text-primary" />, value: "98%", label: "Graduate Success" },
+                  ].map(({ icon, value, label }) => (
+                    <div key={label} className="text-center">
+                      <div className="flex justify-center mb-2">{icon}</div>
+                      <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>{value}</div>
+                      <div className="text-xs text-muted-foreground">{label}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -233,34 +247,6 @@ export function Home() {
               }`}
             />
           ))}
-        </div>
-      </section>
-
-      {/* Quick Stats */}
-      <section className="bg-muted/40 border-b py-12">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="flex justify-center mb-3"><GraduationCap className="w-10 h-10 text-primary" /></div>
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>1,200+</div>
-              <div className="text-sm text-muted-foreground">Courses Offered</div>
-            </div>
-            <div>
-              <div className="flex justify-center mb-3"><Users className="w-10 h-10 text-primary" /></div>
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>850</div>
-              <div className="text-sm text-muted-foreground">Faculty Members</div>
-            </div>
-            <div>
-              <div className="flex justify-center mb-3"><BookOpenCheck className="w-10 h-10 text-primary" /></div>
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>65</div>
-              <div className="text-sm text-muted-foreground">Degree Programs</div>
-            </div>
-            <div>
-              <div className="flex justify-center mb-3"><Award className="w-10 h-10 text-primary" /></div>
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>98%</div>
-              <div className="text-sm text-muted-foreground">Graduate Success</div>
-            </div>
-          </div>
         </div>
       </section>
 
