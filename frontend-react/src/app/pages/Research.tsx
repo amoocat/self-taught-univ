@@ -39,24 +39,30 @@ export function Research() {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
-    api.getPapers().then((data: any[]) => setPapers(data.map((p: any, i: number) => ({
-      id: String(p.id ?? i),
-      title: p.title,
-      authors: p.authors ?? [],
-      abstract: p.abstract ?? "",
-      date: p.year ? String(p.year) : "",
-      category: p.venue ?? "Research",
-      url: p.arxiv_id ? `https://arxiv.org/abs/${p.arxiv_id}` : "#",
-      citations: 0,
-    })))).catch(console.error);
+    api.getPapers().then((data: any[]) => setPapers(data.map((p: any, i: number) => {
+      const rawAuthors = p.authors ?? "";
+      const authors: string[] = typeof rawAuthors === "string"
+        ? rawAuthors.split(",").map((a: string) => a.trim()).filter(Boolean)
+        : rawAuthors;
+      return {
+        id: String(p.id ?? i),
+        title: p.title,
+        authors,
+        abstract: p.abstract ?? "",
+        date: p.year ? String(p.year) : "",
+        category: p.venue ?? "Research",
+        url: p.arxiv_id ? `https://arxiv.org/abs/${p.arxiv_id}` : "#",
+        citations: 0,
+      };
+    }))).catch(console.error);
 
     api.getFeed(50).then((data: any[]) => setBlogPosts(data.map((f: any, i: number) => ({
       id: String(f.id ?? i),
       title: f.title,
-      company: f.source_name ?? "",
+      company: f.source ?? f.source_name ?? "",
       author: "",
       excerpt: f.summary ?? "",
-      date: f.published_at ? new Date(f.published_at).toLocaleDateString() : "",
+      date: f.date ?? "",
       category: f.category ?? f.source_type ?? "Tech",
       url: f.url ?? "#",
       readTime: "",
@@ -309,7 +315,7 @@ export function Research() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Calendar className="w-3 h-3" />
-                        {formatDate(post.date)}
+                        {post.date}
                       </div>
                       <Button variant="outline" size="sm" asChild>
                         <a href={post.url} target="_blank" rel="noopener noreferrer">
