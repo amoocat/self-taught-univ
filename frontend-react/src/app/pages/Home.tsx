@@ -5,34 +5,7 @@ import { Link } from "react-router";
 import { GraduationCap, Users, Award, BookOpenCheck } from "lucide-react";
 import { api } from "../../lib/api";
 
-// 카테고리 카드는 API 강좌 수로 동적 생성
-const CATEGORY_ICONS: Record<string, any> = {
-  llm: Brain, ml: Brain, dl: Brain, cv: Code, nlp: Code,
-  rl: Brain, math: BookOpen, stat: TrendingUp, data: Globe,
-  mlops: Code, actuary: BookOpen, ie: TrendingUp,
-};
-const CATEGORY_LABELS: Record<string, string> = {
-  llm: "Large Language Models", ml: "Machine Learning", dl: "Deep Learning",
-  cv: "Computer Vision", nlp: "Natural Language Processing",
-  rl: "Reinforcement Learning", math: "Mathematics", stat: "Statistics",
-  data: "Data Engineering", mlops: "MLOps", actuary: "Actuarial Science", ie: "Industrial Engineering",
-};
-const COURSE_IMAGES: Record<string, string> = {
-  llm: "https://images.unsplash.com/photo-1710306973761-717ec384efd3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  ml: "https://images.unsplash.com/photo-1518773553398-650c184e0bb3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  dl: "https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  cv: "https://images.unsplash.com/photo-1527430253228-e93688616381?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  nlp: "https://images.unsplash.com/photo-1607799279861-4dd421887fb3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  rl: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  math: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  stat: "https://images.unsplash.com/photo-1543286386-713bdd548da4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  data: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-  mlops: "https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-};
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080";
-
 export function Home() {
-  const [courses, setCourses] = useState<any[]>([]);
   const [stats, setStats] = useState({ courses: 0, lectures: 0 });
   const [loading, setLoading] = useState(true);
   const [slide, setSlide] = useState(0);
@@ -42,37 +15,10 @@ export function Home() {
 
   useEffect(() => {
     api.getCourses().then((data: any[]) => {
-      setCourses(data);
       const totalLectures = data.reduce((s: number, c: any) => s + (c.lecture_count ?? 0), 0);
       setStats({ courses: data.length, lectures: totalLectures });
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
-
-  // API 강좌를 CourseCard 형식으로 변환
-  const featuredCourses = courses.slice(0, 4).map((c: any) => ({
-    title: c.title,
-    description: c.description || `${(c.lecture_count ?? 0)}개 강의로 구성된 ${CATEGORY_LABELS[c.category] ?? c.category} 강좌`,
-    instructor: "Self-Taught University",
-    instructorAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100",
-    category: CATEGORY_LABELS[c.category] ?? c.category,
-    level: "Self-Paced",
-    students: c.lecture_count ?? 0,
-    rating: 4.8,
-    imageUrl: COURSE_IMAGES[c.category] ?? DEFAULT_IMAGE,
-    courseId: c.id,
-  }));
-
-  // API 강좌를 CategoryCard 형식으로 변환
-  const categoryGroups: Record<string, number> = {};
-  courses.forEach((c: any) => {
-    const k = CATEGORY_LABELS[c.category] ?? c.category;
-    categoryGroups[k] = (categoryGroups[k] ?? 0) + (c.lecture_count ?? 0);
-  });
-  const categories = Object.entries(categoryGroups).slice(0, 6).map(([title, count]) => ({
-    title,
-    icon: CATEGORY_ICONS[Object.keys(CATEGORY_LABELS).find(k => CATEGORY_LABELS[k] === title) ?? ""] ?? BookOpen,
-    courseCount: count,
-  }));
 
   return (
     <>
