@@ -117,9 +117,6 @@ export function Academics() {
 
           {/* 설립자 인사말 */}
           <section id="greeting" className="scroll-mt-24">
-            <div className="text-xs tracking-wider text-muted-foreground mb-4" style={{ fontFamily: "'Press Start 2P', monospace" }}>
-              [ FOUNDER'S GREETINGS ]
-            </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-6 leading-snug" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
               "돈이 없어도, 학교가 없어도<br />
               지식은 스스로 만들어가는 것이다."
