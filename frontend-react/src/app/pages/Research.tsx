@@ -246,28 +246,23 @@ export function Research() {
                   const grad = gradients[i % gradients.length];
                   return (
                     <div key={post.id} className="flex gap-8 py-10">
-                      <div className={`hidden sm:block flex-shrink-0 w-56 aspect-[4/3] rounded-xl bg-gradient-to-br ${grad}`} />
+                      <Link
+                        to={`/research/blog/${post.id}`}
+                        state={{ post }}
+                        className={`hidden sm:block flex-shrink-0 w-56 aspect-[4/3] rounded-xl bg-gradient-to-br ${grad} hover:opacity-90 transition-opacity`}
+                      />
                       <div className="flex flex-col justify-center gap-3">
-                        <a
-                          href={post.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <Link
+                          to={`/research/blog/${post.id}`}
+                          state={{ post }}
                           className="text-2xl font-bold leading-snug hover:underline"
                           style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}
                         >
                           {post.title}
-                        </a>
+                        </Link>
                         <p className="text-sm text-muted-foreground">
                           {[post.company, post.date].filter(Boolean).join(" · ")}
                         </p>
-                        <a
-                          href={post.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-fit px-4 py-1.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition-opacity"
-                        >
-                          Read more
-                        </a>
                       </div>
                     </div>
                   );

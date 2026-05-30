@@ -7,6 +7,7 @@ import { LectureNotes } from "./pages/LectureNotes";
 import { MyPage } from "./pages/MyPage";
 import { Research } from "./pages/Research";
 import { PaperDetail } from "./pages/PaperDetail";
+import { BlogDetail } from "./pages/BlogDetail";
 import { CourseLectures } from "./pages/CourseLectures";
 import { CourseLecture } from "./pages/CourseLecture";
 import { KnowledgeGraph } from "./pages/KnowledgeGraph";
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: "notes", Component: LectureNotes },
       { path: "research", Component: Research },
       { path: "research/paper/:paperId", Component: PaperDetail },
+      { path: "research/blog/:blogId", Component: BlogDetail },
       { path: "my-page", Component: MyPage },
       { path: "knowledge-graph", Component: KnowledgeGraph },
       { path: "youtube-import", Component: YouTubeImport },
