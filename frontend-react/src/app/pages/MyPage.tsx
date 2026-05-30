@@ -168,47 +168,28 @@ export function MyPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b" style={{ background: "linear-gradient(135deg, #030213 0%, #1a1a3e 60%, #0a0a1f 100%)" }}>
-        {/* decorative background text */}
-        <div
-          className="absolute inset-0 flex items-center justify-end pr-12 pointer-events-none select-none"
-          aria-hidden
-        >
-          <span
-            style={{
-              fontFamily: "'Press Start 2P', monospace",
-              fontSize: "clamp(5rem, 14vw, 12rem)",
-              color: "rgba(255,255,255,0.035)",
-              letterSpacing: "-0.05em",
-              lineHeight: 1,
-            }}
-          >
-            MY PAGE
-          </span>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-6 py-16">
+      <section className="relative overflow-hidden bg-gradient-to-b from-primary/10 to-background border-b">
+        <div className="relative max-w-7xl mx-auto px-6 py-10">
           <div className="flex items-end justify-between gap-8">
             {/* left: identity */}
             <div className="flex items-center gap-6">
-              {/* avatar */}
-              <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
-                <GraduationCap className="w-8 h-8 text-white/80" />
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-7 h-7 text-primary" />
               </div>
               <div>
                 <div
-                  className="inline-block mb-3 px-3 py-1 rounded border border-white/20 text-white/60"
+                  className="inline-block mb-2 px-3 py-1 rounded bg-primary/10 text-primary"
                   style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "8px" }}
                 >
                   USER_DASHBOARD.EXE
                 </div>
                 <h1
-                  className="text-white mb-1"
-                  style={{ fontFamily: "'Crimson Pro', Georgia, serif", fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 600, lineHeight: 1.1 }}
+                  className="text-foreground mb-1"
+                  style={{ fontFamily: "'Crimson Pro', Georgia, serif", fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 600, lineHeight: 1.1 }}
                 >
                   My Page
                 </h1>
-                <p className="text-white/50" style={{ fontSize: "0.9rem" }}>
+                <p className="text-muted-foreground text-sm">
                   Welcome back — here's your academic overview.
                 </p>
               </div>
@@ -217,22 +198,22 @@ export function MyPage() {
             {/* right: inline key stats */}
             <div className="hidden md:flex items-center gap-8 pb-1">
               <div className="text-right">
-                <div className="text-white/40 text-xs uppercase tracking-wider mb-0.5">Courses</div>
-                <div className="text-white text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
+                <div className="text-muted-foreground text-xs uppercase tracking-wider mb-0.5">Courses</div>
+                <div className="text-foreground text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
                   {myCourses.length}
                 </div>
               </div>
-              <div className="w-px h-10 bg-white/15" />
+              <div className="w-px h-10 bg-border" />
               <div className="text-right">
-                <div className="text-white/40 text-xs uppercase tracking-wider mb-0.5">Notes</div>
-                <div className="text-white text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
+                <div className="text-muted-foreground text-xs uppercase tracking-wider mb-0.5">Notes</div>
+                <div className="text-foreground text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
                   {myNotes.length}
                 </div>
               </div>
-              <div className="w-px h-10 bg-white/15" />
+              <div className="w-px h-10 bg-border" />
               <div className="text-right">
-                <div className="text-white/40 text-xs uppercase tracking-wider mb-0.5">Avg. Progress</div>
-                <div className="text-white text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
+                <div className="text-muted-foreground text-xs uppercase tracking-wider mb-0.5">Avg. Progress</div>
+                <div className="text-foreground text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
                   {avgProgress}%
                 </div>
               </div>
