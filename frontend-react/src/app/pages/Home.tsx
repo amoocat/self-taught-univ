@@ -142,13 +142,26 @@ export function Home() {
                   Discover world-class education across diverse fields of study.
                   Our comprehensive academic programs prepare students to lead and innovate in their chosen fields.
                 </p>
-                <div className="flex gap-4 justify-center">
+                <div className="flex gap-4 justify-center mb-12">
                   <Button size="lg" className="h-12 px-8" asChild>
                     <Link to="/course-catalog">Browse Programs</Link>
                   </Button>
                   <Button size="lg" variant="outline" className="h-12 px-8" asChild>
                     <Link to="/course-catalog">Course Catalog</Link>
                   </Button>
+                </div>
+                <div className="grid grid-cols-4 gap-8 w-full border-t pt-10">
+                  {[
+                    { value: loading ? "..." : stats.courses, label: "COURSES" },
+                    { value: loading ? "..." : stats.lectures, label: "LECTURES" },
+                    { value: "∞", label: "LEARNING" },
+                    { value: "1:1", label: "RATIO" },
+                  ].map(({ value, label }) => (
+                    <div key={label} className="text-center">
+                      <div className="text-4xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>{value}</div>
+                      <div className="text-xs text-muted-foreground tracking-wide" style={{ fontFamily: "'Press Start 2P', monospace" }}>{label}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -372,30 +385,6 @@ export function Home() {
             <a href="#" className="text-primary font-medium hover:underline">
               Learn more about our history →
             </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Statistics */}
-      <section className="bg-muted/40 border-y py-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold mb-2" style={{ fontFamily: "'VT323', monospace" }}>{loading ? "..." : stats.courses}</div>
-              <div className="text-xs text-muted-foreground tracking-wide" style={{ fontFamily: "'Press Start 2P', monospace" }}>COURSES</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2" style={{ fontFamily: "'VT323', monospace" }}>{loading ? "..." : stats.lectures}</div>
-              <div className="text-xs text-muted-foreground tracking-wide" style={{ fontFamily: "'Press Start 2P', monospace" }}>LECTURES</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2" style={{ fontFamily: "'VT323', monospace" }}>∞</div>
-              <div className="text-xs text-muted-foreground tracking-wide" style={{ fontFamily: "'Press Start 2P', monospace" }}>LEARNING</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2" style={{ fontFamily: "'VT323', monospace" }}>1:1</div>
-              <div className="text-xs text-muted-foreground tracking-wide" style={{ fontFamily: "'Press Start 2P', monospace" }}>RATIO</div>
-            </div>
           </div>
         </div>
       </section>
