@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useLocation } from "react-router";
 import { ArrowLeft, Play, CheckCircle2, Clock, Youtube } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Progress } from "../components/ui/progress";
@@ -50,6 +50,8 @@ function fmtDuration(sec?: number): string {
 export function CourseLectures() {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backLabel = (location.state as any)?.backLabel ?? "카탈로그";
   const [course, setCourse] = useState<Course | null>(null);
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,7 +120,7 @@ export function CourseLectures() {
             onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft size={14} /> 카탈로그
+            <ArrowLeft size={14} /> {backLabel}
           </button>
           <div>
             <h1 className="font-bold text-lg leading-tight" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>

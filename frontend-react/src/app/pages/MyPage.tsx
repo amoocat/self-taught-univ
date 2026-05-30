@@ -349,7 +349,7 @@ export function MyPage() {
                       {/* actions */}
                       <div className="flex items-center gap-2 shrink-0">
                         <Button size="sm" asChild>
-                          <Link to={`/course/${course.id}`}>
+                          <Link to={`/course/${course.id}`} state={{ backLabel: "My Page" }}>
                             <Play className="w-3 h-3 mr-1.5" />
                             Continue
                           </Link>
