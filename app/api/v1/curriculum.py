@@ -125,6 +125,31 @@ async def list_courses(db: AsyncSession = Depends(get_db)):
     return result
 
 
+@router.get("/{course_id}", response_model=CourseOut)
+async def get_course(course_id: str, db: AsyncSession = Depends(get_db)):
+    course = await get_or_404(db, Course, course_id, "Course")
+
+    lec_count = (await db.execute(
+        select(func.count()).where(Lecture.course_id == course.id)
+    )).scalar() or 0
+
+    done_count = (await db.execute(
+        select(func.count()).where(Progress.course_id == course.id)
+    )).scalar() or 0
+
+    pct = round(done_count / lec_count * 100, 1) if lec_count > 0 else 0.0
+    code = _CATEGORY_CODE.get(course.category.lower(), course.category.upper())
+    status = "done" if pct >= 100 else ("active" if pct > 0 else "todo")
+
+    return CourseOut(
+        id=course.id, code=code, title=course.title, source=course.source,
+        category=course.category, order_index=course.order_index,
+        description=course.description, objectives=course.objectives or [],
+        lecture_count=lec_count, completed_count=done_count,
+        progress_pct=pct, status=status,
+    )
+
+
 @router.get("/{course_id}/lectures", response_model=list[LectureOut])
 async def list_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
     lectures = (await db.execute(
