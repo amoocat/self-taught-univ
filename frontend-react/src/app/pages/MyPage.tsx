@@ -26,34 +26,13 @@ interface Note {
   category: string;
 }
 
-const CATEGORY_ACCENTS: Record<string, { bar: string; badge: string; border: string }> = {
-  "Computer Science": {
-    bar: "from-blue-500 to-indigo-500",
-    badge: "bg-blue-50 text-blue-700 border-blue-200",
-    border: "border-l-blue-400",
-  },
-  "Engineering": {
-    bar: "from-orange-400 to-amber-500",
-    badge: "bg-orange-50 text-orange-700 border-orange-200",
-    border: "border-l-orange-400",
-  },
-  "Mathematics": {
-    bar: "from-emerald-500 to-teal-500",
-    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    border: "border-l-emerald-400",
-  },
-  "Science": {
-    bar: "from-violet-500 to-purple-500",
-    badge: "bg-violet-50 text-violet-700 border-violet-200",
-    border: "border-l-violet-400",
-  },
-};
+const CATEGORY_ACCENTS: Record<string, { bar: string; badge: string; border: string }> = {};
 
 const NOTE_CATEGORY_COLORS: Record<string, string> = {
-  Lecture: "bg-blue-50 text-blue-700",
-  Reading: "bg-amber-50 text-amber-700",
-  Assignment: "bg-rose-50 text-rose-700",
-  "Exam Prep": "bg-violet-50 text-violet-700",
+  Lecture: "bg-primary/10 text-primary",
+  Reading: "bg-muted text-muted-foreground",
+  Assignment: "bg-primary/5 text-foreground",
+  "Exam Prep": "bg-muted text-foreground",
 };
 
 function getCategoryAccent(category: string) {
@@ -227,39 +206,39 @@ export function MyPage() {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Enrolled */}
-            <div className="flex items-center gap-4 p-4 rounded-xl border bg-white">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                <GraduationCap className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center gap-4 p-4 rounded-xl border bg-background">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Enrolled</div>
-                <div className="text-2xl text-blue-700" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
+                <div className="text-2xl text-foreground" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
                   {myCourses.length}
                 </div>
               </div>
             </div>
 
             {/* Notes */}
-            <div className="flex items-center gap-4 p-4 rounded-xl border bg-white">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5 text-emerald-600" />
+            <div className="flex items-center gap-4 p-4 rounded-xl border bg-background">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Notes</div>
-                <div className="text-2xl text-emerald-700" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
+                <div className="text-2xl text-foreground" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
                   {myNotes.length}
                 </div>
               </div>
             </div>
 
             {/* This week */}
-            <div className="flex items-center gap-4 p-4 rounded-xl border bg-white">
-              <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                <Zap className="w-5 h-5 text-violet-600" />
+            <div className="flex items-center gap-4 p-4 rounded-xl border bg-background">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Zap className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">This Week</div>
-                <div className="text-2xl text-violet-700" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
+                <div className="text-2xl text-foreground" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
                   {weeklyNotes}
                 </div>
               </div>
@@ -268,14 +247,14 @@ export function MyPage() {
             {/* Knowledge Graph — featured */}
             <Link
               to="/knowledge-graph"
-              className="flex items-center gap-4 p-4 rounded-xl border bg-amber-50 border-amber-200 hover:bg-amber-100 transition-colors group"
+              className="flex items-center gap-4 p-4 rounded-xl border bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors group"
             >
-              <div className="w-10 h-10 rounded-lg bg-amber-200 flex items-center justify-center shrink-0 group-hover:bg-amber-300 transition-colors">
-                <Star className="w-5 h-5 text-amber-700 fill-amber-600" />
+              <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 group-hover:bg-primary/25 transition-colors">
+                <Star className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <div className="text-xs text-amber-700/70">Explore</div>
-                <div className="text-2xl text-amber-800" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
+                <div className="text-xs text-muted-foreground">Explore</div>
+                <div className="text-2xl text-primary" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
                   Graph →
                 </div>
               </div>
@@ -334,7 +313,7 @@ export function MyPage() {
                   return (
                     <div
                       key={course.id}
-                      className="flex items-center gap-5 px-5 py-4 rounded-2xl bg-white hover:bg-muted/30 transition-colors group"
+                      className="flex items-center gap-5 px-5 py-4 rounded-2xl bg-background border hover:bg-muted/30 transition-colors group"
                     >
                       {/* left color pill */}
                       <div
