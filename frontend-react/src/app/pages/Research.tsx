@@ -123,7 +123,7 @@ export function Research() {
               { value: "24/7", label: "Updated" },
             ].map(({ value, label }) => (
               <div key={label} className="text-center">
-                <div className="text-xl font-bold" style={{ fontFamily: "'VT323', monospace" }}>{value}</div>
+                <div className="text-2xl font-bold" style={{ fontFamily: "'VT323', monospace" }}>{value}</div>
                 <div className="text-xs text-muted-foreground">{label}</div>
               </div>
             ))}
