@@ -19,7 +19,7 @@ async def db() -> AsyncSession:
         yield session
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def client():
     with TestClient(app) as c:
         yield c
