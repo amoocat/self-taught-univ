@@ -115,7 +115,7 @@ export function CourseLectures() {
       <div className="border-b bg-background px-8 py-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate("/course-catalog")}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft size={14} /> 카탈로그
