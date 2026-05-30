@@ -248,13 +248,6 @@ export function Research() {
                           {paper.authors.length > 3 && " 외"}
                           {paper.date && ` · ${paper.date}`}
                         </p>
-                        <Link
-                          to={`/research/paper/${paper.id}`}
-                          state={{ paper }}
-                          className="w-fit px-4 py-1.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition-opacity"
-                        >
-                          Read Paper
-                        </Link>
                       </div>
                     </div>
                   );
