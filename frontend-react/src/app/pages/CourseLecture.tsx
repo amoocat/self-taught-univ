@@ -17,7 +17,8 @@ import {
   Maximize2,
   Minimize2,
   Pencil,
-  Tag
+  Tag,
+  CheckCircle2
 } from "lucide-react";
 import { DrawingCanvas } from "../components/DrawingCanvas";
 import { api } from "../../lib/api";
@@ -83,6 +84,7 @@ export function CourseLecture() {
   const [activeTab, setActiveTab] = useState("take-notes");
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [noteSaving, setNoteSaving] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     if (!courseId || !lectureId) return;
@@ -175,6 +177,20 @@ export function CourseLecture() {
     }
   };
 
+  const handleMarkComplete = async () => {
+    if (!courseId || !lectureId || !currentLecture) return;
+    setCompleting(true);
+    try {
+      await api.completeLecture(courseId, lectureId);
+      setCurrentLecture(prev => prev ? { ...prev, completed: true, is_completed: true } : prev);
+      setCourseLectures(prev => prev.map(l =>
+        l.id === lectureId ? { ...l, completed: true } : l
+      ));
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   const handleSaveDrawing = (dataUrl: string) => {
     setSavedDrawings((prev) => [dataUrl, ...prev]);
   };
@@ -257,6 +273,18 @@ export function CourseLecture() {
                     <Badge variant={currentLecture.completed ? "default" : "outline"}>
                       {currentLecture.completed ? "Completed" : "In Progress"}
                     </Badge>
+                    {!currentLecture.completed && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                        onClick={handleMarkComplete}
+                        disabled={completing}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {completing ? "저장 중..." : "완료로 표시"}
+                      </Button>
+                    )}
                   </div>
                   {currentLecture.keywords && currentLecture.keywords.length > 0 && (
                     <div className="flex items-start gap-2">
