@@ -17,6 +17,13 @@ const MAJORS = [
     courses: ["확률통계", "머신러닝", "데이터 엔지니어링", "MLOps", "응용 머신러닝"],
   },
   {
+    code: "CS-004",
+    title: "컴퓨터 공학",
+    english: "Computer Science & Engineering",
+    desc: "알고리즘, 시스템 설계, 분산 처리 등 CS 핵심 이론을 바탕으로 ML 시스템을 설계·구현하는 능력을 기릅니다.",
+    courses: ["ML 시스템 설계", "분산·확장 머신러닝", "MLOps", "PyTorch 생태계"],
+  },
+  {
     code: "IE-003",
     title: "산업공학",
     english: "Industrial Engineering",
@@ -127,7 +134,7 @@ export function Academics() {
               STU가 운영 중인 자기주도형 학위 과정입니다.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {MAJORS.map((m) => (
               <div key={m.code} className="bg-background rounded-xl border p-6 flex flex-col gap-4 hover:border-primary/40 transition-colors">
                 <div>
