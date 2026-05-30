@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { GraduationCap, Users, Award, BookOpenCheck } from "lucide-react";
 import { Link } from "react-router";
+import { GraduationCap, Users, Award, BookOpenCheck } from "lucide-react";
 import { api } from "../../lib/api";
 
 // 카테고리 카드는 API 강좌 수로 동적 생성
@@ -293,6 +293,25 @@ export function Home() {
         </div>
       </section>
 
+      {/* Ready to Begin */}
+      <section className="bg-primary text-primary-foreground py-20">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2 className="text-4xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            Ready to Begin Your Academic Journey?
+          </h2>
+          <p className="text-xl mb-10 opacity-95 leading-relaxed">
+            Explore our programs, connect with faculty, and discover how EduPrime can help you achieve your academic goals.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button size="lg" variant="secondary" className="h-12 px-8" asChild>
+              <Link to="/course-catalog">Browse Programs</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="h-12 px-8 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
+              <Link to="/youtube-import">Add Your Courses</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
     </>
   );
 }
