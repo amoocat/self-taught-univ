@@ -257,53 +257,44 @@ export function Research() {
               </div>
             </div>
 
-            <div className="grid gap-4">
-              {filteredBlogs.map((post) => (
-                <Card key={post.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="secondary">{post.category}</Badge>
-                          <span className="text-xs text-muted-foreground">{post.readTime} read</span>
-                        </div>
-                        <CardTitle className="text-xl mb-2 hover:text-primary cursor-pointer">
-                          <a href={post.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                            {post.title}
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-3 mb-3">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="w-3 h-3" />
-                            {post.company}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {post.author}
-                          </span>
-                        </CardDescription>
-                        <p className="text-sm text-muted-foreground">
-                          {post.excerpt}
-                        </p>
-                      </div>
+            <div className="divide-y">
+              {filteredBlogs.map((post, i) => {
+                const gradients = [
+                  "from-sky-200 via-blue-100 to-sky-50",
+                  "from-amber-200 via-yellow-100 to-amber-50",
+                  "from-pink-200 via-rose-100 to-pink-50",
+                  "from-lime-200 via-green-100 to-lime-50",
+                  "from-violet-200 via-purple-100 to-violet-50",
+                ];
+                const grad = gradients[i % gradients.length];
+                return (
+                  <div key={post.id} className="flex gap-8 py-10">
+                    <div className={`hidden sm:block flex-shrink-0 w-56 aspect-[4/3] rounded-xl bg-gradient-to-br ${grad}`} />
+                    <div className="flex flex-col justify-center gap-3">
+                      <a
+                        href={post.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-2xl font-bold leading-snug hover:underline"
+                        style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}
+                      >
+                        {post.title}
+                      </a>
+                      <p className="text-sm text-muted-foreground">
+                        {[post.company, post.date].filter(Boolean).join(" · ")}
+                      </p>
+                      <a
+                        href={post.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-fit px-4 py-1.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition-opacity"
+                      >
+                        Read more
+                      </a>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        {post.date}
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={post.url} target="_blank" rel="noopener noreferrer">
-                          Read Article
-                        </a>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </TabsContent>
         </Tabs>
