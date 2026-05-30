@@ -3,7 +3,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { CourseCard } from "../components/CourseCard";
 import { CategoryCard } from "../components/CategoryCard";
-import { Code, Palette, TrendingUp, Globe, Brain, BookOpen, Search } from "lucide-react";
+import { Code, Palette, TrendingUp, Globe, Brain, BookOpen, Search, GraduationCap, Users, Award, BookOpenCheck } from "lucide-react";
+import { Link } from "react-router";
 import { api } from "../../lib/api";
 
 // 카테고리 카드는 API 강좌 수로 동적 생성
@@ -111,6 +112,60 @@ export function Home() {
           Our historic campus, nestled among classical architecture and verdant quadrangles,
           provides an inspiring environment where intellectual curiosity flourishes and lifelong learning begins.
         </p>
+      </section>
+
+      {/* Academic Excellence */}
+      <section className="relative bg-gradient-to-b from-accent/30 to-background py-20 border-b">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
+              ACADEMIC_PROGRAMS.EXE
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+              Academic Excellence
+            </h2>
+            <p className="text-xl text-muted-foreground leading-relaxed mb-8">
+              Discover world-class education across diverse fields of study.
+              Our comprehensive academic programs prepare students to lead and innovate in their chosen fields.
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Button size="lg" className="h-12 px-8" asChild>
+                <Link to="/course-catalog">Browse Programs</Link>
+              </Button>
+              <Button size="lg" variant="outline" className="h-12 px-8" asChild>
+                <Link to="/course-catalog">Course Catalog</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Stats */}
+      <section className="bg-muted/40 border-b py-12">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="flex justify-center mb-3"><GraduationCap className="w-10 h-10 text-primary" /></div>
+              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>1,200+</div>
+              <div className="text-sm text-muted-foreground">Courses Offered</div>
+            </div>
+            <div>
+              <div className="flex justify-center mb-3"><Users className="w-10 h-10 text-primary" /></div>
+              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>850</div>
+              <div className="text-sm text-muted-foreground">Faculty Members</div>
+            </div>
+            <div>
+              <div className="flex justify-center mb-3"><BookOpenCheck className="w-10 h-10 text-primary" /></div>
+              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>65</div>
+              <div className="text-sm text-muted-foreground">Degree Programs</div>
+            </div>
+            <div>
+              <div className="flex justify-center mb-3"><Award className="w-10 h-10 text-primary" /></div>
+              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'VT323', monospace" }}>98%</div>
+              <div className="text-sm text-muted-foreground">Graduate Success</div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Campus Life Images */}
@@ -238,6 +293,47 @@ export function Home() {
         </div>
       </section>
 
+      {/* Academic Resources */}
+      <section className="max-w-7xl mx-auto px-6 py-20">
+        <div className="grid md:grid-cols-2 gap-12">
+          <div className="relative aspect-video overflow-hidden rounded-xl bg-muted">
+            <img
+              src="https://images.unsplash.com/photo-1514513452089-17f8a9771ee8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+              alt="Library"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex flex-col justify-center">
+            <div className="text-xs tracking-wider text-muted-foreground mb-4" style={{ fontFamily: "'Press Start 2P', monospace" }}>
+              [ RESOURCES ]
+            </div>
+            <h2 className="text-4xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+              Academic Resources
+            </h2>
+            <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+              Access state-of-the-art facilities, extensive library collections, and cutting-edge research labs.
+              Our academic resources are designed to support your scholarly pursuits and research endeavors.
+            </p>
+            <ul className="space-y-3 mb-8">
+              {[
+                "12 specialized research centers and institutes",
+                "3 million+ volumes in university libraries",
+                "Advanced computing and laboratory facilities",
+                "24/7 academic support and tutoring services",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2.5" />
+                  <span className="text-muted-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+            <Button className="w-fit" asChild>
+              <Link to="/course-catalog">Explore Resources →</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Statistics */}
       <section className="bg-muted/40 border-y py-16">
         <div className="max-w-6xl mx-auto px-6">
@@ -262,22 +358,23 @@ export function Home() {
         </div>
       </section>
 
-      {/* Visit Campus */}
-      <section className="max-w-5xl mx-auto px-6 py-24 text-center">
-        <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-          Visit Our Campus
-        </h2>
-        <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-          Experience EduPrime firsthand. Schedule a campus tour and discover what makes
-          our community exceptional.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Button size="lg" className="h-12 px-8">
-            Schedule a Tour
-          </Button>
-          <Button size="lg" variant="outline" className="h-12 px-8">
-            Request Information
-          </Button>
+      {/* Ready to Begin */}
+      <section className="bg-primary text-primary-foreground py-20">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2 className="text-4xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            Ready to Begin Your Academic Journey?
+          </h2>
+          <p className="text-xl mb-10 opacity-95 leading-relaxed">
+            Explore our programs, connect with faculty, and discover how EduPrime can help you achieve your academic goals.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button size="lg" variant="secondary" className="h-12 px-8" asChild>
+              <Link to="/course-catalog">Browse Programs</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="h-12 px-8 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
+              <Link to="/youtube-import">Add Your Courses</Link>
+            </Button>
+          </div>
         </div>
       </section>
     </>
