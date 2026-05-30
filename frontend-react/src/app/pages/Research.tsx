@@ -101,19 +101,14 @@ export function Research() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-primary/10 to-background py-16 border-b">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="max-w-3xl">
-            <div className="inline-block mb-4 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
-              RESEARCH_HUB.EXE
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-              Research & Innovation
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Stay updated with the latest research papers and tech industry insights from leading companies and institutions.
-            </p>
-          </div>
+      <section className="bg-gradient-to-b from-primary/10 to-background py-6 border-b">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h1 className="text-3xl font-bold mb-1" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            Research & Innovation
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Latest research papers and tech insights from leading companies and institutions.
+          </p>
         </div>
       </section>
 
