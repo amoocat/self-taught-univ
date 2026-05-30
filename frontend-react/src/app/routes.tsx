@@ -6,6 +6,7 @@ import { CourseCatalog } from "./pages/CourseCatalog";
 import { LectureNotes } from "./pages/LectureNotes";
 import { MyPage } from "./pages/MyPage";
 import { Research } from "./pages/Research";
+import { PaperDetail } from "./pages/PaperDetail";
 import { CourseLectures } from "./pages/CourseLectures";
 import { CourseLecture } from "./pages/CourseLecture";
 import { KnowledgeGraph } from "./pages/KnowledgeGraph";
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "course-catalog", Component: CourseCatalog },
       { path: "notes", Component: LectureNotes },
       { path: "research", Component: Research },
+      { path: "research/paper/:paperId", Component: PaperDetail },
       { path: "my-page", Component: MyPage },
       { path: "knowledge-graph", Component: KnowledgeGraph },
       { path: "youtube-import", Component: YouTubeImport },
