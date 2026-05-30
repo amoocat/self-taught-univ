@@ -187,20 +187,26 @@ export function CourseLecture() {
     }
   };
 
-  const handleMarkComplete = useCallback(async () => {
-    if (!courseId || !lectureId || !currentLecture || completingRef.current) return;
-    completingRef.current = true;
-    setCompleting(true);
-    try {
-      await api.completeLecture(courseId, lectureId);
-      setCurrentLecture(prev => prev ? { ...prev, completed: true, is_completed: true } : prev);
-      setCourseLectures(prev => prev.map(l =>
-        l.id === lectureId ? { ...l, completed: true } : l
-      ));
-    } finally {
-      setCompleting(false);
-    }
-  }, [courseId, lectureId, currentLecture]);
+  // ref로 최신 완료 함수 유지 — 플레이어 이벤트 클로저에서 stale 참조 방지
+  const markCompleteRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    markCompleteRef.current = async () => {
+      if (!courseId || !lectureId || completingRef.current) return;
+      completingRef.current = true;
+      setCompleting(true);
+      try {
+        await api.completeLecture(courseId, lectureId);
+        setCurrentLecture(prev => prev ? { ...prev, completed: true, is_completed: true } : prev);
+        setCourseLectures(prev => prev.map(l =>
+          l.id === lectureId ? { ...l, completed: true } : l
+        ));
+      } finally {
+        setCompleting(false);
+      }
+    };
+  }, [courseId, lectureId]);
+
+  const handleMarkComplete = () => markCompleteRef.current();
 
   // YouTube IFrame Player API — 영상 종료 시 자동 완료
   useEffect(() => {
@@ -212,15 +218,25 @@ export function CourseLecture() {
     completingRef.current = false;
 
     const initPlayer = () => {
-      if (!playerContainerRef.current) return;
+      const container = playerContainerRef.current;
+      if (!container) return;
+
       playerRef.current?.destroy?.();
-      playerRef.current = new window.YT.Player(playerContainerRef.current, {
+
+      // destroy()가 iframe을 제거하므로 매번 새 div를 생성
+      container.innerHTML = "";
+      const playerDiv = document.createElement("div");
+      container.appendChild(playerDiv);
+
+      playerRef.current = new window.YT.Player(playerDiv, {
         host: "https://www.youtube-nocookie.com",
         videoId,
+        width: "100%",
+        height: "100%",
         playerVars: { rel: 0, modestbranding: 1 },
         events: {
           onStateChange: (e: any) => {
-            if (e.data === 0) handleMarkComplete(); // 0 = YT.PlayerState.ENDED
+            if (e.data === 0) markCompleteRef.current(); // ENDED
           },
         },
       });
@@ -241,8 +257,9 @@ export function CourseLecture() {
     return () => {
       playerRef.current?.destroy?.();
       playerRef.current = null;
+      if (playerContainerRef.current) playerContainerRef.current.innerHTML = "";
     };
-  }, [currentLecture?.id, currentLecture?.completed, handleMarkComplete]);
+  }, [currentLecture?.id, currentLecture?.completed]);
 
   const handleSaveDrawing = (dataUrl: string) => {
     setSavedDrawings((prev) => [dataUrl, ...prev]);
