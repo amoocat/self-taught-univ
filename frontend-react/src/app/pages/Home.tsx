@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { CourseCard } from "../components/CourseCard";
-import { CategoryCard } from "../components/CategoryCard";
-import { Code, TrendingUp, Globe, Brain, BookOpen, GraduationCap, Users, Award, BookOpenCheck } from "lucide-react";
+import { GraduationCap, Users, Award, BookOpenCheck } from "lucide-react";
 import { Link } from "react-router";
 import { api } from "../../lib/api";
 
@@ -296,104 +293,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Featured Courses */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
-        <div className="mb-12 text-center">
-          <div className="inline-block mb-4 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
-            {'>>>'} SELECT COURSE
-          </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-            Courses of Distinction
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Explore our renowned academic programs taught by distinguished faculty members
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredCourses.map((course, index) => (
-            <CourseCard key={index} {...course} />
-          ))}
-        </div>
-      </section>
-
-      {/* Academic Divisions */}
-      <section className="bg-accent/20 py-20 border-y">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="mb-12 text-center">
-            <div className="inline-block mb-4 px-4 py-2 bg-primary/10 rounded" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "10px" }}>
-              PRESS ANY KEY
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-              Schools & Departments
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Our academic divisions represent the breadth and depth of scholarly inquiry
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category, index) => (
-              <CategoryCard key={index} {...category} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* About & History */}
-      <section className="max-w-7xl mx-auto px-6 py-24">
-        <div className="grid md:grid-cols-2 gap-16 items-center">
-          <div className="relative aspect-[3/4] overflow-hidden bg-muted">
-            <img
-              src="https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800"
-              alt="Historic university building"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div>
-            <div className="text-xs tracking-wider text-muted-foreground mb-4" style={{ fontFamily: "'Press Start 2P', monospace" }}>
-              [ HERITAGE ]
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-              A Legacy of Learning
-            </h2>
-            <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-              Established in 1876, EduPrime University has remained steadfast in its mission
-              to advance knowledge and educate students in the liberal arts and sciences.
-            </p>
-            <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-              Our campus, with its iconic architecture and storied halls, bears witness to
-              generations of scholars who have walked these grounds, each contributing to
-              our enduring tradition of academic excellence.
-            </p>
-            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Today, we continue to honor this legacy while preparing students for the
-              challenges and opportunities of tomorrow.
-            </p>
-            <a href="#" className="text-primary font-medium hover:underline">
-              Learn more about our history →
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Ready to Begin */}
-      <section className="bg-primary text-primary-foreground py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-4xl font-bold mb-6" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-            Ready to Begin Your Academic Journey?
-          </h2>
-          <p className="text-xl mb-10 opacity-95 leading-relaxed">
-            Explore our programs, connect with faculty, and discover how EduPrime can help you achieve your academic goals.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button size="lg" variant="secondary" className="h-12 px-8" asChild>
-              <Link to="/course-catalog">Browse Programs</Link>
-            </Button>
-            <Button size="lg" variant="outline" className="h-12 px-8 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
-              <Link to="/youtube-import">Add Your Courses</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
     </>
   );
 }
