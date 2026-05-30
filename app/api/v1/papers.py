@@ -19,6 +19,22 @@ from app.core.config import settings
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
+def _paper_to_out(paper: Paper, annotations: list | None = None) -> "PaperOut":
+    """Paper ORM → PaperOut 변환. 관계 속성 접근 없이 명시적으로 필드 설정."""
+    return PaperOut(
+        id=str(paper.id),
+        title=paper.title,
+        authors=paper.authors or "",
+        year=paper.year,
+        venue=paper.venue,
+        abstract=paper.abstract,
+        arxiv_id=paper.arxiv_id,
+        category=getattr(paper, "category", None),
+        created_at=paper.created_at,
+        annotations=[AnnotationOut.model_validate(a) for a in (annotations or [])],
+    )
+
 _gpt = openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
 
 _ANNOTATE_PROMPT = """다음 논문의 제목과 초록을 읽고, 독자가 논문을 이해하는 데 필요한 핵심 개념 5~7개를 추출하세요.
@@ -137,9 +153,7 @@ async def add_paper(body: AddPaperIn, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(paper)
 
-    out = PaperOut.model_validate(paper)
-    out.annotations = []
-    return out
+    return _paper_to_out(paper, annotations=[])
 
 
 @router.delete("/{paper_id}", status_code=204)
@@ -172,9 +186,7 @@ async def list_papers(
         anns = (await db.execute(
             select(PaperAnnotation).where(PaperAnnotation.paper_id == p.id)
         )).scalars().all()
-        out = PaperOut.model_validate(p)
-        out.annotations = [AnnotationOut.model_validate(a) for a in anns]
-        result.append(out)
+        result.append(_paper_to_out(p, annotations=list(anns)))
     return result
 
 
@@ -184,9 +196,7 @@ async def get_paper(paper_id: str, db: AsyncSession = Depends(get_db)):
     anns = (await db.execute(
         select(PaperAnnotation).where(PaperAnnotation.paper_id == paper_id)
     )).scalars().all()
-    out = PaperOut.model_validate(paper)
-    out.annotations = [AnnotationOut.model_validate(a) for a in anns]
-    return out
+    return _paper_to_out(paper, annotations=list(anns))
 
 
 @router.post("/{paper_id}/annotate", response_model=list[AnnotationOut])
