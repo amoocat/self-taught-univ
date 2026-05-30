@@ -217,68 +217,96 @@ export function CourseLectures() {
             Course Content
           </h2>
           <p className="text-muted-foreground">
-            Select a lecture to start learning
+            {lectures.length}개 강의 · 모듈별로 정리되어 있습니다
           </p>
         </div>
 
-        <div className="space-y-3">
-          {lectures.map((lecture, index) => (
-            <Card
-              key={lecture.id}
-              className="hover:shadow-md transition-all cursor-pointer group"
-              onClick={() => navigate(`/course/${course.id}/lecture/${lecture.id}`)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-6">
-                  {/* Lecture Number */}
-                  <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <span className="text-lg font-bold text-primary">{index + 1}</span>
-                  </div>
+        {(() => {
+          // module_name으로 그룹핑
+          const groups: { moduleName: string; lectures: Lecture[] }[] = [];
+          for (const lec of lectures) {
+            const name = lec.module_name || "기타";
+            const existing = groups.find(g => g.moduleName === name);
+            if (existing) existing.lectures.push(lec);
+            else groups.push({ moduleName: name, lectures: [lec] });
+          }
 
-                  {/* Lecture Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">
-                          {lecture.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {lecture.description}
+          return (
+            <div className="space-y-8">
+              {groups.map((group, gi) => {
+                const groupCompleted = group.lectures.filter(l => l.completed || l.is_completed).length;
+                const groupPct = group.lectures.length > 0
+                  ? Math.round((groupCompleted / group.lectures.length) * 100) : 0;
+                return (
+                  <div key={gi}>
+                    {/* 모듈 헤더 */}
+                    <div className="flex items-center gap-3 mb-3 pb-2 border-b">
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold flex-shrink-0">
+                        {gi + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-base">{group.moduleName}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {group.lectures.length}강 · {groupCompleted} 완료 ({groupPct}%)
                         </p>
                       </div>
-                      {lecture.completed ? (
-                        <Badge variant="default" className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Completed
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <Circle className="w-3 h-3" />
-                          Not Started
-                        </Badge>
-                      )}
+                      <Progress value={groupPct} className="h-1.5 w-24 flex-shrink-0" />
                     </div>
 
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4" />
-                        {lecture.duration}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                      >
-                        <Play className="w-4 h-4 mr-2" />
-                        {lecture.completed ? "Review" : "Start"}
-                      </Button>
+                    {/* 강의 목록 */}
+                    <div className="space-y-2 pl-4">
+                      {group.lectures.map((lecture, idx) => (
+                        <Card
+                          key={lecture.id}
+                          className="hover:shadow-md transition-all cursor-pointer group"
+                          onClick={() => navigate(`/course/${course!.id}/lecture/${lecture.id}`)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-4">
+                              <div className="flex-shrink-0 w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
+                                {lecture.completed || lecture.is_completed ? (
+                                  <CheckCircle2 className="w-4 h-4 text-primary" />
+                                ) : (
+                                  <span className="text-sm font-bold text-primary">
+                                    {lecture.number ?? idx + 1}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm group-hover:text-primary transition-colors truncate">
+                                  {lecture.title}
+                                </h4>
+                                {lecture.description && (
+                                  <p className="text-xs text-muted-foreground truncate">{lecture.description}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                {lecture.duration !== "—" && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {lecture.duration}
+                                  </span>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                                >
+                                  <Play className="w-3 h-3 mr-1" />
+                                  {lecture.completed || lecture.is_completed ? "복습" : "시작"}
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </section>
     </div>
   );

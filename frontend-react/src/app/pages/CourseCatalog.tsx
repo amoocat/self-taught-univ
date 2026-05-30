@@ -131,151 +131,142 @@ export function CourseCatalog() {
         </div>
       </section>
 
-      {/* Search and Filter Section */}
-      <section className="bg-muted/30 py-3 border-b sticky top-[73px] z-40 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
-        <div className="max-w-7xl mx-auto px-6">
-          {/* Search Bar */}
-          <div className="mb-3">
-            <div className="relative max-w-2xl mx-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+      {/* Main Layout: 좌측 필터 + 우측 그리드 */}
+      <div className="max-w-7xl mx-auto px-6 py-8 flex gap-8 items-start">
+
+        {/* 좌측 사이드바 - 검색 & 필터 (sticky) */}
+        <aside className="w-56 flex-shrink-0 sticky top-[73px] space-y-5">
+          {/* Search */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">검색</p>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
                 type="text"
-                placeholder="강좌, 소스, 주제 검색..."
+                placeholder="강좌, 소스..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-9 text-sm"
+                className="pl-9 h-8 text-sm"
               />
             </div>
           </div>
 
-          {/* Category + Level Filter */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-medium text-muted-foreground">Category:</span>
+          {/* Category Filter */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Category</p>
+            <div className="flex flex-col gap-1">
               {loading ? (
-                <div className="h-5 w-48 bg-muted animate-pulse rounded" />
+                <div className="h-5 w-full bg-muted animate-pulse rounded" />
               ) : categories.map((category) => (
-                <Badge
+                <button
                   key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs py-0"
                   onClick={() => setSelectedCategory(category)}
+                  className={`text-left text-sm px-2 py-1 rounded transition-colors ${
+                    selectedCategory === category
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "hover:bg-muted text-muted-foreground"
+                  }`}
                 >
                   {category}
-                </Badge>
+                </button>
               ))}
             </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-medium text-muted-foreground">Level:</span>
+          </div>
+
+          {/* Level Filter */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Level</p>
+            <div className="flex flex-col gap-1">
               {levels.map((level) => (
-                <Badge
+                <button
                   key={level}
-                  variant={selectedLevel === level ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs py-0"
                   onClick={() => setSelectedLevel(level)}
+                  className={`text-left text-sm px-2 py-1 rounded transition-colors ${
+                    selectedLevel === level
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "hover:bg-muted text-muted-foreground"
+                  }`}
                 >
                   {level}
-                </Badge>
+                </button>
               ))}
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Results Section */}
-      <section className="max-w-7xl mx-auto px-6 py-12">
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">
-                {filteredCourses.length} {filteredCourses.length === 1 ? "Course" : "Courses"} Found
-              </h2>
-              <p className="text-muted-foreground">
-                {selectedCategory !== "All" && `${selectedCategory} • `}
-                {selectedLevel !== "All" && `${selectedLevel} Level`}
-              </p>
-            </div>
-            {(searchQuery || selectedCategory !== "All" || selectedLevel !== "All") && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedCategory("All");
-                  setSelectedLevel("All");
-                }}
-              >
-                Clear Filters
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="h-80 bg-muted animate-pulse rounded-xl" />
-            ))}
-          </div>
-        ) : filteredCourses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course) => (
-              <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={() => handleViewCourse(course.id)}>
-                <div className="aspect-video w-full overflow-hidden bg-muted">
-                  <img
-                    src={course.imageUrl}
-                    alt={course.title}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <CardHeader>
-                  <div className="flex gap-2 mb-2">
-                    <Badge variant="secondary">{course.categoryLabel}</Badge>
-                    <Badge variant="outline" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "8px" }}>
-                      {course.level}
-                    </Badge>
-                  </div>
-                  <CardTitle className="line-clamp-2">{course.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">{course.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="text-xs">STU</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-muted-foreground">Self-Taught University</span>
-                    </div>
-                  </div>
-                  <Button className="w-full" onClick={(e) => { e.stopPropagation(); handleViewCourse(course.id); }}>
-                    강의 보기
-                  </Button>
-                </CardContent>
-                <CardFooter className="flex justify-between text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {course.lectureCount}개 강의</span>
-                  <span>{course.source ? `📚 ${course.source.slice(0, 30)}` : ""}</span>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-2xl font-bold mb-2">No courses found</h3>
-            <p className="text-muted-foreground mb-6">
-              Try adjusting your filters or search query
-            </p>
+          {/* Clear Filters */}
+          {(searchQuery || selectedCategory !== "All" || selectedLevel !== "All") && (
             <Button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("All");
-                setSelectedLevel("All");
-              }}
+              variant="outline"
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => { setSearchQuery(""); setSelectedCategory("All"); setSelectedLevel("All"); }}
             >
-              Reset Filters
+              필터 초기화
             </Button>
+          )}
+        </aside>
+
+        {/* 우측 강좌 그리드 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-5">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">{filteredCourses.length}</span>개 강좌
+              {selectedCategory !== "All" && ` · ${selectedCategory}`}
+              {selectedLevel !== "All" && ` · ${selectedLevel}`}
+            </p>
           </div>
-        )}
-      </section>
+
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="h-72 bg-muted animate-pulse rounded-xl" />
+              ))}
+            </div>
+          ) : filteredCourses.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {filteredCourses.map((course) => (
+                <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={() => handleViewCourse(course.id)}>
+                  <div className="aspect-video w-full overflow-hidden bg-muted">
+                    <img
+                      src={course.imageUrl}
+                      alt={course.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                  <CardHeader className="pb-2">
+                    <div className="flex gap-2 mb-1">
+                      <Badge variant="secondary">{course.categoryLabel}</Badge>
+                      <Badge variant="outline" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "8px" }}>
+                        {course.level}
+                      </Badge>
+                    </div>
+                    <CardTitle className="line-clamp-2 text-base">{course.title}</CardTitle>
+                    <CardDescription className="line-clamp-1 text-xs">{course.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Button className="w-full h-8 text-sm" onClick={(e) => { e.stopPropagation(); handleViewCourse(course.id); }}>
+                      강의 보기
+                    </Button>
+                  </CardContent>
+                  <CardFooter className="flex justify-between text-xs text-muted-foreground pt-0">
+                    <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /> {course.lectureCount}강</span>
+                    <span>{course.source ? course.source.slice(0, 25) : ""}</span>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20">
+              <div className="text-5xl mb-4">🔍</div>
+              <h3 className="text-xl font-bold mb-2">강좌를 찾을 수 없습니다</h3>
+              <p className="text-muted-foreground mb-6 text-sm">필터 조건을 변경해보세요</p>
+              <Button size="sm" onClick={() => { setSearchQuery(""); setSelectedCategory("All"); setSelectedLevel("All"); }}>
+                필터 초기화
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* CTA Section */}
       <section className="bg-accent/20 py-16 border-t">
