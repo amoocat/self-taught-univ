@@ -61,6 +61,13 @@ function fmtDuration(sec?: number): string {
   return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
 }
 
+function toEmbedUrl(url?: string): string {
+  if (!url) return "";
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  if (!m) return url;
+  return `https://www.youtube-nocookie.com/embed/${m[1]}`;
+}
+
 export function CourseLecture() {
   const { courseId, lectureId } = useParams();
   const navigate = useNavigate();
@@ -92,7 +99,7 @@ export function CourseLecture() {
       const mapped = (l: any): Lecture => ({
         id: l.id, title: l.title,
         duration: fmtDuration(l.duration_sec), duration_sec: l.duration_sec,
-        videoUrl: l.youtube_url ?? "", youtube_url: l.youtube_url,
+        videoUrl: toEmbedUrl(l.youtube_url), youtube_url: l.youtube_url,
         completed: l.is_completed ?? false, is_completed: l.is_completed,
         number: l.number, module_name: l.module_name,
         keywords: l.tags ?? [], tags: l.tags ?? [],
@@ -112,6 +119,7 @@ export function CourseLecture() {
       if (savedLectures) {
         const lecs: Lecture[] = JSON.parse(savedLectures).map((l: any) => ({
           ...l, completed: l.completed ?? false, keywords: l.keywords ?? [],
+          videoUrl: toEmbedUrl(l.videoUrl || l.youtube_url),
         }));
         setCourseLectures(lecs);
         const found = lecs.find(l => l.id === lectureId);
