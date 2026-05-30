@@ -94,9 +94,6 @@ export function Academics() {
 
         {/* 좌측 사이드바 */}
         <aside className="hidden md:flex flex-col w-48 flex-shrink-0 sticky top-[90px]">
-          <div className="text-xs text-muted-foreground mb-4" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "9px" }}>
-            STU 소개
-          </div>
           <nav className="flex flex-col gap-1">
             {TABS.map(({ id, label }) => (
               <button
