@@ -167,9 +167,6 @@ export function Academics() {
 
           {/* 개설 전공 */}
           <section id="majors" className="scroll-mt-24">
-            <div className="text-xs tracking-wider text-muted-foreground mb-4" style={{ fontFamily: "'Press Start 2P', monospace" }}>
-              [ DEGREES ]
-            </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-2" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
               개설 전공
             </h2>
@@ -195,9 +192,6 @@ export function Academics() {
 
           {/* 학습 비전 */}
           <section id="vision" className="scroll-mt-24">
-            <div className="text-xs tracking-wider text-muted-foreground mb-4" style={{ fontFamily: "'Press Start 2P', monospace" }}>
-              {'>>>'} VISION
-            </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-10" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
               학습 비전 — 5대 목표
             </h2>
