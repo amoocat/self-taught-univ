@@ -215,11 +215,20 @@ const EDGE_TYPES = { floating: FloatingEdge };
 
 // ─── Inner graph ──────────────────────────────────────────────────────────────
 
-function GraphInner({ kgData, selectedCat }: { kgData: KnowledgeGraphData; selectedCat: string }) {
+function GraphInner({ kgData, selectedCat, onNodeSelect }: {
+  kgData: KnowledgeGraphData;
+  selectedCat: string;
+  onNodeSelect: (node: KGNode | null) => void;
+}) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges] = useEdgesState([]);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const built = useRef(false);
+
+  const handleNodeClick = useCallback((_: any, node: any) => {
+    const kg = kgData.nodes.find(n => n.id === node.id) ?? null;
+    onNodeSelect(kg);
+  }, [kgData.nodes, onNodeSelect]);
 
   const build = useCallback(() => {
     const { nodes: kgNodes, edges: kgEdges } = kgData;
@@ -280,6 +289,8 @@ function GraphInner({ kgData, selectedCat }: { kgData: KnowledgeGraphData; selec
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
+        onNodeClick={handleNodeClick}
+        onPaneClick={() => onNodeSelect(null)}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         nodesDraggable
@@ -324,6 +335,7 @@ export function KnowledgeGraph() {
   const [kgData, setKgData] = useState<KnowledgeGraphData>({ nodes: [], edges: [] });
   const [generating, setGenerating] = useState(false);
   const [selectedCat, setSelectedCat] = useState("ALL");
+  const [selectedNode, setSelectedNode] = useState<KGNode | null>(null);
 
   const loadGraph = useCallback(async () => {
     try {
@@ -417,11 +429,84 @@ export function KnowledgeGraph() {
         })}
       </div>
 
-      {/* ── Graph ── */}
-      <div className="flex-1 overflow-hidden">
-        <ReactFlowProvider>
-          <GraphInner kgData={kgData} selectedCat={selectedCat} />
-        </ReactFlowProvider>
+      {/* ── Graph + Node Panel ── */}
+      <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1">
+          <ReactFlowProvider>
+            <GraphInner kgData={kgData} selectedCat={selectedCat} onNodeSelect={setSelectedNode} />
+          </ReactFlowProvider>
+        </div>
+
+        {/* 노드 상세 패널 */}
+        {selectedNode && (() => {
+          const c = getCat(selectedNode.category);
+          const connectedNodes = kgData.edges
+            .filter(e => e.source === selectedNode.id || e.target === selectedNode.id)
+            .map(e => e.source === selectedNode.id ? e.target : e.source)
+            .map(id => kgData.nodes.find(n => n.id === id))
+            .filter(Boolean) as KGNode[];
+
+          return (
+            <div className="w-64 bg-white border-l flex flex-col shrink-0">
+              {/* 패널 헤더 */}
+              <div className="flex items-center justify-between px-4 py-3 border-b">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Node Detail</span>
+                <button onClick={() => setSelectedNode(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+              </div>
+
+              <div className="p-4 flex-1 overflow-y-auto space-y-4">
+                {/* 카테고리 배지 + 라벨 */}
+                <div>
+                  <span style={{ background: c.bg, color: c.text, borderColor: c.border }}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-full border mb-2">
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.dot }} />
+                    {selectedNode.category}
+                  </span>
+                  <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+                    {selectedNode.label}
+                  </h2>
+                </div>
+
+                {/* 출처 */}
+                {selectedNode.addedFrom && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">출처</div>
+                    <div className="text-sm text-gray-600">{selectedNode.addedFrom}</div>
+                  </div>
+                )}
+
+                {/* 연결된 노드 */}
+                {connectedNodes.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                      연결된 개념 ({connectedNodes.length})
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {connectedNodes.map(n => {
+                        const nc = getCat(n.category);
+                        return (
+                          <button key={n.id} onClick={() => setSelectedNode(n)}
+                            style={{ background: nc.bg, color: nc.text, borderColor: nc.border }}
+                            className="text-xs px-2 py-0.5 rounded-full border hover:opacity-80 transition-opacity">
+                            {n.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 추가된 날짜 */}
+                <div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">추가일</div>
+                  <div className="text-xs text-gray-400">
+                    {new Date(selectedNode.addedDate).toLocaleDateString("ko-KR")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
     </div>

@@ -77,6 +77,7 @@ export const api = {
   // ── 논문 ─────────────────────────────────────────
   getPapers: (q?: string) =>
     request(`/papers/${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  getPaper:  (id: string) => request(`/papers/${id}`),
 
   // ── 피드 ─────────────────────────────────────────
   getFeed: (limit = 30) => request(`/feed/?limit=${limit}`),

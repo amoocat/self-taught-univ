@@ -6,16 +6,10 @@
 
 ---
 
-## 🛠️ 백엔드 API 품질 개선 (React 전환 전 필수)
-
-> 프론트를 React로 전면 재구현하기 전에 API를 탄탄하게 만들기.
-> 지금 API가 동작은 하지만 React 앱에서 편하게 쓰려면 아래가 필요함.
+## 🛠️ 백엔드 API 품질 개선
 
 - [ ] **Pydantic response 스키마 명시** — 현재 일부 엔드포인트가 `dict` 그대로 반환. `response_model=` 전부 붙이기
-- [ ] **페이지네이션** — 강의/노트/논문 목록에 `?limit=&offset=` (또는 cursor 방식) 추가
-- [ ] **JWT 인증 기초** — React 앱은 토큰 기반 인증 필요. `POST /auth/login`, `POST /auth/refresh`, 미들웨어 `get_current_user` 뼈대만
-- [ ] **API 에러 응답 통일** — `{"detail": "...", "code": "NOT_FOUND"}` 형태로 표준화
-- [ ] **전역 검색 엔드포인트** — `GET /api/v1/search?q=&type=` (강의/노트/논문 통합, 아래 🔍 섹션과 연동)
+- [ ] **JWT 인증 기초** — `POST /auth/login`, `POST /auth/refresh`, 미들웨어 `get_current_user` 뼈대만
 
 ---
 
@@ -50,26 +44,11 @@
 - [ ] **렉쳐 노트 비어있음** — DB에 `LectureNote` 데이터 없음 (나중에 AI 자동 생성 예정)
 - [ ] **컨텍스트 바 하드코딩** — 실제 강의 상태 반영 미구현
 - [ ] **취약 개념 칩 하드코딩** — 동적 생성 미구현
-- [x] 프론트 UI 강의 구조 반영 — 모듈 아코디언 첫 번째 자동 펼침 + 강의 아이템 난이도 배지(입문/중급/고급)
-- [x] 사이드바 "나의 전공" [과목][모듈] 탭 분리 — 탭 클릭으로 접기/펼치기 + 모듈탭 난이도 도트
-- [x] **플로팅 AI 챗봇** — 학습/테스트 모드 전환, 과목 선택, SSE 스트리밍, 하단 중앙 pill 버튼 (React)
-- [x] **강의 AI 힌트 패널** — 강의 페이지 우측 슬라이드인 패널, 강의 내용 기반 단계적 힌트 (React)
-- [x] **논문 AI 키워드 주석 패널** — 주석 생성 버튼 → 키워드별 해설 표시 (React)
-- [x] **논문 Q&A 챗** — 논문 내용 기반 SSE 스트리밍 질의응답 (React)
 
 ---
 
 ## 📺 YouTube 연동 — 추가 고도화
 
-- [x] 정기 동기화 — 이미 등록한 플리에 새 영상 추가됐을 때 자동 반영 (일 1회 배치 `job_sync_registered_playlists`)
-- [x] GPT 기반 플리 자동 선별 — discover 결과를 GPT-4o-mini에 넘겨 학습 관련도 높은 플리 자동 선택 → VideoInbox 저장 (`POST /discover/auto-import` + "AI 자동 가져오기" 버튼)
-- [x] YouTube OAuth 에러 응답 정비 — `invalid_grant` 감지 시 토큰 자동 삭제 + 모든 인증 필요 엔드포인트 HTTP 401 통일
-- [x] 신규 영상 추가 후 커리큘럼 자동 재구성 — `job_sync_registered_playlists` 승격 완료 후 영향받은 강좌 자동 재정렬 (`reorganize_courses`)
-  - 정렬 기준: module_name → difficulty(1입문/2중급/3고급) → published_at
-  - `POST /api/v1/curriculum/reorganize` 수동 트리거 엔드포인트 추가
-  - `classify_and_promote` difficulty 미저장 버그 수정 (GPT 판단 난이도 Lecture에 반영)
-
-## 참고 자료 추가
 - [ ] medium 계정도 연동해서 관심 및 구독중인 포스팅 크롤링하기
 
 ---
@@ -91,9 +70,7 @@
 
 ## 🔍 검색 기능
 
-- [ ] `GET /api/v1/lectures/search?q=` + `GET /api/v1/notes/search?q=` 엔드포인트
-- [ ] PostgreSQL `tsvector` 풀텍스트 또는 `ILIKE` 방식 결정
-- [ ] 프론트 검색바 연동
+- [ ] `tsvector` 풀텍스트 인덱스로 성능 개선 (현재 ILIKE → 추후 전환)
 
 ---
 
@@ -118,7 +95,7 @@
 
 - [ ] pgvector 임베딩 파이프라인 — 노트/논문/렉쳐 저장 시 자동 임베딩
   - 모델: `text-embedding-3-small` (OpenAI) 또는 `multilingual-e5-large` (로컬 추천)
-- [ ] `GET /api/v1/search?q=&type=` — 통합 시맨틱 검색 (notes / papers / lectures / concepts)
+- [ ] 시맨틱 검색 — ILIKE를 벡터 유사도 검색으로 교체
 - [ ] RAG 챗봇 — 질문 → top-k 유사 문서 검색 → GPT 컨텍스트 주입 → 출처 표시
 - [ ] 지식 그래프 노드 임베딩 → "유사한 개념" 사이드패널
 
@@ -139,7 +116,6 @@
 ### 기타
 - [ ] API 키 사용량 대시보드
 - [ ] DB·서버 클라우드 이관 (Supabase 유지 or 자체 호스팅)
-- [x] 웹사이트 대문 생성 (대학 홈페이지 스타일) — EduPrime University React 앱으로 구현
 - [ ] 로그인 기능 — 유저별 커리큘럼
 - [ ] 신규 강좌 - 카카오톡 나에게 보내는 톡도 긁어오기
 - [ ] 신규 강좌 — TED 행복 강좌 (wellbeing 카테고리)
@@ -151,7 +127,14 @@
 
 ## ✅ 완료된 것들
 
-### React 전환 + AI 기능 완성 (최근 세션)
+### API 품질 개선
+- [x] **페이지네이션** — 강의/노트/커리큘럼 목록에 `?limit=&offset=` 추가
+- [x] **API 에러 응답 통일** — HTTPException + unhandled 전부 `{"error": "...", "detail": "..."}` 포맷으로 통일
+- [x] **전역 검색 엔드포인트** — `GET /api/v1/search?q=&type=` (강의·노트·논문 통합, ILIKE)
+- [x] `GET /api/v1/notes/?q=` + `GET /api/v1/curriculum/?q=` + `GET /api/v1/curriculum/{id}/lectures?q=` 개별 검색
+- [x] 네비바 검색창 연동 (300ms debounce, 드롭다운, 클릭 시 해당 페이지 이동)
+
+### React 전환 + AI 기능 완성
 - [x] **바닐라 JS frontend/ 전체 삭제** — React(frontend-react/)로 완전 전환
 - [x] **Admissions 페이지** — 입학 자격·절차·개설과목, CourseCatalog 기준 hero 통일
 - [x] **Campus Life 페이지** — Georgia Tech 구조 참고, Essentials 카드·타임라인·Advantage 블록
@@ -163,82 +146,48 @@
 - [x] **논문 Q&A 챗** — 논문 컨텍스트 기반 SSE 스트리밍 (`/chat/paper/{id}/stream`)
 - [x] **지식 그래프 AI 노드 생성 버튼** — `POST /graph/generate` 연결
 - [x] **지식 그래프 모던 리디자인** — pill 카드 노드, 베지어 엣지, 카테고리 필터 바, MiniMap, 드래그 가능
-- [x] **강의 완료 → 그래프 노드 자동 등록** — `POST /graph/from-lecture/{id}` 신규 엔드포인트, 완료 시 tags → GraphNode 저장
+- [x] **강의 완료 → 그래프 노드 자동 등록** — `POST /graph/from-lecture/{id}` 신규 엔드포인트
 - [x] **노트 태그 표시** — MyPage 노트 탭에 `#태그` 칩 렌더링
-- [x] **api.ts SSE 스트리밍 헬퍼** — `streamSSE()` 공통 유틸, `annotatePaper` / `generateGraph` / `addGraphFromLecture` 메서드 추가
+- [x] **api.ts SSE 스트리밍 헬퍼** — `streamSSE()` 공통 유틸 + 신규 API 메서드들
+- [x] 웹사이트 대문 생성 (대학 홈페이지 스타일) — EduPrime University React 앱으로 구현
+- [x] 프론트 UI 강의 구조 반영 — 모듈 아코디언 첫 번째 자동 펼침 + 강의 아이템 난이도 배지
+- [x] 사이드바 "나의 전공" [과목][모듈] 탭 분리 — 탭 클릭으로 접기/펼치기 + 모듈탭 난이도 도트
 
-### 렉쳐 뷰 + 노트 + 커리큘럼 고도화 (이번 세션)
-- [x] video_inbox 삭제 시 varchar=uuid 타입 오류 수정 (text() 쿼리로 우회)
-- [x] GPT 쿼터 초과 시 키워드 분류 폴백 추가 (`_classify_video`)
-- [x] 렉쳐 탭 사이드바(과목/모듈 탭) 완전 제거 → 아코디언 단일 패널
-- [x] 렉쳐 뷰 인라인 노트 에디터 (목록 ↔ 에디터 2단계 뷰 전환)
-- [x] 인라인 노트 에디터 마크다운 미리보기 탭 (편집/미리보기, marked.js)
-- [x] 커리큘럼 재정렬 스크립트 v2 실행 — 쓰레기 109개 삭제, 109개 강의 재분류
-  - actuary/ie 보호, LLM keep-in-current 규칙, 이동 대상도 보호 카테고리 제외
-
-### 강의 메타데이터 고도화 (이번 세션)
-- [x] `lectures.created_at` → `crawled_at` 리네임 + `published_at` 컬럼 추가 (migration 0011)
-- [x] 기존 강의 282개 `published_at` YouTube API 백필
-- [x] `lectures.meta_source` 컬럼 추가 — `"manual"` / `"llm"` / null (migration 0012)
-- [x] 전체 350개 강의 module_name + difficulty 직접 배정 (meta_source="manual")
-- [x] `batch-meta` 엔드포인트: `meta_source` 필드 + `?source=` 쿼리 파라미터 지원
-- [x] `backfill_metadata` (GPT) 자동으로 `meta_source="llm"` 기록
-- [x] `video_classifier.py` / `scheduler.py`: 신규 강의 생성 시 `published_at` 저장
-
-### YouTube 연동 (이번 작업)
+### YouTube 연동
+- [x] 정기 동기화 — 이미 등록한 플리에 새 영상 추가됐을 때 자동 반영 (일 1회 배치)
+- [x] GPT 기반 플리 자동 선별 — discover 결과를 GPT-4o-mini에 넘겨 자동 선택
+- [x] YouTube OAuth 에러 응답 정비 — `invalid_grant` 감지 시 토큰 자동 삭제 + HTTP 401 통일
+- [x] 신규 영상 추가 후 커리큘럼 자동 재구성 (`reorganize_courses`)
 - [x] 플레이리스트 URL 직접 입력 — `GET /api/v1/youtube/playlist-meta`
-- [x] 영상 URL 입력 → 채널 전체 플리 탐색 — `GET /api/v1/youtube/channel-playlists`
-- [x] `get_video_channel`, `get_channel_playlists` 크롤러 메서드 추가
-- [x] 좋아요 영상 기반 채널 자동 발견 — `GET /api/v1/youtube/discover` (페이징 + 더보기)
-- [x] 내 플리 기반 채널 발견 — `source_playlist_id` 파라미터 (나중에 볼 영상 등)
-- [x] 채널 플리 탐색 성능 개선 — `max_pages=1` (대형 채널 API 3회→1회)
-- [x] 플리 모두 선택/해제 버튼
-- [x] 등록됨 뱃지 — 이미 DB에 있는 플리 클라이언트 캐싱으로 표시
+- [x] 영상 URL 입력 → 채널 전체 플리 탐색
+- [x] 좋아요 영상 기반 채널 자동 발견
+- [x] 내 플리 기반 채널 발견
+- [x] 플리 모두 선택/해제 버튼, 등록됨 뱃지
 - [x] YouTube 플리 전체 → VideoInbox 무필터 저장 → 즉시 큐레이션 파이프라인
-  - `VideoInbox` 모델 + migration 0007
-  - `POST /playlists/sync` → inbox → `_promote_inbox_to_lectures()` 즉시 실행
-  - `POST /inbox/curate` — 수동/LLM 교체용 진입점
 
-### Phase 0 — 깨져있던 것들 수정
-- [x] CHATGPT_API_KEY 미설정 해결
-- [x] DB 초기 데이터 없음 — `seed.py` 자동 실행 (6과목 + 106강의)
-- [x] 홈 대시보드 하드코딩 전부 API 동적 렌더링으로 교체
-- [x] 노트 삭제 버튼, 논문 추가 UI, 논문 검색, 블로그 필터/탭/검색 동작
-- [x] 지식 그래프 노드 클릭 무반응 수정
+### 렉쳐 뷰 + 노트 + 커리큘럼 고도화
+- [x] video_inbox 삭제 시 varchar=uuid 타입 오류 수정
+- [x] GPT 쿼터 초과 시 키워드 분류 폴백 추가
+- [x] 렉쳐 뷰 인라인 노트 에디터 + 마크다운 미리보기 탭
+- [x] 커리큘럼 재정렬 스크립트 v2 — 109개 강의 재분류
 
-### Phase 2 — 강의/과목 고도화
-- [x] `lectures` 스키마 YouTube 필드 추가 (`youtube_video_id`, `thumbnail_url`, `playlist_id`, `is_available`) + migration 0006
-- [x] 강의 목록 썸네일·재생시간·완료 표시
-- [x] 배치: 영상 유효성 체크 → 삭제·비공개 시 `is_available=false` (매주 화요일 4시)
-- [x] `lectures` 태그/subtitle/prerequisites 필드 + GPT 자동 태깅 서비스
-- [x] `_CATEGORY_RULES` 13개 카테고리 확장 + 신규 과목 6개 시드
-- [x] YouTube 플리 가져오기 모달 개편 (2-step: 선택 → 필터 미리보기 → 저장)
-- [x] 과목 상세 팝업 + `PATCH /curriculum/{id}` 편집 엔드포인트
-- [x] 플리 accordion 확장 시 학습 관련 영상 미리보기
-- [x] YouTube OAuth 2.0 인증 플로우 (token 자동 갱신)
-
-### 프론트엔드
-- [x] 프론트엔드 리팩토링 — `style.css` / `app.js` 분리
-- [x] SPA 라우팅 (hash 기반), URL 파일명 숨기기
-- [x] 모든 페이지 API 동적 렌더링 (홈/커리큘럼/강의/노트/논문/피드/그래프)
-- [x] 내 노트 Obsidian 스타일 에디터 (CodeMirror + `[[링크]]`)
-- [x] 패널 드래그 리사이즈 + localStorage 저장 (중복 이벤트 리스너 버그 수정 포함)
-- [x] GPT 챗봇 SSE 스트리밍 (학습/테스트/논문 Q&A 모드)
-- [x] 테크블로그 아티클 클릭 → 전용 상세 페이지 (블로그 2열 레이아웃, 목록 ↔ 상세 전환)
+### 강의 메타데이터 고도화
+- [x] `lectures.published_at` 컬럼 추가 + YouTube API 백필 (282개)
+- [x] `lectures.meta_source` 컬럼 추가 + GPT 자동 태깅 서비스
+- [x] 전체 350개 강의 module_name + difficulty 직접 배정
 
 ### 지식 그래프 고도화
-- [x] `POST /api/v1/graph/generate` — GPT-4o-mini가 강좌/강의에서 개념 노드 최대 50개 추출
-- [x] `graph_nodes.has_content` 플래그 + migration 0008
-- [x] 연결 노드(콘텐츠에 언급됨) = 색상 원, 미연결 노드 = 회색 점선 원(hollow)
+- [x] `POST /api/v1/graph/generate` — GPT-4o-mini 개념 노드 최대 50개 추출
+- [x] `graph_nodes.has_content` 플래그
+- [x] `POST /api/v1/graph/from-lecture/{id}` — 강의 완료 시 tags → GraphNode 자동 등록
 
-### 백엔드
+### 백엔드 기반
 - [x] FastAPI + SQLAlchemy 2.0 async 구조
-- [x] SQLAlchemy ORM 모델 14개 테이블 (VideoInbox 포함)
-- [x] CRUD API (notes, curriculum, chat, papers, feed, graph)
+- [x] SQLAlchemy ORM 모델 14개 테이블
+- [x] CRUD API (notes, curriculum, chat, papers, feed, graph, search)
 - [x] APScheduler 배치 (블로그 02:00, arXiv 02:30, YouTube 월 03:00)
 - [x] YouTube / arXiv / 블로그 크롤러
-- [x] pytest 37개 통합 테스트 (실 DB)
-- [x] API 에러 핸들링 통일
+- [x] pytest 37개 통합 테스트
 
 ### 인프라 (YAML 작성 완료 — 실제 연결은 위 ☸️ 섹션)
 - [x] K8s YAML (Deployment, Ingress, Storage, kustomize overlay)

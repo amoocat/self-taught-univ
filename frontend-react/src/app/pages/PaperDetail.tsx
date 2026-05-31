@@ -31,6 +31,14 @@ export function PaperDetail() {
 
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annotating, setAnnotating] = useState(false);
+
+  // 마운트 시 기존 주석 로드
+  useEffect(() => {
+    if (!paperId) return;
+    api.getPaper(paperId).then((data: any) => {
+      if (data.annotations?.length > 0) setAnnotations(data.annotations);
+    }).catch(() => {});
+  }, [paperId]);
   const [chatMsgs, setChatMsgs] = useState<{ role: "user"|"ai"; text: string }[]>([
     { role: "ai", text: "이 논문에 대해 궁금한 점을 질문해보세요!" },
   ]);
