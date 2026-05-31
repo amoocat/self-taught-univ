@@ -77,13 +77,13 @@ export function YouTubeImport() {
     setSyncing(true);
     try {
       await api.syncPlaylists(Array.from(selectedPlaylists));
-      navigate("/my-page");
+      // 202: 백그라운드에서 처리 중 — 바로 이동
+      navigate("/my-page", { state: { syncStarted: true } });
     } catch (e) {
-      // 폴백: localStorage 경유 플로우
-      const selected = playlists.filter(p => selectedPlaylists.has(p.id));
-      localStorage.setItem("pendingCurriculum", JSON.stringify({ videos: [], playlists: selected }));
-      navigate("/generated-courses");
-    } finally { setSyncing(false); }
+      console.error("sync failed", e);
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (

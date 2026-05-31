@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../lib/api";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -44,6 +44,8 @@ function getCategoryAccent(category: string) {
 }
 
 export function MyPage() {
+  const location = useLocation();
+  const syncStarted = (location.state as any)?.syncStarted === true;
   const [myCourses, setMyCourses] = useState<Course[]>([]);
   const [myNotes, setMyNotes] = useState<Note[]>([]);
   const [isCreatingNote, setIsCreatingNote] = useState(false);
@@ -146,6 +148,12 @@ export function MyPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* 동기화 시작 안내 배너 */}
+      {syncStarted && (
+        <div className="bg-primary/10 border-b border-primary/20 px-6 py-3 text-center text-sm text-primary">
+          ✓ 동기화가 시작됐습니다. 백그라운드에서 처리 중이며, 잠시 후 커리큘럼이 업데이트됩니다.
+        </div>
+      )}
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-primary/10 to-background border-b">
         <div className="relative max-w-7xl mx-auto px-6 py-10">

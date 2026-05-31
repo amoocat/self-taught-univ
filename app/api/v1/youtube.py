@@ -16,8 +16,8 @@ from pathlib import Path
 
 import httpx
 import openai
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -820,31 +820,46 @@ async def discover_auto_import(
     }
 
 
-@router.post("/playlists/sync-llm")
-async def sync_playlists_llm(playlist_ids: list[str], db: AsyncSession = Depends(get_db)):
-    """플레이리스트 영상 → VideoInbox 저장 → GPT-4o-mini LLM 분류 → Lecture 승격.
-
-    /playlists/sync (키워드 방식)의 LLM 대체 버전.
-    강좌 자동 배정 + 난이도 판단 + 신규 강좌 생성까지 처리.
-    """
+async def _run_sync_llm(playlist_ids: list[str]):
+    """백그라운드에서 실행: 플레이리스트 크롤링 → inbox 저장 → LLM 분류 → Lecture 승격."""
     from app.services.video_classifier import classify_and_promote
+    from app.db.session import AsyncSessionLocal
 
     try:
         access_token = await _get_access_token()
     except OAuthExpiredError:
-        access_token = None  # 공개 플리는 token 없이도 동작
+        access_token = None
+
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
-    inbox_result = {}
     try:
         for pid in playlist_ids:
-            videos = await crawler.fetch_playlist_videos(pid, filter_ai=False, access_token=access_token)
-            saved = await _save_to_inbox(videos)
-            inbox_result[pid] = {"fetched": len(videos), "inbox": saved}
+            try:
+                videos = await crawler.fetch_playlist_videos(pid, filter_ai=False, access_token=access_token)
+                await _save_to_inbox(videos)
+                logger.info("sync-llm: %s → %d videos fetched", pid, len(videos))
+            except Exception as e:
+                logger.error("sync-llm fetch error [%s]: %s", pid, e)
     finally:
         await crawler.close()
 
-    classify_result = await classify_and_promote(db)
-    return {
-        "result": inbox_result,
-        "llm": classify_result,
-    }
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await classify_and_promote(db)
+            logger.info("sync-llm classify done: %s", result)
+        except Exception as e:
+            logger.error("sync-llm classify error: %s", e)
+
+
+@router.post("/playlists/sync-llm", status_code=202)
+async def sync_playlists_llm(
+    playlist_ids: list[str],
+    background_tasks: BackgroundTasks,
+):
+    """플레이리스트 영상 → VideoInbox 저장 → GPT-4o-mini LLM 분류 → Lecture 승격.
+
+    즉시 202 반환 후 백그라운드에서 처리. 완료까지 수 분 소요될 수 있음.
+    """
+    if not playlist_ids:
+        raise HTTPException(status_code=400, detail="playlist_ids가 비어 있습니다.")
+    background_tasks.add_task(_run_sync_llm, playlist_ids)
+    return {"status": "started", "playlist_ids": playlist_ids}
