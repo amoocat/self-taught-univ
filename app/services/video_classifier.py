@@ -169,10 +169,10 @@ async def classify_and_promote(db: AsyncSession) -> dict:
             skipped += 1
             continue
 
-        # 중복 확인 (video_id 기준)
+        # 중복 확인 (video_id 기준) — 동일 video_id가 여러 행일 수 있으므로 first() 사용
         dup = (await db.execute(
             select(Lecture).where(Lecture.youtube_video_id == v.video_id)
-        )).scalar_one_or_none()
+        )).scalars().first()
         if dup:
             skipped += 1
             continue

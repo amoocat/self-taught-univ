@@ -827,14 +827,12 @@ async def sync_playlists_llm(playlist_ids: list[str], db: AsyncSession = Depends
     /playlists/sync (키워드 방식)의 LLM 대체 버전.
     강좌 자동 배정 + 난이도 판단 + 신규 강좌 생성까지 처리.
     """
-    import traceback
     from app.services.video_classifier import classify_and_promote
 
     try:
         access_token = await _get_access_token()
     except OAuthExpiredError:
-        access_token = None
-
+        access_token = None  # 공개 플리는 token 없이도 동작
     crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
     inbox_result = {}
     try:
@@ -842,17 +840,10 @@ async def sync_playlists_llm(playlist_ids: list[str], db: AsyncSession = Depends
             videos = await crawler.fetch_playlist_videos(pid, filter_ai=False, access_token=access_token)
             saved = await _save_to_inbox(videos)
             inbox_result[pid] = {"fetched": len(videos), "inbox": saved}
-    except Exception as e:
-        await crawler.close()
-        raise HTTPException(status_code=500, detail=f"[fetch/inbox] {type(e).__name__}: {e}\n{traceback.format_exc()}")
     finally:
         await crawler.close()
 
-    try:
-        classify_result = await classify_and_promote(db)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"[classify] {type(e).__name__}: {e}\n{traceback.format_exc()}")
-
+    classify_result = await classify_and_promote(db)
     return {
         "result": inbox_result,
         "llm": classify_result,
