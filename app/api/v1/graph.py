@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.models import (
-    Course, FeedItem, GraphEdge, GraphNode, Lecture, LectureNote, MyNote, Paper,
+    Course, FeedItem, GraphEdge, GraphNode, Lecture, LectureNote, MyNote, Paper, Progress,
 )
 
 router = APIRouter()
@@ -61,17 +61,95 @@ async def get_graph(db: AsyncSession = Depends(get_db)):
     }
 
 
+# 불용어 — 제목에 자주 나오지만 학문 개념이 아닌 것들
+_STOPWORDS = {
+    "the","a","an","of","in","and","or","with","for","to","by","on","at","is","are",
+    "this","that","from","as","be","it","its","but","not","also","how","why",
+    "what","which","when","where","who","math","lecture","quiz","review","final","course",
+    "spring","fall","mit","stanford","kaist","part","chapter","episode","video","series",
+    "18.06","cs229","cs231n","cs224n","intro","introduction","overview","explained","explain",
+    "understanding","understand","fast","simple","easy","hard","deep","basic","advanced",
+    "using","used","use","learn","learning","study","tutorial","guide","complete","full",
+    "exp","let","get","set","new","old","all","any","some","more","less","very","just",
+    "powers","found","given","based","called","known","said","made","used","done",
+}
+
+# 학문 개념으로 인정할 최소 단어 길이
+_MIN_LEN = 4
+
+def _extract_concepts_from_text(title: str, subtitle: str, module_name: str, cat: str) -> list[dict]:
+    """GPT 없이 모듈명 우선, 제목에서 의미 있는 개념 추출 (fallback)."""
+    import re
+    result, seen = [], set()
+
+    # 1. 모듈명이 있으면 최우선 사용 (·로 구분된 경우 분리)
+    if module_name:
+        for part in re.split(r"[·,/]", module_name):
+            part = part.strip()
+            if part and part.lower() not in seen:
+                seen.add(part.lower())
+                result.append({"label": part, "category": cat})
+
+    # 2. 부제목에서 명사구 추출 (모듈명으로 부족할 때)
+    if len(result) < 2 and subtitle:
+        words = re.findall(r"[A-Z][A-Za-z\-]{3,}|[가-힣]{2,}", subtitle)
+        for w in words:
+            if w.lower() not in seen and w.lower() not in _STOPWORDS and len(w) >= _MIN_LEN:
+                seen.add(w.lower())
+                result.append({"label": w, "category": cat})
+                if len(result) >= 4:
+                    break
+
+    # 3. 제목에서 대문자 시작 전문 용어만 추출 (마지막 수단)
+    if len(result) < 2:
+        words = re.findall(r"[A-Z][A-Za-z\-]{3,}|[가-힣]{2,}", title)
+        for w in words:
+            if w.lower() not in seen and w.lower() not in _STOPWORDS and len(w) >= _MIN_LEN:
+                seen.add(w.lower())
+                result.append({"label": w, "category": cat})
+                if len(result) >= 4:
+                    break
+
+    return result[:4]
+
+
+async def _extract_concepts_gpt(lecture: Lecture, cat: str) -> list[dict]:
+    context = f"강의 제목: {lecture.title or ''}\n부제목: {lecture.subtitle or ''}\n모듈: {lecture.module_name or ''}"
+    gpt = openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
+    prompt = (
+        f"{context}\n\n"
+        "위 강의에서 배우는 핵심 수학·AI·ML 개념 키워드를 3~5개 추출하세요.\n"
+        "조건: 불용어·연도·강의번호 제외, 실제 학문 개념 중심, 영어 또는 한국어 가능\n"
+        f"카테고리: {cat} 또는 하위 분류 (MATH/STATS/ML/DL/NLP/LLM/CV/OPT 중 하나)\n"
+        '- JSON으로만 반환: {"concepts": [{"label": "개념명", "category": "카테고리"}]}'
+    )
+    resp = await gpt.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+    )
+    return json.loads(resp.choices[0].message.content).get("concepts", [])[:5]
+
+
 @router.post("/from-lecture/{lecture_id}")
 async def add_nodes_from_lecture(lecture_id: str, db: AsyncSession = Depends(get_db)):
-    """강의 tags를 그래프 노드로 등록합니다. 이미 같은 label이 있으면 스킵."""
+    """강의 완료 시 핵심 개념 3~5개를 그래프 노드로 등록합니다. GPT 실패 시 rule-based fallback."""
     lecture = (await db.execute(
         select(Lecture).where(Lecture.id == lecture_id)
     )).scalar_one_or_none()
-    if not lecture or not lecture.tags:
+    if not lecture:
         return {"created": 0}
 
-    # 카테고리 추론: 강의 category 필드 그대로 사용
     cat = (lecture.category or "ML").upper()
+
+    # GPT 우선, 쿼터 초과 시 rule-based fallback
+    try:
+        concepts = await _extract_concepts_gpt(lecture, cat)
+    except Exception as e:
+        logger.warning("from-lecture GPT fallback (%s): %s", lecture.title, e)
+        concepts = _extract_concepts_from_text(
+            lecture.title or "", lecture.subtitle or "", lecture.module_name or "", cat
+        )
 
     existing_labels = {
         r[0].lower()
@@ -80,24 +158,103 @@ async def add_nodes_from_lecture(lecture_id: str, db: AsyncSession = Depends(get
 
     created = 0
     new_nodes = []
-    for tag in lecture.tags:
-        tag = tag.strip()
-        if not tag or tag.lower() in existing_labels:
+    for c in concepts:
+        label = (c.get("label") or "").strip()
+        node_cat = (c.get("category") or cat).upper()
+        if not label or label.lower() in existing_labels:
             continue
-        node = GraphNode(label=tag, category=cat, has_content=True)
+        node = GraphNode(label=label, category=node_cat, has_content=True,
+                         description=f"출처: {lecture.title}")
         db.add(node)
         new_nodes.append(node)
-        existing_labels.add(tag.lower())
+        existing_labels.add(label.lower())
         created += 1
 
     await db.flush()
 
-    # 같은 강의에서 나온 노드끼리 chain으로 연결
+    # 같은 강의에서 나온 노드끼리 chain 연결
     for i in range(len(new_nodes) - 1):
         db.add(GraphEdge(source_id=new_nodes[i].id, target_id=new_nodes[i + 1].id))
 
     await db.commit()
-    return {"created": created, "lecture": lecture.title}
+    return {"created": created, "lecture": lecture.title, "concepts": [n.label for n in new_nodes]}
+
+
+@router.delete("/nodes/cleanup")
+async def cleanup_auto_nodes(db: AsyncSession = Depends(get_db)):
+    """note_id 없는 자동생성 노드와 연결된 엣지를 전부 삭제합니다."""
+    auto_node_ids = (await db.execute(
+        select(GraphNode.id).where(GraphNode.note_id.is_(None))
+    )).scalars().all()
+
+    if auto_node_ids:
+        await db.execute(
+            delete(GraphEdge).where(
+                GraphEdge.source_id.in_(auto_node_ids) | GraphEdge.target_id.in_(auto_node_ids)
+            )
+        )
+        await db.execute(delete(GraphNode).where(GraphNode.note_id.is_(None)))
+
+    await db.commit()
+    return {"deleted": len(auto_node_ids)}
+
+
+@router.post("/from-course/{course_id}/completed")
+async def add_nodes_from_completed_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
+    """강좌의 완료된 강의들에서 GPT로 개념 노드를 일괄 생성합니다."""
+    completed_ids = (await db.execute(
+        select(Progress.lecture_id).where(Progress.course_id == course_id)
+    )).scalars().all()
+
+    if not completed_ids:
+        return {"created": 0, "message": "완료된 강의가 없습니다."}
+
+    total_created = 0
+    results = []
+    for lecture_id in completed_ids:
+        # 개별 from-lecture 로직 재사용 (내부 호출)
+        lecture = (await db.execute(
+            select(Lecture).where(Lecture.id == lecture_id)
+        )).scalar_one_or_none()
+        if not lecture:
+            continue
+
+        cat = (lecture.category or "ML").upper()
+        try:
+            concepts = await _extract_concepts_gpt(lecture, cat)
+        except Exception as e:
+            logger.warning("from-course GPT fallback (%s): %s", lecture.title, e)
+            concepts = _extract_concepts_from_text(
+                lecture.title or "", lecture.subtitle or "", lecture.module_name or "", cat
+            )
+
+        existing_labels = {
+            r[0].lower()
+            for r in (await db.execute(select(GraphNode.label))).all()
+        }
+
+        new_nodes = []
+        for c in concepts:
+            label = (c.get("label") or "").strip()
+            node_cat = (c.get("category") or cat).upper()
+            if not label or label.lower() in existing_labels:
+                continue
+            node = GraphNode(label=label, category=node_cat, has_content=True,
+                             description=f"출처: {lecture.title}")
+            db.add(node)
+            new_nodes.append(node)
+            existing_labels.add(label.lower())
+            total_created += 1
+
+        await db.flush()
+        for i in range(len(new_nodes) - 1):
+            db.add(GraphEdge(source_id=new_nodes[i].id, target_id=new_nodes[i + 1].id))
+
+        if new_nodes:
+            results.append({"lecture": lecture.title, "concepts": [n.label for n in new_nodes]})
+
+    await db.commit()
+    return {"created": total_created, "lectures_processed": len(results), "results": results}
 
 
 @router.post("/generate")
