@@ -15,6 +15,38 @@
 
 ## 🔥 지금 할 것 (Current Sprint)
 
+### 0. 브레인스토밍 → 적용 가능 아이템 (새로 추가)
+
+#### 🤖 에이전트 / AI 고도화
+- [ ] **멀티에이전트 커리큘럼 검증** — 에이전트 3마리가 서로 토론해서 커리큘럼 품질 검증
+  - Critic Agent: "이 순서가 맞냐?" / Defender Agent: "이래서 맞다" / Judge Agent: 최종 판정
+  - `POST /api/v1/curriculum/validate` — 결과를 JSON으로 반환, 프론트에서 리포트 표시
+- [ ] **1인 데이터팀 멀티에이전트** — 크롤링·분류·요약을 각각 다른 에이전트가 담당
+- [ ] **N8n 워크플로우** — 블로그 크롤링·논문 알림·강의 업데이트 자동화 파이프라인
+
+#### 🗺️ 지식 지도 UI (Big Feature)
+- [ ] **대륙 지도 UI** — 지식 그래프를 세계지도 스타일로 교체
+  - 대륙 = 전공 분야 (MATH, ML, DL, NLP, LLM, CV 대륙)
+  - 도시 = 핵심 개념 (Transformer 도시, Attention 도시 등)
+  - 미개척 전공(사용자 정의) = 회색 신대륙
+  - UI 참고: https://www.awwwards.com/sites/independent-brewers-of-europe
+- [ ] **Course Catalog 하단 전체 커리큘럼 월드맵** — 수강한 개념은 컬러, 미수강은 안개 처리
+
+#### 🎓 학교 페이지 고도화
+- [ ] **홈 Hero 캠퍼스 슬라이드쇼** — MIT·Stanford·서울대·KAIST 캠퍼스 사진을 짧게짧게 교차
+- [ ] **Major / Degree 페이지** — Academics 탭 안에 전공 소개 + 이수 요건 페이지 추가
+- [ ] **마이페이지 공부 잔디** — GitHub 잔디 스타일 학습 히트맵 (날짜별 강의 완료 수)
+
+#### 📚 콘텐츠 추가
+- [ ] **신규 강좌: LLM Engineering** — https://www.udemy.com/course/llm-engineering-master-ai-and-large-language-models/ 추가
+- [ ] **같이 논문읽기** — 논문 링크 공유 + 공동 주석 기능
+
+#### 🔧 개발/인프라
+- [ ] **GitHub Webhook + Projects 연동** — PR 자동 이슈 생성, Projects 보드 연동
+- [ ] **develop → main 머지 + release 태그** — 브랜치 전략 정립 및 첫 릴리즈
+
+---
+
 ### 1. 커리큘럼 자동 구성 — 키워드 기반 v1
 
 > VideoInbox/Lecture에 쌓인 영상들을 카테고리·키워드·난이도 기준으로
