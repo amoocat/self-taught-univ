@@ -44,6 +44,7 @@ async def _classify_playlists_gpt(
 
     각 플리에 is_study(bool) + category(str|None) 필드를 붙여 반환.
     GPT 실패 시 키워드 기반 폴백.
+    전체 작업에 20초 타임아웃 — 초과 시 키워드 폴백.
     """
     import asyncio
 
@@ -59,13 +60,26 @@ async def _classify_playlists_gpt(
 
     async def _safe_sample(pl: dict) -> tuple[str, list[str]]:
         async with _SEM:
-            titles = await crawler.fetch_playlist_video_sample(
-                pl["playlist_id"], access_token=access_token, max_count=8
-            )
+            try:
+                titles = await asyncio.wait_for(
+                    crawler.fetch_playlist_video_sample(
+                        pl["playlist_id"], access_token=access_token, max_count=8
+                    ),
+                    timeout=8,
+                )
+            except (asyncio.TimeoutError, Exception):
+                titles = []
         return pl["playlist_id"], titles
 
     try:
-        sample_results = await asyncio.gather(*[_safe_sample(p) for p in playlists])
+        sample_results = await asyncio.wait_for(
+            asyncio.gather(*[_safe_sample(p) for p in playlists]),
+            timeout=20,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("[YouTube] 샘플 수집 타임아웃 — 키워드 폴백")
+        await crawler.close()
+        return _classify_playlists_keyword(playlists)
     finally:
         await crawler.close()
 
@@ -108,10 +122,13 @@ async def _classify_playlists_gpt(
             "Set category to null for non-study playlists."
         )
         try:
-            resp = await gpt.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
+            resp = await asyncio.wait_for(
+                gpt.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                ),
+                timeout=15,
             )
             raw = json.loads(resp.choices[0].message.content)
             for r in raw.get("results", []):
@@ -152,6 +169,12 @@ _SCOPES = "https://www.googleapis.com/auth/youtube.readonly"
 
 # CSRF 방지용 임시 state 저장 (단일 사용자 앱이라 메모리로 충분)
 _pending_states: set[str] = set()
+
+# 플레이리스트 분류 결과 캐시 (30분 TTL)
+import time as _time
+_playlist_cache: dict | None = None
+_playlist_cache_ts: float = 0
+_PLAYLIST_CACHE_TTL = 1800  # 30분
 
 
 def _load_token() -> dict | None:
@@ -296,8 +319,19 @@ async def oauth_status():
 # ── 플레이리스트 관리 ───────────────────────────────────────────
 
 @router.get("/playlists")
-async def list_my_playlists():
-    """내 YouTube 계정 플레이리스트 목록 (OAuth 필요)"""
+async def list_my_playlists(refresh: bool = False):
+    """내 YouTube 계정 플레이리스트 목록 (OAuth 필요).
+
+    결과는 30분간 캐시. ?refresh=true 로 강제 새로고침.
+    """
+    global _playlist_cache, _playlist_cache_ts
+
+    # 캐시 히트 (강제 새로고침 아닐 때)
+    if not refresh and _playlist_cache is not None:
+        if _time.monotonic() - _playlist_cache_ts < _PLAYLIST_CACHE_TTL:
+            logger.debug("[YouTube] /playlists 캐시 히트")
+            return _playlist_cache
+
     try:
         access_token = await _get_access_token()
     except OAuthExpiredError:
@@ -315,7 +349,12 @@ async def list_my_playlists():
     classified = await _classify_playlists_gpt(all_pls, access_token=access_token)
     study_pls = [p for p in classified if p.get("is_study")]
     study_pls.sort(key=lambda p: p["title"])
-    return {"playlists": study_pls, "total": len(study_pls)}
+    result = {"playlists": study_pls, "total": len(study_pls)}
+
+    # 캐시 저장
+    _playlist_cache = result
+    _playlist_cache_ts = _time.monotonic()
+    return result
 
 
 _PLAYLIST_ID_RE = re.compile(r"(?:list=|/playlist/|youtu\.be/)([A-Za-z0-9_-]{10,})")
@@ -820,34 +859,53 @@ async def discover_auto_import(
     }
 
 
-async def _run_sync_llm(playlist_ids: list[str]):
-    """백그라운드에서 실행: 플레이리스트 크롤링 → inbox 저장 → LLM 분류 → Lecture 승격."""
-    from app.services.video_classifier import classify_and_promote
-    from app.db.session import AsyncSessionLocal
+import threading as _threading
 
-    try:
-        access_token = await _get_access_token()
-    except OAuthExpiredError:
-        access_token = None
+_sync_running = False          # 동시 sync 1개 제한 (thread-safe: GIL)
+_sync_lock_th = _threading.Lock()
 
-    crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
-    try:
-        for pid in playlist_ids:
-            try:
-                videos = await crawler.fetch_playlist_videos(pid, filter_ai=False, access_token=access_token)
-                await _save_to_inbox(videos)
-                logger.info("sync-llm: %s → %d videos fetched", pid, len(videos))
-            except Exception as e:
-                logger.error("sync-llm fetch error [%s]: %s", pid, e)
-    finally:
-        await crawler.close()
 
-    async with AsyncSessionLocal() as db:
+def _run_sync_in_thread(playlist_ids: list[str]):
+    """별도 스레드 + 자체 이벤트 루프에서 sync 실행 — uvicorn 이벤트 루프와 완전 격리."""
+    import asyncio
+
+    async def _body():
+        from app.services.video_classifier import classify_and_promote
+        from app.db.session import AsyncSessionLocal
+
         try:
-            result = await classify_and_promote(db)
-            logger.info("sync-llm classify done: %s", result)
-        except Exception as e:
-            logger.error("sync-llm classify error: %s", e)
+            access_token = await _get_access_token()
+        except OAuthExpiredError:
+            access_token = None
+
+        crawler = YouTubeCrawler(api_key=settings.YOUTUBE_API_KEY)
+        try:
+            for pid in playlist_ids:
+                try:
+                    videos = await crawler.fetch_playlist_videos(pid, filter_ai=False, access_token=access_token)
+                    await _save_to_inbox(videos)
+                    logger.info("sync-llm: %s → %d videos fetched", pid, len(videos))
+                except Exception as e:
+                    logger.error("sync-llm fetch error [%s]: %s", pid, e)
+        finally:
+            await crawler.close()
+
+        async with AsyncSessionLocal() as db:
+            try:
+                result = await classify_and_promote(db)
+                logger.info("sync-llm classify done: %s", result)
+            except Exception as e:
+                logger.error("sync-llm classify error: %s", e)
+
+    global _sync_running
+    try:
+        asyncio.run(_body())
+    except Exception as e:
+        logger.error("sync-llm thread error: %s", e)
+    finally:
+        with _sync_lock_th:
+            _sync_running = False
+        logger.info("sync-llm thread finished")
 
 
 @router.post("/playlists/sync-llm", status_code=202)
@@ -857,9 +915,18 @@ async def sync_playlists_llm(
 ):
     """플레이리스트 영상 → VideoInbox 저장 → GPT-4o-mini LLM 분류 → Lecture 승격.
 
-    즉시 202 반환 후 백그라운드에서 처리. 완료까지 수 분 소요될 수 있음.
+    별도 스레드에서 실행 — uvicorn 이벤트 루프와 완전 격리.
+    즉시 202 반환. 동시 실행 1개로 제한.
     """
+    global _sync_running
     if not playlist_ids:
         raise HTTPException(status_code=400, detail="playlist_ids가 비어 있습니다.")
-    background_tasks.add_task(_run_sync_llm, playlist_ids)
+
+    with _sync_lock_th:
+        if _sync_running:
+            raise HTTPException(status_code=409, detail="이미 동기화가 진행 중입니다. 잠시 후 다시 시도해주세요.")
+        _sync_running = True
+
+    t = _threading.Thread(target=_run_sync_in_thread, args=(playlist_ids,), daemon=True)
+    t.start()
     return {"status": "started", "playlist_ids": playlist_ids}
