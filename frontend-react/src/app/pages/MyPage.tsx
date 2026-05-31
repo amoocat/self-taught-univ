@@ -167,67 +167,6 @@ export function MyPage() {
         </div>
       </section>
 
-      {/* Stats Strip */}
-      <section className="border-b bg-muted/20">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Enrolled */}
-            <div className="flex items-center gap-4 p-4 rounded-xl border bg-background">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <GraduationCap className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Enrolled</div>
-                <div className="text-2xl text-foreground" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
-                  {myCourses.length}
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="flex items-center gap-4 p-4 rounded-xl border bg-background">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Notes</div>
-                <div className="text-2xl text-foreground" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
-                  {myNotes.length}
-                </div>
-              </div>
-            </div>
-
-            {/* This week */}
-            <div className="flex items-center gap-4 p-4 rounded-xl border bg-background">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Zap className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">This Week</div>
-                <div className="text-2xl text-foreground" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
-                  {weeklyNotes}
-                </div>
-              </div>
-            </div>
-
-            {/* Knowledge Graph — featured */}
-            <Link
-              to="/knowledge-graph"
-              className="flex items-center gap-4 p-4 rounded-xl border bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 group-hover:bg-primary/25 transition-colors">
-                <Star className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Explore</div>
-                <div className="text-2xl text-primary" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
-                  Graph →
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* Main Content */}
       <section className="max-w-7xl mx-auto px-6 py-8 flex gap-8 items-start">

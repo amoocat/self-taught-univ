@@ -263,9 +263,9 @@ export function WorldMap() {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
         <div className="flex items-center gap-4">
-          <Link to="/course-catalog"
+          <Link to="/my-page"
             className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/80 transition-colors">
-            <ArrowLeft size={14} /> Course Catalog
+            <ArrowLeft size={14} /> My Page
           </Link>
           <div className="w-px h-4 bg-white/10" />
           <h1 className="text-white font-semibold" style={{ fontFamily: "'Crimson Pro', Georgia, serif", fontSize: 20 }}>
