@@ -232,9 +232,8 @@ export function MyPage() {
       {/* Main Content */}
       <section className="max-w-7xl mx-auto px-6 py-8 flex gap-8 items-start">
 
-        {/* 왼쪽: 학생 카드 + 잔디 */}
-        <aside className="w-64 flex-shrink-0 space-y-4">
-          {/* 학생 카드 */}
+        {/* 학생 카드 */}
+        <aside className="w-64 flex-shrink-0">
           <div className="border rounded-xl overflow-hidden shadow-sm">
             <div className="bg-primary px-5 py-6 text-primary-foreground text-center">
               <div className="w-16 h-16 rounded-full bg-primary-foreground/10 border-2 border-primary-foreground/30 flex items-center justify-center mx-auto mb-3 text-3xl">
@@ -259,7 +258,6 @@ export function MyPage() {
                 </div>
               ))}
             </div>
-            {/* 바로가기 버튼 */}
             <div className="p-3 bg-muted/30 border-t grid grid-cols-2 gap-2">
               <Link to="/knowledge-graph"
                 className="flex items-center justify-center gap-1.5 text-xs font-medium py-2 px-2 border rounded-lg hover:bg-muted transition-colors text-center">
@@ -271,16 +269,15 @@ export function MyPage() {
               </Link>
             </div>
           </div>
-
-          {/* 공부 잔디 (가로형) */}
-          <div className="border rounded-xl p-4 bg-background shadow-sm overflow-x-auto">
-            <StudyHeatmap />
-          </div>
         </aside>
 
-        {/* 오른쪽: 스터디 트래커 + 탭 */}
+        {/* 오른쪽: 스터디 트래커 + 잔디 + 탭 */}
         <div className="flex-1 min-w-0 space-y-6">
           <StudyTracker />
+          {/* 공부 잔디 (가로 전체 너비) */}
+          <div className="border rounded-xl p-5 bg-background shadow-sm">
+            <StudyHeatmap />
+          </div>
           <Tabs defaultValue="courses" className="w-full">
           <TabsList className="mb-10">
             <TabsTrigger value="courses">My Courses</TabsTrigger>
