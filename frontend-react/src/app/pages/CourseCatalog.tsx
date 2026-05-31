@@ -259,6 +259,22 @@ export function CourseCatalog() {
       </div>
 
       {/* CTA Section */}
+      {/* 지식 세계 지도 진입 */}
+      <section className="py-20 border-t" style={{ background: "#060d1a" }}>
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <div className="text-4xl mb-4">🗺️</div>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            전체 커리큘럼 세계 지도
+          </h2>
+          <p className="text-white/50 mb-8 text-lg">
+            수학 대륙, ML 대륙, LLM 신대륙… 당신이 탐험한 지식의 영토를 지도로 확인하세요.
+          </p>
+          <Button size="lg" className="h-12 px-10 bg-white text-black hover:bg-white/90 font-bold" onClick={() => navigate("/world-map")}>
+            지도 탐험하기 →
+          </Button>
+        </div>
+      </section>
+
       <section className="bg-accent/20 py-16 border-t">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>

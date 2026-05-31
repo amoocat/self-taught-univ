@@ -416,3 +416,23 @@ async def reorganize_curriculum(
         result = await reorganize_all_courses(db)
 
     return result
+
+
+@router.get("/heatmap")
+async def get_heatmap(db: AsyncSession = Depends(get_db)):
+    """최근 365일간 날짜별 완료 강의 수를 반환합니다."""
+    from datetime import timedelta
+    from sqlalchemy import cast, Date
+
+    cutoff = datetime.utcnow() - timedelta(days=365)
+    rows = (await db.execute(
+        select(
+            cast(Progress.completed_at, Date).label("day"),
+            func.count().label("count")
+        )
+        .where(Progress.completed_at >= cutoff)
+        .group_by(cast(Progress.completed_at, Date))
+        .order_by(cast(Progress.completed_at, Date))
+    )).all()
+
+    return {"heatmap": [{"date": str(r.day), "count": r.count} for r in rows]}

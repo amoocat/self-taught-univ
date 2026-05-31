@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../../lib/api";
 import { Link, useLocation } from "react-router";
 import { Button } from "../components/ui/button";
+import { StudyHeatmap } from "../components/StudyHeatmap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { BookOpen, FileText, Calendar, Clock, GraduationCap, Plus, Edit, Trash2, Play, Star, TrendingUp, Zap } from "lucide-react";
@@ -224,6 +225,13 @@ export function MyPage() {
               </div>
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Heatmap */}
+      <section className="border-b bg-background">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <StudyHeatmap />
         </div>
       </section>
 

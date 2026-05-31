@@ -17,6 +17,7 @@ import { CurriculumPreview } from "./pages/CurriculumPreview";
 import { GeneratedCourses } from "./pages/GeneratedCourses";
 import { Admissions } from "./pages/Admissions";
 import { CampusLife } from "./pages/CampusLife";
+import { WorldMap } from "./pages/WorldMap";
 
 export const router = createBrowserRouter([
   {
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: "course/:courseId/lecture/:lectureId", Component: CourseLecture },
       { path: "admissions", Component: Admissions },
       { path: "campus-life", Component: CampusLife },
+      { path: "world-map", Component: WorldMap },
     ],
   },
 ]);
