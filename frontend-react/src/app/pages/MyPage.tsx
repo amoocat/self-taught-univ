@@ -3,6 +3,7 @@ import { api } from "../../lib/api";
 import { Link, useLocation } from "react-router";
 import { Button } from "../components/ui/button";
 import { StudyHeatmap } from "../components/StudyHeatmap";
+import { StudyTracker } from "../components/StudyTracker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { BookOpen, FileText, Calendar, Clock, GraduationCap, Plus, Edit, Trash2, Play, Star, TrendingUp, Zap } from "lucide-react";
@@ -228,9 +229,10 @@ export function MyPage() {
         </div>
       </section>
 
-      {/* Heatmap */}
+      {/* Study Tracker + Heatmap */}
       <section className="border-b bg-background">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+          <StudyTracker />
           <StudyHeatmap />
         </div>
       </section>

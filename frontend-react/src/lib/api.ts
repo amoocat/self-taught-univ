@@ -52,6 +52,7 @@ export async function streamSSE(
 export const api = {
   // ── 커리큘럼 ─────────────────────────────────────
   getHeatmap: () => request('/curriculum/heatmap'),
+  getStudyStats: () => request('/curriculum/stats'),
   getCourses: (params?: { q?: string; category?: string; limit?: number; offset?: number }) =>
     request(`/curriculum/${params ? `?${new URLSearchParams(Object.entries(params).filter(([,v]) => v != null).map(([k,v])=>[k,String(v)])).toString()}` : ''}`),
   getCourse:  (id: string) => request(`/curriculum/${id}`),

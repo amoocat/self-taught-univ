@@ -137,6 +137,96 @@ async def list_courses(
     return result
 
 
+@router.get("/heatmap")
+async def get_heatmap(db: AsyncSession = Depends(get_db)):
+    """최근 365일간 날짜별 완료 강의 수를 반환합니다."""
+    from datetime import timedelta
+    from sqlalchemy import cast, Date
+    cutoff = datetime.utcnow() - timedelta(days=365)
+    rows = (await db.execute(
+        select(cast(Progress.completed_at, Date).label("day"), func.count().label("count"))
+        .where(Progress.completed_at >= cutoff)
+        .group_by(cast(Progress.completed_at, Date))
+        .order_by(cast(Progress.completed_at, Date))
+    )).all()
+    return {"heatmap": [{"date": str(r.day), "count": r.count} for r in rows]}
+
+
+@router.get("/stats")
+async def get_stats(db: AsyncSession = Depends(get_db)):
+    """연속 학습일·총 완료·학습 시간·이번 주·최근 활동 등 스터디 통계를 반환합니다."""
+    from datetime import timedelta, date
+    from sqlalchemy import cast, Date, join
+
+    # 완료 기록 전체 (최신순)
+    rows = (await db.execute(
+        select(Progress.completed_at, Progress.lecture_id, Progress.course_id)
+        .order_by(Progress.completed_at.desc())
+    )).all()
+
+    total_lectures = len(rows)
+
+    # 날짜별 집합
+    day_set: set[date] = {r.completed_at.date() for r in rows}
+    today = datetime.utcnow().date()
+
+    # 연속 학습일 (오늘 or 어제부터)
+    streak = 0
+    check = today if today in day_set else today - timedelta(days=1)
+    while check in day_set:
+        streak += 1
+        check -= timedelta(days=1)
+
+    # 최장 연속 학습일
+    sorted_days = sorted(day_set)
+    longest = cur = 0
+    for i, d in enumerate(sorted_days):
+        if i == 0 or d - sorted_days[i-1] == timedelta(days=1):
+            cur += 1
+        else:
+            cur = 1
+        longest = max(longest, cur)
+
+    # 이번 주 (월요일 기준)
+    week_start = today - timedelta(days=today.weekday())
+    this_week = sum(1 for r in rows if r.completed_at.date() >= week_start)
+
+    # 오늘
+    today_count = sum(1 for r in rows if r.completed_at.date() == today)
+
+    # 총 학습 시간 (완료 강의의 duration_sec 합산)
+    lecture_ids = [r.lecture_id for r in rows]
+    total_sec = 0
+    if lecture_ids:
+        dur_rows = (await db.execute(
+            select(func.sum(Lecture.duration_sec)).where(Lecture.id.in_(lecture_ids))
+        )).scalar() or 0
+        total_sec = int(dur_rows)
+
+    # 최근 활동 5개
+    recent = []
+    for r in rows[:5]:
+        lec = await db.get(Lecture, r.lecture_id)
+        course = await db.get(Course, r.course_id)
+        if lec:
+            recent.append({
+                "lecture_title": lec.title,
+                "course_title": course.title if course else "",
+                "completed_at": r.completed_at.isoformat(),
+                "duration_sec": lec.duration_sec or 0,
+            })
+
+    return {
+        "streak": streak,
+        "longest_streak": longest,
+        "total_lectures": total_lectures,
+        "total_minutes": total_sec // 60,
+        "this_week": this_week,
+        "today": today_count,
+        "recent": recent,
+    }
+
+
 @router.get("/{course_id}", response_model=CourseOut)
 async def get_course(course_id: str, db: AsyncSession = Depends(get_db)):
     course = await get_or_404(db, Course, course_id, "Course")
@@ -416,23 +506,3 @@ async def reorganize_curriculum(
         result = await reorganize_all_courses(db)
 
     return result
-
-
-@router.get("/heatmap")
-async def get_heatmap(db: AsyncSession = Depends(get_db)):
-    """최근 365일간 날짜별 완료 강의 수를 반환합니다."""
-    from datetime import timedelta
-    from sqlalchemy import cast, Date
-
-    cutoff = datetime.utcnow() - timedelta(days=365)
-    rows = (await db.execute(
-        select(
-            cast(Progress.completed_at, Date).label("day"),
-            func.count().label("count")
-        )
-        .where(Progress.completed_at >= cutoff)
-        .group_by(cast(Progress.completed_at, Date))
-        .order_by(cast(Progress.completed_at, Date))
-    )).all()
-
-    return {"heatmap": [{"date": str(r.day), "count": r.count} for r in rows]}

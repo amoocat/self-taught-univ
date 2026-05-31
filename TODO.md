@@ -25,17 +25,14 @@
 - [ ] **N8n 워크플로우** — 블로그 크롤링·논문 알림·강의 업데이트 자동화 파이프라인
 
 #### 🗺️ 지식 지도 UI (Big Feature)
-- [ ] **대륙 지도 UI** — 지식 그래프를 세계지도 스타일로 교체
-  - 대륙 = 전공 분야 (MATH, ML, DL, NLP, LLM, CV 대륙)
-  - 도시 = 핵심 개념 (Transformer 도시, Attention 도시 등)
-  - 미개척 전공(사용자 정의) = 회색 신대륙
-  - UI 참고: https://www.awwwards.com/sites/independent-brewers-of-europe
-- [ ] **Course Catalog 하단 전체 커리큘럼 월드맵** — 수강한 개념은 컬러, 미수강은 안개 처리
+- [x] **대륙 지도 UI** — `/world-map` 신규 페이지, SVG 대륙 (MATH/ML/DL/NLP 등), 진도에 따라 컬러/안개 처리, 개념 도시 dot, 사이드 패널
+- [x] **Course Catalog 하단 전체 커리큘럼 월드맵** — 다크 배너 + "지도 탐험하기" 진입 버튼
+- [ ] 지식 그래프 → 세계 지도로 완전 대체 여부 결정 (현재 둘 다 존재)
 
 #### 🎓 학교 페이지 고도화
 - [ ] **홈 Hero 캠퍼스 슬라이드쇼** — MIT·Stanford·서울대·KAIST 캠퍼스 사진을 짧게짧게 교차
 - [ ] **Major / Degree 페이지** — Academics 탭 안에 전공 소개 + 이수 요건 페이지 추가
-- [ ] **마이페이지 공부 잔디** — GitHub 잔디 스타일 학습 히트맵 (날짜별 강의 완료 수)
+- [x] **마이페이지 공부 잔디** — GitHub 잔디 스타일 히트맵, 365일 날짜별 완료 수, 월/요일 라벨, 호버 툴팁
 
 #### 📚 콘텐츠 추가
 - [ ] **신규 강좌: LLM Engineering** — https://www.udemy.com/course/llm-engineering-master-ai-and-large-language-models/ 추가
