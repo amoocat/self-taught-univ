@@ -61,6 +61,45 @@ async def get_graph(db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.post("/from-lecture/{lecture_id}")
+async def add_nodes_from_lecture(lecture_id: str, db: AsyncSession = Depends(get_db)):
+    """강의 tags를 그래프 노드로 등록합니다. 이미 같은 label이 있으면 스킵."""
+    lecture = (await db.execute(
+        select(Lecture).where(Lecture.id == lecture_id)
+    )).scalar_one_or_none()
+    if not lecture or not lecture.tags:
+        return {"created": 0}
+
+    # 카테고리 추론: 강의 category 필드 그대로 사용
+    cat = (lecture.category or "ML").upper()
+
+    existing_labels = {
+        r[0].lower()
+        for r in (await db.execute(select(GraphNode.label))).all()
+    }
+
+    created = 0
+    new_nodes = []
+    for tag in lecture.tags:
+        tag = tag.strip()
+        if not tag or tag.lower() in existing_labels:
+            continue
+        node = GraphNode(label=tag, category=cat, has_content=True)
+        db.add(node)
+        new_nodes.append(node)
+        existing_labels.add(tag.lower())
+        created += 1
+
+    await db.flush()
+
+    # 같은 강의에서 나온 노드끼리 chain으로 연결
+    for i in range(len(new_nodes) - 1):
+        db.add(GraphEdge(source_id=new_nodes[i].id, target_id=new_nodes[i + 1].id))
+
+    await db.commit()
+    return {"created": created, "lecture": lecture.title}
+
+
 @router.post("/generate")
 async def generate_concept_nodes(db: AsyncSession = Depends(get_db)):
     """강좌 목록을 GPT가 읽고 핵심 개념 노드 최대 50개를 생성합니다."""

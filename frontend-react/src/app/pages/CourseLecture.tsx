@@ -246,6 +246,8 @@ export function CourseLecture() {
         setCourseLectures(prev => prev.map(l =>
           l.id === lectureId ? { ...l, completed: true } : l
         ));
+        // 강의 키워드를 지식 그래프 노드로 등록
+        api.addGraphFromLecture(lectureId).catch(() => {});
       } finally {
         setCompleting(false);
       }

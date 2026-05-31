@@ -98,8 +98,20 @@ class CourseUpdateIn(BaseModel):
 
 
 @router.get("/", response_model=list[CourseOut])
-async def list_courses(db: AsyncSession = Depends(get_db)):
-    courses = (await db.execute(select(Course).order_by(Course.order_index))).scalars().all()
+async def list_courses(
+    q: Optional[str] = None,
+    category: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(Course).order_by(Course.order_index)
+    if q:
+        stmt = stmt.where(Course.title.ilike(f"%{q}%"))
+    if category:
+        stmt = stmt.where(Course.category.ilike(category))
+    stmt = stmt.offset(offset).limit(limit)
+    courses = (await db.execute(stmt)).scalars().all()
 
     result = []
     for c in courses:
@@ -151,10 +163,18 @@ async def get_course(course_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{course_id}/lectures", response_model=list[LectureOut])
-async def list_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
-    lectures = (await db.execute(
-        select(Lecture).where(Lecture.course_id == course_id).order_by(Lecture.number)
-    )).scalars().all()
+async def list_lectures(
+    course_id: str,
+    q: Optional[str] = None,
+    limit: int = 200,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(Lecture).where(Lecture.course_id == course_id).order_by(Lecture.number)
+    if q:
+        stmt = stmt.where(Lecture.title.ilike(f"%{q}%") | Lecture.subtitle.ilike(f"%{q}%"))
+    stmt = stmt.offset(offset).limit(limit)
+    lectures = (await db.execute(stmt)).scalars().all()
 
     completed_ids = set(
         (await db.execute(

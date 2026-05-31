@@ -52,6 +52,10 @@
 - [ ] **취약 개념 칩 하드코딩** — 동적 생성 미구현
 - [x] 프론트 UI 강의 구조 반영 — 모듈 아코디언 첫 번째 자동 펼침 + 강의 아이템 난이도 배지(입문/중급/고급)
 - [x] 사이드바 "나의 전공" [과목][모듈] 탭 분리 — 탭 클릭으로 접기/펼치기 + 모듈탭 난이도 도트
+- [x] **플로팅 AI 챗봇** — 학습/테스트 모드 전환, 과목 선택, SSE 스트리밍, 하단 중앙 pill 버튼 (React)
+- [x] **강의 AI 힌트 패널** — 강의 페이지 우측 슬라이드인 패널, 강의 내용 기반 단계적 힌트 (React)
+- [x] **논문 AI 키워드 주석 패널** — 주석 생성 버튼 → 키워드별 해설 표시 (React)
+- [x] **논문 Q&A 챗** — 논문 내용 기반 SSE 스트리밍 질의응답 (React)
 
 ---
 
@@ -135,7 +139,7 @@
 ### 기타
 - [ ] API 키 사용량 대시보드
 - [ ] DB·서버 클라우드 이관 (Supabase 유지 or 자체 호스팅)
-- [ ] 웹사이트 대문 생성 (대학 홈페이지 스타일)
+- [x] 웹사이트 대문 생성 (대학 홈페이지 스타일) — EduPrime University React 앱으로 구현
 - [ ] 로그인 기능 — 유저별 커리큘럼
 - [ ] 신규 강좌 - 카카오톡 나에게 보내는 톡도 긁어오기
 - [ ] 신규 강좌 — TED 행복 강좌 (wellbeing 카테고리)
@@ -146,6 +150,22 @@
 ---
 
 ## ✅ 완료된 것들
+
+### React 전환 + AI 기능 완성 (최근 세션)
+- [x] **바닐라 JS frontend/ 전체 삭제** — React(frontend-react/)로 완전 전환
+- [x] **Admissions 페이지** — 입학 자격·절차·개설과목, CourseCatalog 기준 hero 통일
+- [x] **Campus Life 페이지** — Georgia Tech 구조 참고, Essentials 카드·타임라인·Advantage 블록
+- [x] **모든 페이지 hero 스타일 통일** — CourseCatalog 기준 (`py-6`, 중앙 정렬, gradient)
+- [x] **MyPage 학생 카드** — 좌측 sticky 패널 (학번·전공·진도·최근활동·AI점수)
+- [x] **플로팅 AI 챗봇** — 학습/테스트 모드, 과목 선택, SSE 스트리밍, 하단 중앙 pill 버튼
+- [x] **강의 AI 힌트 패널** — 우측 슬라이드인, 강의 내용 기반 단계적 힌트 (`/chat/lecture/{id}/stream`)
+- [x] **논문 AI 키워드 주석 패널** — Sparkles 버튼 → 키워드별 해설 (`/papers/{id}/annotate`)
+- [x] **논문 Q&A 챗** — 논문 컨텍스트 기반 SSE 스트리밍 (`/chat/paper/{id}/stream`)
+- [x] **지식 그래프 AI 노드 생성 버튼** — `POST /graph/generate` 연결
+- [x] **지식 그래프 모던 리디자인** — pill 카드 노드, 베지어 엣지, 카테고리 필터 바, MiniMap, 드래그 가능
+- [x] **강의 완료 → 그래프 노드 자동 등록** — `POST /graph/from-lecture/{id}` 신규 엔드포인트, 완료 시 tags → GraphNode 저장
+- [x] **노트 태그 표시** — MyPage 노트 탭에 `#태그` 칩 렌더링
+- [x] **api.ts SSE 스트리밍 헬퍼** — `streamSSE()` 공통 유틸, `annotatePaper` / `generateGraph` / `addGraphFromLecture` 메서드 추가
 
 ### 렉쳐 뷰 + 노트 + 커리큘럼 고도화 (이번 세션)
 - [x] video_inbox 삭제 시 varchar=uuid 타입 오류 수정 (text() 쿼리로 우회)

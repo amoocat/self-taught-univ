@@ -102,19 +102,18 @@ class NoteOut(BaseModel):
 async def list_notes(
     q: Optional[str] = None,
     lecture_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(MyNote).order_by(MyNote.updated_at.desc())
     if lecture_id:
         stmt = stmt.where(MyNote.lecture_id == lecture_id)
-    result = await db.execute(stmt)
-    notes = result.scalars().all()
-
     if q:
-        q_lower = q.lower()
-        notes = [n for n in notes if q_lower in n.title.lower() or q_lower in n.content_md.lower()]
-
-    return notes
+        pattern = f"%{q}%"
+        stmt = stmt.where(MyNote.title.ilike(pattern) | MyNote.content_md.ilike(pattern))
+    stmt = stmt.offset(offset).limit(limit)
+    return (await db.execute(stmt)).scalars().all()
 
 
 @router.get("/{note_id}", response_model=NoteOut)

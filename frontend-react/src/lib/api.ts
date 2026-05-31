@@ -51,15 +51,22 @@ export async function streamSSE(
 
 export const api = {
   // ── 커리큘럼 ─────────────────────────────────────
-  getCourses: () => request('/curriculum/'),
+  getCourses: (params?: { q?: string; category?: string; limit?: number; offset?: number }) =>
+    request(`/curriculum/${params ? `?${new URLSearchParams(Object.entries(params).filter(([,v]) => v != null).map(([k,v])=>[k,String(v)])).toString()}` : ''}`),
   getCourse:  (id: string) => request(`/curriculum/${id}`),
-  getLectures:(courseId: string) => request(`/curriculum/${courseId}/lectures`),
+  getLectures:(courseId: string, params?: { q?: string; limit?: number; offset?: number }) =>
+    request(`/curriculum/${courseId}/lectures${params ? `?${new URLSearchParams(Object.entries(params).filter(([,v]) => v != null).map(([k,v])=>[k,String(v)])).toString()}` : ''}`),
+
+  // ── 통합 검색 ─────────────────────────────────────
+  search: (q: string, type?: string) =>
+    request(`/search/?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ''}`),
   getLecture: (lectureId: string) => request(`/curriculum/lectures/${lectureId}`),
   completeLecture: (courseId: string, lectureId: string) =>
     request(`/curriculum/${courseId}/lectures/${lectureId}/complete`, { method: 'POST' }),
 
   // ── 노트 ─────────────────────────────────────────
-  getNotes:   () => request('/notes/'),
+  getNotes:   (params?: { q?: string; limit?: number; offset?: number }) =>
+    request(`/notes/${params ? `?${new URLSearchParams(Object.entries(params).filter(([,v]) => v != null).map(([k,v]) => [k, String(v)])).toString()}` : ''}`),
   getNote:    (id: string) => request(`/notes/${id}`),
   createNote: (body: { title: string; content_md: string }) =>
     request('/notes/', { method: 'POST', body: JSON.stringify(body) }),
@@ -79,8 +86,9 @@ export const api = {
   annotatePaper:  (id: string) => request(`/papers/${id}/annotate`, { method: 'POST' }),
 
   // ── 지식 그래프 ──────────────────────────────────
-  getGraph:         () => request('/graph/'),
-  generateGraph:    () => request('/graph/generate', { method: 'POST' }),
+  getGraph:              () => request('/graph/'),
+  generateGraph:         () => request('/graph/generate', { method: 'POST' }),
+  addGraphFromLecture:   (lectureId: string) => request(`/graph/from-lecture/${lectureId}`, { method: 'POST' }),
 
   // ── YouTube ──────────────────────────────────────
   getYouTubeStatus:       () => request('/youtube/oauth/status'),
