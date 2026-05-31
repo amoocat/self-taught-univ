@@ -14,7 +14,7 @@ import ReactFlow, {
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 
 interface KGNode {
   id: string;
@@ -32,12 +32,56 @@ interface KnowledgeGraphData {
 const CATEGORY_COLOR: Record<string, string> = {
   lecture: "#6366f1",
   concept: "#0ea5e9",
+  MATH:    "#0a1628",
+  STATS:   "#884400",
+  ML:      "#2a5a2a",
+  DL:      "#166534",
+  OPT:     "#7c3aed",
+  CV:      "#b45309",
+  NLP:     "#be123c",
   default: "#94a3b8",
 };
 
 function getDotColor(cat: string) {
   return CATEGORY_COLOR[cat] ?? CATEGORY_COLOR.default;
 }
+
+// ─── Fallback graph (바닐라 JS graph.js 와 동일한 데이터) ──────────────────────
+const FALLBACK_NODES: KGNode[] = [
+  { id:"linear", label:"선형대수",   category:"MATH",  addedFrom:"수학 기초",    addedDate:"2025-01-01" },
+  { id:"stats",  label:"확률·통계",  category:"STATS", addedFrom:"수학 기초",    addedDate:"2025-01-01" },
+  { id:"ml",     label:"머신러닝",   category:"ML",    addedFrom:"ML 기초",      addedDate:"2025-01-01" },
+  { id:"dl",     label:"딥러닝",     category:"DL",    addedFrom:"딥러닝 기초",  addedDate:"2025-01-01" },
+  { id:"attn",   label:"Attention", category:"DL",    addedFrom:"딥러닝 기초",  addedDate:"2025-01-01" },
+  { id:"sgd",    label:"경사하강법", category:"OPT",   addedFrom:"ML 기초",      addedDate:"2025-01-01" },
+  { id:"eigen",  label:"고유값",     category:"MATH",  addedFrom:"수학 기초",    addedDate:"2025-01-01" },
+  { id:"svd",    label:"SVD",       category:"MATH",  addedFrom:"수학 기초",    addedDate:"2025-01-01" },
+  { id:"bayes",  label:"베이즈",     category:"STATS", addedFrom:"수학 기초",    addedDate:"2025-01-01" },
+  { id:"cv",     label:"컴퓨터 비전", category:"CV",   addedFrom:"응용 분야",    addedDate:"2025-01-01" },
+  { id:"nlp",    label:"NLP",       category:"NLP",   addedFrom:"응용 분야",    addedDate:"2025-01-01" },
+  { id:"transf", label:"Transformer",category:"DL",   addedFrom:"딥러닝 기초",  addedDate:"2025-01-01" },
+  { id:"llm",    label:"LLM",       category:"NLP",   addedFrom:"응용 분야",    addedDate:"2025-01-01" },
+];
+
+const FALLBACK_EDGES: { source: string; target: string }[] = [
+  { source:"linear", target:"ml"     },
+  { source:"linear", target:"eigen"  },
+  { source:"linear", target:"svd"    },
+  { source:"linear", target:"attn"   },
+  { source:"stats",  target:"ml"     },
+  { source:"stats",  target:"bayes"  },
+  { source:"ml",     target:"dl"     },
+  { source:"ml",     target:"sgd"    },
+  { source:"dl",     target:"cv"     },
+  { source:"dl",     target:"nlp"    },
+  { source:"dl",     target:"attn"   },
+  { source:"eigen",  target:"svd"    },
+  { source:"sgd",    target:"dl"     },
+  { source:"attn",   target:"transf" },
+  { source:"transf", target:"nlp"    },
+  { source:"transf", target:"llm"    },
+  { source:"nlp",    target:"llm"    },
+];
 
 // ─── Force layout ─────────────────────────────────────────────────────────────
 
@@ -109,20 +153,25 @@ function DotNode({ data }: NodeProps) {
     <div style={{ position: "relative", width: r * 2, height: r * 2, userSelect: "none" }}>
       <Handle type="target" position={Position.Left} style={center} />
       <Handle type="source" position={Position.Right} style={center} />
-      <div style={{ width: r * 2, height: r * 2, borderRadius: "50%", background: color, opacity: 0.85 }} />
-      <span style={{
-        position: "absolute",
-        top: r * 2 + 5,
-        left: "50%",
-        transform: "translateX(-50%)",
-        fontSize: 11,
-        color: "#374151",
-        fontWeight: 500,
-        whiteSpace: "nowrap",
-        pointerEvents: "none",
+      <div style={{
+        width: r * 2, height: r * 2, borderRadius: "50%",
+        background: color,
+        border: "2px solid rgba(255,255,255,0.3)",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        {data.label}
-      </span>
+        <span style={{
+          fontSize: Math.max(9, Math.min(r * 0.7, 13)),
+          color: "#fff",
+          fontWeight: 700,
+          whiteSpace: "nowrap",
+          textAlign: "center",
+          padding: "0 4px",
+          pointerEvents: "none",
+          fontFamily: "'Noto Sans KR', sans-serif",
+        }}>
+          {data.label}
+        </span>
+      </div>
     </div>
   );
 }
@@ -168,7 +217,7 @@ function GraphInner({ kgData }: { kgData: KnowledgeGraphData }) {
         position: positions[n.id] ?? { x: 400, y: 300 },
         draggable: false,
         selectable: false,
-        data: { label: n.label, category: n.category, r: 5 + Math.min((degree[n.id] ?? 0) * 1.5, 8) },
+        data: { label: n.label, category: n.category, r: 14 + Math.min((degree[n.id] ?? 0) * 3, 20) },
       }))
     );
 
@@ -178,7 +227,7 @@ function GraphInner({ kgData }: { kgData: KnowledgeGraphData }) {
         source: e.source,
         target: e.target,
         type: "straight",
-        style: { stroke: "#d1d5db", strokeWidth: 0.8 },
+        style: { stroke: "#94a3b8", strokeWidth: 1.5 },
       }))
     );
 
@@ -294,6 +343,7 @@ function LectureSidebar({ kgData }: { kgData: KnowledgeGraphData }) {
 
 export function KnowledgeGraph() {
   const [kgData, setKgData] = useState<KnowledgeGraphData>({ nodes: [], edges: [] });
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     api.getGraph().then((data: any) => {
@@ -310,12 +360,14 @@ export function KnowledgeGraph() {
         target: String(e.target_id ?? e.target),
       }));
       if (nodes.length > 0) { setKgData({ nodes, edges }); return; }
-      // API 데이터 없으면 localStorage 확인
+      // API 데이터 없으면 localStorage → fallback 순서로 확인
       const raw = localStorage.getItem("knowledgeGraph");
-      if (raw) setKgData(JSON.parse(raw));
+      if (raw) { const parsed = JSON.parse(raw); if (parsed.nodes?.length > 0) { setKgData(parsed); return; } }
+      setKgData({ nodes: FALLBACK_NODES, edges: FALLBACK_EDGES });
     }).catch(() => {
       const raw = localStorage.getItem("knowledgeGraph");
-      if (raw) setKgData(JSON.parse(raw));
+      if (raw) { const parsed = JSON.parse(raw); if (parsed.nodes?.length > 0) { setKgData(parsed); return; } }
+      setKgData({ nodes: FALLBACK_NODES, edges: FALLBACK_EDGES });
     });
   }, []);
 
@@ -331,9 +383,38 @@ export function KnowledgeGraph() {
             Knowledge Graph
           </h1>
         </div>
-        <span className="text-xs text-gray-400">
-          {kgData.nodes.length} keywords · {new Set(kgData.nodes.map((n) => n.addedFrom).filter(Boolean)).size} lectures
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-gray-400">
+            {kgData.nodes.length} keywords · {new Set(kgData.nodes.map((n) => n.addedFrom).filter(Boolean)).size} lectures
+          </span>
+          <button
+            onClick={async () => {
+              setGenerating(true);
+              try {
+                await api.generateGraph();
+                const data: any = await api.getGraph();
+                const nodes: KGNode[] = (data.nodes ?? []).map((n: any) => ({
+                  id: String(n.id ?? n.node_id),
+                  label: n.name ?? n.label ?? "",
+                  category: n.category ?? "concept",
+                  addedFrom: n.lecture_title ?? n.source_lecture ?? n.addedFrom,
+                  addedDate: n.created_at ?? new Date().toISOString(),
+                }));
+                const edges = (data.edges ?? []).map((e: any) => ({
+                  source: String(e.source_id ?? e.source),
+                  target: String(e.target_id ?? e.target),
+                }));
+                if (nodes.length > 0) setKgData({ nodes, edges });
+              } catch { alert("노드 생성 실패"); }
+              finally { setGenerating(false); }
+            }}
+            disabled={generating}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {generating ? "생성 중..." : "AI 노드 생성"}
+          </button>
+        </div>
       </div>
 
       {/* Body: graph + sidebar */}

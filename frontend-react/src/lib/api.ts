@@ -17,6 +17,38 @@ async function request<T = any>(path: string, options?: RequestInit): Promise<T>
   return res.json()
 }
 
+// SSE 스트리밍 헬퍼 — onChunk(text) 콜백으로 토큰 전달
+export async function streamSSE(
+  path: string,
+  body: object,
+  onChunk: (text: string) => void,
+  signal?: AbortSignal,
+) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  })
+  if (!res.ok || !res.body) throw new Error('Stream failed')
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const payload = line.slice(6).trim()
+      if (payload === '[DONE]') return
+      try { onChunk(JSON.parse(payload).text ?? '') } catch { /* skip */ }
+    }
+  }
+}
+
 export const api = {
   // ── 커리큘럼 ─────────────────────────────────────
   getCourses: () => request('/curriculum/'),
@@ -42,8 +74,13 @@ export const api = {
   // ── 피드 ─────────────────────────────────────────
   getFeed: (limit = 30) => request(`/feed/?limit=${limit}`),
 
+  // ── 논문 주석 ────────────────────────────────────
+  addPaper:       (arxiv_id: string) => request('/papers/', { method: 'POST', body: JSON.stringify({ arxiv_id }) }),
+  annotatePaper:  (id: string) => request(`/papers/${id}/annotate`, { method: 'POST' }),
+
   // ── 지식 그래프 ──────────────────────────────────
-  getGraph: () => request('/graph/'),
+  getGraph:         () => request('/graph/'),
+  generateGraph:    () => request('/graph/generate', { method: 'POST' }),
 
   // ── YouTube ──────────────────────────────────────
   getYouTubeStatus:       () => request('/youtube/oauth/status'),

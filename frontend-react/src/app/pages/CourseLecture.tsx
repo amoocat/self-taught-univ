@@ -25,10 +25,13 @@ import {
   Minimize2,
   Pencil,
   Tag,
-  CheckCircle2
+  CheckCircle2,
+  Lightbulb,
+  Send,
+  X,
 } from "lucide-react";
 import { DrawingCanvas } from "../components/DrawingCanvas";
-import { api } from "../../lib/api";
+import { api, streamSSE } from "../../lib/api";
 
 interface Note {
   id: string;
@@ -92,9 +95,52 @@ export function CourseLecture() {
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [noteSaving, setNoteSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
+
+  // 힌트 패널
+  const [hintOpen, setHintOpen] = useState(false);
+  const [hintMsgs, setHintMsgs] = useState<{ role: "user"|"ai"; text: string }[]>([
+    { role: "ai", text: "막히는 부분을 질문해보세요. 단계적인 힌트를 드릴게요!" },
+  ]);
+  const [hintInput, setHintInput] = useState("");
+  const [hintStreaming, setHintStreaming] = useState(false);
+  const hintAbortRef = useRef<AbortController | null>(null);
+  const hintBottomRef = useRef<HTMLDivElement>(null);
+
   const playerRef = useRef<any>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const completingRef = useRef(false);
+
+  async function sendHint() {
+    const message = hintInput.trim();
+    if (!message || hintStreaming || !lectureId) return;
+    setHintInput("");
+    setHintMsgs(prev => [...prev, { role: "user", text: message }]);
+    setHintStreaming(true);
+    const history = hintMsgs.map(m => ({ role: m.role === "ai" ? "assistant" : "user", content: m.text }));
+    hintAbortRef.current = new AbortController();
+    setHintMsgs(prev => [...prev, { role: "ai", text: "" }]);
+    try {
+      await streamSSE(
+        `/chat/lecture/${lectureId}/stream`,
+        { mode: "study", subject: currentLecture?.title ?? "", message, history },
+        (chunk) => setHintMsgs(prev => {
+          const next = [...prev];
+          next[next.length - 1] = { role: "ai", text: next[next.length - 1].text + chunk };
+          return next;
+        }),
+        hintAbortRef.current.signal,
+      );
+    } catch {
+      setHintMsgs(prev => {
+        const next = [...prev];
+        next[next.length - 1] = { role: "ai", text: "⚠️ 오류가 발생했습니다." };
+        return next;
+      });
+    } finally {
+      setHintStreaming(false);
+      setTimeout(() => hintBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
+  }
 
   useEffect(() => {
     if (!courseId || !lectureId) return;
@@ -534,6 +580,52 @@ export function CourseLecture() {
           )}
         </div>
       </div>
+
+      {/* 힌트 패널 — 우측 슬라이드인 */}
+      <div className={`fixed top-0 right-0 h-full w-80 bg-background border-l shadow-xl z-40 flex flex-col transition-transform duration-300 ${hintOpen ? "translate-x-0" : "translate-x-full"}`}>
+        <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground flex-shrink-0">
+          <span className="flex items-center gap-2 font-semibold text-sm">
+            <Lightbulb className="w-4 h-4" /> AI 힌트
+          </span>
+          <button onClick={() => setHintOpen(false)}><X className="w-4 h-4 opacity-70 hover:opacity-100" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+          {hintMsgs.map((m, i) => (
+            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${
+                m.role === "user" ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
+              }`}>
+                {m.text}
+                {m.role === "ai" && m.text === "" && <span className="inline-block w-1.5 h-4 bg-foreground/40 animate-pulse ml-0.5" />}
+              </div>
+            </div>
+          ))}
+          <div ref={hintBottomRef} />
+        </div>
+        <div className="flex border-t flex-shrink-0">
+          <input
+            value={hintInput}
+            onChange={e => setHintInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && sendHint()}
+            placeholder="질문을 입력하세요..."
+            disabled={hintStreaming}
+            className="flex-1 px-3 py-3 text-sm bg-transparent outline-none disabled:opacity-50"
+          />
+          <button onClick={sendHint} disabled={!hintInput.trim() || hintStreaming} className="px-3 text-primary disabled:opacity-30">
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 힌트 토글 버튼 (우측 하단) */}
+      {!hintOpen && currentLecture && (
+        <button
+          onClick={() => setHintOpen(true)}
+          className="fixed bottom-24 right-6 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 text-white shadow-lg hover:bg-amber-600 transition-colors text-sm font-medium"
+        >
+          <Lightbulb className="w-4 h-4" /> 힌트
+        </button>
+      )}
     </div>
   );
 }

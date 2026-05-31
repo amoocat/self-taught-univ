@@ -78,6 +78,7 @@ export function MyPage() {
       setMyNotes(data.map((n: any) => ({
         id: n.id, title: n.title, course: "", content: n.content_md ?? "",
         date: n.updated_at ?? n.created_at ?? "", category: "Lecture",
+        tags: n.tags ?? [],
       })));
     }).catch(() => {
       const saved = localStorage.getItem("lectureNotes");
@@ -155,57 +156,12 @@ export function MyPage() {
         </div>
       )}
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary/10 to-background border-b">
-        <div className="relative max-w-7xl mx-auto px-6 py-10">
-          <div className="flex items-end justify-between gap-8">
-            {/* left: identity */}
-            <div className="flex items-center gap-6">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                <GraduationCap className="w-7 h-7 text-primary" />
-              </div>
-              <div>
-                <div
-                  className="inline-block mb-2 px-3 py-1 rounded bg-primary/10 text-primary"
-                  style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "8px" }}
-                >
-                  USER_DASHBOARD.EXE
-                </div>
-                <h1
-                  className="text-foreground mb-1"
-                  style={{ fontFamily: "'Crimson Pro', Georgia, serif", fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 600, lineHeight: 1.1 }}
-                >
-                  My Page
-                </h1>
-                <p className="text-muted-foreground text-sm">
-                  Welcome back — here's your academic overview.
-                </p>
-              </div>
-            </div>
-
-            {/* right: inline key stats */}
-            <div className="hidden md:flex items-center gap-8 pb-1">
-              <div className="text-right">
-                <div className="text-muted-foreground text-xs uppercase tracking-wider mb-0.5">Courses</div>
-                <div className="text-foreground text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
-                  {myCourses.length}
-                </div>
-              </div>
-              <div className="w-px h-10 bg-border" />
-              <div className="text-right">
-                <div className="text-muted-foreground text-xs uppercase tracking-wider mb-0.5">Notes</div>
-                <div className="text-foreground text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
-                  {myNotes.length}
-                </div>
-              </div>
-              <div className="w-px h-10 bg-border" />
-              <div className="text-right">
-                <div className="text-muted-foreground text-xs uppercase tracking-wider mb-0.5">Avg. Progress</div>
-                <div className="text-foreground text-3xl" style={{ fontFamily: "'Crimson Pro', serif", fontWeight: 600 }}>
-                  {avgProgress}%
-                </div>
-              </div>
-            </div>
-          </div>
+      <section className="relative bg-gradient-to-b from-primary/10 to-background py-6 border-b">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h1 className="text-3xl font-bold mb-1" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            My Page
+          </h1>
+          <p className="text-sm text-muted-foreground">Self-Taught University · Welcome back — here's your academic overview.</p>
         </div>
       </section>
 
@@ -272,7 +228,43 @@ export function MyPage() {
       </section>
 
       {/* Main Content */}
-      <section className="max-w-7xl mx-auto px-6 py-12">
+      <section className="max-w-7xl mx-auto px-6 py-12 flex gap-8 items-start">
+
+        {/* 학생 카드 */}
+        <aside className="w-64 flex-shrink-0 sticky top-[73px]">
+          <div className="border rounded-xl overflow-hidden shadow-sm">
+            {/* 카드 헤더 */}
+            <div className="bg-primary px-5 py-6 text-primary-foreground text-center">
+              <div className="w-16 h-16 rounded-full bg-primary-foreground/10 border-2 border-primary-foreground/30 flex items-center justify-center mx-auto mb-3 text-3xl">
+                🎓
+              </div>
+              <div className="font-bold text-lg leading-tight" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>나, 직접</div>
+              <div className="text-xs opacity-70 mt-1 tracking-wide">Dept. of Artificial Intelligence</div>
+            </div>
+
+            {/* 카드 바디 */}
+            <div className="bg-background divide-y text-sm">
+              {[
+                { label: "학번",       value: "STU-2025-0001" },
+                { label: "전공",       value: "인공지능학과" },
+                { label: "학기",       value: "2025년 1학기" },
+                { label: "이수 학점",  value: `진행 중 (${myCourses.length}과목)` },
+                { label: "전체 진도",  value: `${avgProgress}% 완료` },
+                { label: "최근 활동",  value: "선형대수 Lec.03 학습" },
+                { label: "AI 테스트 점수", value: "7 / 10 (지난 회차)" },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex justify-between items-baseline px-4 py-2.5 gap-2">
+                  <span className="text-xs text-muted-foreground flex-shrink-0">{label}</span>
+                  <span className="text-xs font-medium text-right">{value}</span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </aside>
+
+        {/* 기존 탭 컨텐츠 */}
+        <div className="flex-1 min-w-0">
         <Tabs defaultValue="courses" className="w-full">
           <TabsList className="mb-10">
             <TabsTrigger value="courses">My Courses</TabsTrigger>
@@ -548,7 +540,14 @@ export function MyPage() {
                               </span>
                             </div>
                             <div className="text-xs text-muted-foreground mb-2">{note.course}</div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{note.content}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{note.content}</p>
+                            {(note as any).tags?.length > 0 && (
+                              <div className="flex gap-1 flex-wrap">
+                                {(note as any).tags.map((t: string) => (
+                                  <span key={t} className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">#{t}</span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button variant="ghost" size="sm" asChild>
@@ -614,6 +613,7 @@ export function MyPage() {
             )}
           </TabsContent>
         </Tabs>
+        </div>{/* end flex-1 */}
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 import { Outlet, Link } from "react-router";
 import { Button } from "../components/ui/button";
 import { BookOpen } from "lucide-react";
+import { ChatBot } from "../components/ChatBot";
 
 export function Root() {
   return (
@@ -20,15 +21,16 @@ export function Root() {
           <div className="flex items-center gap-8">
             <Link to="/academics" className="text-sm hover:text-primary transition-colors">Academics</Link>
             <Link to="/course-catalog" className="text-sm hover:text-primary transition-colors">Course Catalog</Link>
-            <a href="#" className="text-sm hover:text-primary transition-colors">Admissions</a>
+            <Link to="/admissions" className="text-sm hover:text-primary transition-colors">Admissions</Link>
             <Link to="/research" className="text-sm hover:text-primary transition-colors">Research</Link>
-            <a href="#" className="text-sm hover:text-primary transition-colors">Campus Life</a>
+            <Link to="/campus-life" className="text-sm hover:text-primary transition-colors">Campus Life</Link>
             <Link to="/my-page" className="text-sm hover:text-primary transition-colors">My Page</Link>
           </div>
         </div>
       </nav>
 
       <Outlet />
+      <ChatBot />
 
       {/* Footer */}
       <footer className="border-t py-16 bg-muted/30">

@@ -15,6 +15,8 @@ import { YouTubeImport } from "./pages/YouTubeImport";
 import { AddCourse } from "./pages/AddCourse";
 import { CurriculumPreview } from "./pages/CurriculumPreview";
 import { GeneratedCourses } from "./pages/GeneratedCourses";
+import { Admissions } from "./pages/Admissions";
+import { CampusLife } from "./pages/CampusLife";
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +38,8 @@ export const router = createBrowserRouter([
       { path: "add-course", Component: AddCourse },
       { path: "course/:courseId", Component: CourseLectures },
       { path: "course/:courseId/lecture/:lectureId", Component: CourseLecture },
+      { path: "admissions", Component: Admissions },
+      { path: "campus-life", Component: CampusLife },
     ],
   },
 ]);
