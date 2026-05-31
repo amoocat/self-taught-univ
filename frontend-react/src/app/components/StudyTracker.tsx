@@ -85,42 +85,41 @@ export function StudyTracker() {
       <div className="grid grid-cols-4 gap-3">
 
         {/* 연속 학습일 — 강조 */}
-        <div className="col-span-1 rounded-xl border bg-gradient-to-br from-orange-50 to-amber-50 border-orange-100 p-4 flex flex-col items-center justify-center gap-1">
-          <Flame className="w-6 h-6 text-orange-500" />
-          <div className="text-3xl font-bold text-orange-600" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-            {stats.streak}
+        <div className="col-span-1 rounded-xl border bg-gradient-to-br from-orange-50 to-amber-50 border-orange-100 px-3 py-2.5 flex items-center gap-3">
+          <Flame className="w-5 h-5 text-orange-500 flex-shrink-0" />
+          <div>
+            <div className="text-2xl font-bold text-orange-600 leading-none" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{stats.streak}</div>
+            <div className="text-[10px] text-orange-500 font-medium mt-0.5">연속 학습일</div>
           </div>
-          <div className="text-xs text-orange-500 font-medium text-center">연속 학습일</div>
-          {stats.streak > 0 && (
-            <div className="text-[10px] text-orange-400">계속 유지 중!</div>
-          )}
         </div>
 
         {/* 최장 연속 */}
-        <div className="rounded-xl border bg-card p-4 flex flex-col items-center justify-center gap-1">
-          <Trophy className="w-5 h-5 text-amber-500" />
-          <div className="text-2xl font-bold" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-            {stats.longest_streak}
+        <div className="rounded-xl border bg-card px-3 py-2.5 flex items-center gap-3">
+          <Trophy className="w-5 h-5 text-amber-500 flex-shrink-0" />
+          <div>
+            <div className="text-2xl font-bold leading-none" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{stats.longest_streak}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">최장 연속</div>
           </div>
-          <div className="text-[11px] text-muted-foreground text-center">최장 연속</div>
         </div>
 
         {/* 총 완료 강의 */}
-        <div className="rounded-xl border bg-card p-4 flex flex-col items-center justify-center gap-1">
-          <BookOpen className="w-5 h-5 text-primary" />
-          <div className="text-2xl font-bold" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-            {stats.total_lectures}
+        <div className="rounded-xl border bg-card px-3 py-2.5 flex items-center gap-3">
+          <BookOpen className="w-5 h-5 text-primary flex-shrink-0" />
+          <div>
+            <div className="text-2xl font-bold leading-none" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{stats.total_lectures}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">총 완료 강의</div>
           </div>
-          <div className="text-[11px] text-muted-foreground text-center">총 완료 강의</div>
         </div>
 
         {/* 총 학습 시간 */}
-        <div className="rounded-xl border bg-card p-4 flex flex-col items-center justify-center gap-1">
-          <Clock className="w-5 h-5 text-blue-500" />
-          <div className="text-2xl font-bold" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-            {stats.total_minutes >= 60 ? `${Math.floor(stats.total_minutes / 60)}h` : `${stats.total_minutes}m`}
+        <div className="rounded-xl border bg-card px-3 py-2.5 flex items-center gap-3">
+          <Clock className="w-5 h-5 text-blue-500 flex-shrink-0" />
+          <div>
+            <div className="text-2xl font-bold leading-none" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+              {stats.total_minutes >= 60 ? `${Math.floor(stats.total_minutes / 60)}h` : `${stats.total_minutes}m`}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">총 학습 시간</div>
           </div>
-          <div className="text-[11px] text-muted-foreground text-center">총 학습 시간</div>
         </div>
       </div>
 
@@ -128,27 +127,27 @@ export function StudyTracker() {
       <div className="grid grid-cols-5 gap-3">
 
         {/* 주간 목표 */}
-        <div className="col-span-2 rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Target className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">주간 목표</span>
+        <div className="col-span-2 rounded-xl border bg-card p-3">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-semibold">주간 목표</span>
           </div>
 
-          <div className="flex items-center justify-around">
+          <div className="flex items-center gap-3">
             <RingProgress
               value={stats.this_week}
               max={WEEKLY_GOAL}
-              size={72}
+              size={60}
               color={weeklyPct >= 100 ? "#22c55e" : "#6366f1"}
               label="이번 주"
             />
-            <div className="space-y-3 flex-1 ml-4">
+            <div className="space-y-2 flex-1">
               <div>
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
                   <span>이번 주</span>
                   <span className="font-medium text-foreground">{stats.this_week} / {WEEKLY_GOAL}</span>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-700"
                     style={{ width: `${weeklyPct}%`, background: weeklyPct >= 100 ? "#22c55e" : "#6366f1" }} />
                 </div>
@@ -158,15 +157,14 @@ export function StudyTracker() {
                   <span>오늘</span>
                   <span className="font-medium text-foreground">{stats.today}개</span>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-amber-400 rounded-full transition-all duration-700"
                     style={{ width: `${Math.min((stats.today / 3) * 100, 100)}%` }} />
                 </div>
               </div>
               {weeklyPct >= 100 && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  이번 주 목표 달성!
+                <div className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                  <CheckCircle2 className="w-3 h-3" /> 목표 달성!
                 </div>
               )}
             </div>
@@ -174,34 +172,27 @@ export function StudyTracker() {
         </div>
 
         {/* 최근 활동 */}
-        <div className="col-span-3 rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">최근 학습</span>
+        <div className="col-span-3 rounded-xl border bg-card p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-semibold">최근 학습</span>
           </div>
 
           {stats.recent.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-20 text-muted-foreground">
-              <Zap className="w-6 h-6 mb-1 opacity-30" />
+            <div className="flex items-center gap-2 h-12 text-muted-foreground">
+              <Zap className="w-4 h-4 opacity-30" />
               <span className="text-xs">아직 완료한 강의가 없어요</span>
             </div>
           ) : (
-            <div className="space-y-2">
-              {stats.recent.map((r, i) => (
-                <div key={i} className="flex items-start gap-3 py-1.5 border-b border-muted/60 last:border-0">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                  </div>
+            <div className="space-y-1">
+              {stats.recent.slice(0, 3).map((r, i) => (
+                <div key={i} className="flex items-center gap-2 py-1 border-b border-muted/50 last:border-0">
+                  <CheckCircle2 className="w-3 h-3 text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-medium truncate">{r.lecture_title}</div>
                     <div className="text-[10px] text-muted-foreground truncate">{r.course_title}</div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-[10px] text-muted-foreground">{fmtDate(r.completed_at)}</div>
-                    {r.duration_sec > 0 && (
-                      <div className="text-[10px] text-muted-foreground">{fmtTime(Math.round(r.duration_sec / 60))}</div>
-                    )}
-                  </div>
+                  <div className="text-[10px] text-muted-foreground flex-shrink-0">{fmtDate(r.completed_at)}</div>
                 </div>
               ))}
             </div>
