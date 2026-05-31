@@ -233,7 +233,7 @@ export function MyPage() {
       <section className="max-w-7xl mx-auto px-6 py-8 flex gap-8 items-start">
 
         {/* 왼쪽: 학생 카드 + 잔디 */}
-        <aside className="w-64 flex-shrink-0 sticky top-[73px] space-y-4">
+        <aside className="w-64 flex-shrink-0 space-y-4">
           {/* 학생 카드 */}
           <div className="border rounded-xl overflow-hidden shadow-sm">
             <div className="bg-primary px-5 py-6 text-primary-foreground text-center">
@@ -272,9 +272,9 @@ export function MyPage() {
             </div>
           </div>
 
-          {/* 공부 잔디 (세로형) */}
-          <div className="border rounded-xl p-4 bg-background shadow-sm">
-            <StudyHeatmap vertical />
+          {/* 공부 잔디 (가로형) */}
+          <div className="border rounded-xl p-4 bg-background shadow-sm overflow-x-auto">
+            <StudyHeatmap />
           </div>
         </aside>
 
