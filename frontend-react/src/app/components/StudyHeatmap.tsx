@@ -35,7 +35,7 @@ function buildGrid(): { date: string; count: number }[] {
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS = ["Mon","","Wed","","Fri","",""];
 
-export function StudyHeatmap() {
+export function StudyHeatmap({ vertical = false }: { vertical?: boolean }) {
   const [grid, setGrid] = useState<{ date: string; count: number }[]>(buildGrid());
   const [total, setTotal] = useState(0);
   const [tooltip, setTooltip] = useState<{ date: string; count: number; x: number; y: number } | null>(null);
@@ -75,6 +75,57 @@ export function StudyHeatmap() {
     return <div className="h-28 bg-muted/30 rounded animate-pulse" />;
   }
 
+  // 세로형: 최근 16주만 사용
+  const displayWeeks = vertical ? weeks.slice(-16) : weeks;
+
+  if (vertical) {
+    return (
+      <div className="relative">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold">공부 잔디</span>
+          <span className="text-[10px] text-muted-foreground">{total}개</span>
+        </div>
+        {/* 세로형: 날짜가 위→아래, 주가 왼→오른 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {Array.from({ length: 7 }, (_, dow) => (
+            <div key={dow} style={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <span style={{ width: 18, fontSize: 8, color: "#94a3b8", flexShrink: 0 }}>
+                {DAYS[dow]}
+              </span>
+              {displayWeeks.map((week, wi) => {
+                const cell = week[dow];
+                if (!cell) return <div key={wi} style={{ width: 13, height: 13 }} />;
+                return (
+                  <div
+                    key={cell.date}
+                    className={`rounded-sm cursor-pointer hover:opacity-70 ${LEVELS[getLevel(cell.count)]}`}
+                    style={{ width: 13, height: 13, flexShrink: 0 }}
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setTooltip({ ...cell, x: rect.left, y: rect.top });
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 mt-2">
+          <span className="text-[9px] text-muted-foreground">Less</span>
+          {LEVELS.map((cls, i) => <div key={i} className={`w-2 h-2 rounded-sm ${cls}`} />)}
+          <span className="text-[9px] text-muted-foreground">More</span>
+        </div>
+        {tooltip && (
+          <div className="fixed z-50 bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg pointer-events-none"
+            style={{ left: tooltip.x, top: tooltip.y - 32 }}>
+            {tooltip.count > 0 ? `${tooltip.date} — ${tooltip.count}개` : `${tooltip.date} — 없음`}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <div className="flex items-center justify-between mb-3">
@@ -86,7 +137,7 @@ export function StudyHeatmap() {
         <div style={{ display: "flex", gap: 2, flexDirection: "column", minWidth: "fit-content" }}>
           {/* 월 라벨 */}
           <div style={{ display: "flex", gap: 2, marginLeft: 28 }}>
-            {weeks.map((_, wi) => {
+            {displayWeeks.map((_, wi) => {
               const label = monthLabels.find(m => m.col === wi);
               return (
                 <div key={wi} style={{ width: 11, fontSize: 9, color: "#94a3b8", flexShrink: 0 }}>
@@ -98,7 +149,6 @@ export function StudyHeatmap() {
 
           {/* 요일 라벨 + 셀 */}
           <div style={{ display: "flex", gap: 0 }}>
-            {/* 요일 */}
             <div style={{ display: "flex", flexDirection: "column", gap: 2, marginRight: 4 }}>
               {DAYS.map((d, i) => (
                 <div key={i} style={{ width: 24, height: 11, fontSize: 9, color: "#94a3b8", display: "flex", alignItems: "center" }}>
@@ -106,9 +156,7 @@ export function StudyHeatmap() {
                 </div>
               ))}
             </div>
-
-            {/* 주(열) */}
-            {weeks.map((week, wi) => (
+            {displayWeeks.map((week, wi) => (
               <div key={wi} style={{ display: "flex", flexDirection: "column", gap: 2, marginRight: 2 }}>
                 {week.map((cell) => (
                   <div

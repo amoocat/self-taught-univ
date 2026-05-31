@@ -229,21 +229,13 @@ export function MyPage() {
         </div>
       </section>
 
-      {/* Study Tracker + Heatmap */}
-      <section className="border-b bg-background">
-        <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-          <StudyTracker />
-          <StudyHeatmap />
-        </div>
-      </section>
-
       {/* Main Content */}
-      <section className="max-w-7xl mx-auto px-6 py-12 flex gap-8 items-start">
+      <section className="max-w-7xl mx-auto px-6 py-8 flex gap-8 items-start">
 
-        {/* 학생 카드 */}
-        <aside className="w-64 flex-shrink-0 sticky top-[73px]">
+        {/* 왼쪽: 학생 카드 + 잔디 */}
+        <aside className="w-64 flex-shrink-0 sticky top-[73px] space-y-4">
+          {/* 학생 카드 */}
           <div className="border rounded-xl overflow-hidden shadow-sm">
-            {/* 카드 헤더 */}
             <div className="bg-primary px-5 py-6 text-primary-foreground text-center">
               <div className="w-16 h-16 rounded-full bg-primary-foreground/10 border-2 border-primary-foreground/30 flex items-center justify-center mx-auto mb-3 text-3xl">
                 🎓
@@ -251,8 +243,6 @@ export function MyPage() {
               <div className="font-bold text-lg leading-tight" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>나, 직접</div>
               <div className="text-xs opacity-70 mt-1 tracking-wide">Dept. of Artificial Intelligence</div>
             </div>
-
-            {/* 카드 바디 */}
             <div className="bg-background divide-y text-sm">
               {[
                 { label: "학번",       value: "STU-2025-0001" },
@@ -269,13 +259,29 @@ export function MyPage() {
                 </div>
               ))}
             </div>
+            {/* 바로가기 버튼 */}
+            <div className="p-3 bg-muted/30 border-t grid grid-cols-2 gap-2">
+              <Link to="/knowledge-graph"
+                className="flex items-center justify-center gap-1.5 text-xs font-medium py-2 px-2 border rounded-lg hover:bg-muted transition-colors text-center">
+                <span>⬡</span> 그래프
+              </Link>
+              <Link to="/world-map"
+                className="flex items-center justify-center gap-1.5 text-xs font-medium py-2 px-2 border rounded-lg hover:bg-muted transition-colors text-center">
+                <span>🗺️</span> 세계지도
+              </Link>
+            </div>
+          </div>
 
+          {/* 공부 잔디 (세로형) */}
+          <div className="border rounded-xl p-4 bg-background shadow-sm">
+            <StudyHeatmap vertical />
           </div>
         </aside>
 
-        {/* 기존 탭 컨텐츠 */}
-        <div className="flex-1 min-w-0">
-        <Tabs defaultValue="courses" className="w-full">
+        {/* 오른쪽: 스터디 트래커 + 탭 */}
+        <div className="flex-1 min-w-0 space-y-6">
+          <StudyTracker />
+          <Tabs defaultValue="courses" className="w-full">
           <TabsList className="mb-10">
             <TabsTrigger value="courses">My Courses</TabsTrigger>
             <TabsTrigger value="notes">Lecture Notes</TabsTrigger>
