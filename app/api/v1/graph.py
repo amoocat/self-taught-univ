@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from pydantic import BaseModel
+from typing import Any
 
 from app.core.config import settings
 from app.db.session import get_db
@@ -15,6 +17,39 @@ from app.models.models import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+class GraphNodeOut(BaseModel):
+    id: str
+    label: str
+    connected: bool
+    color: str
+    r: int
+    tag: str
+    desc: str
+    links: list[str]
+
+class GraphOut(BaseModel):
+    nodes: list[GraphNodeOut]
+    edges: list[list[str]]
+
+class CleanupOut(BaseModel):
+    deleted: int
+
+class FromLectureOut(BaseModel):
+    created: int
+    lecture: str = ""
+    concepts: list[str] = []
+    error: str = ""
+
+class FromCourseOut(BaseModel):
+    created: int
+    lectures_processed: int
+    results: list[dict]
+
+class GenerateOut(BaseModel):
+    created: int
+    message: str
 
 _COLOR = {
     "MATH": "#0a1628",
@@ -29,7 +64,7 @@ _COLOR = {
 }
 
 
-@router.get("/")
+@router.get("/", response_model=GraphOut)
 async def get_graph(db: AsyncSession = Depends(get_db)):
     nodes = (await db.execute(select(GraphNode))).scalars().all()
     edges = (await db.execute(select(GraphEdge))).scalars().all()
@@ -131,7 +166,7 @@ async def _extract_concepts_gpt(lecture: Lecture, cat: str) -> list[dict]:
     return json.loads(resp.choices[0].message.content).get("concepts", [])[:5]
 
 
-@router.post("/from-lecture/{lecture_id}")
+@router.post("/from-lecture/{lecture_id}", response_model=FromLectureOut)
 async def add_nodes_from_lecture(lecture_id: str, db: AsyncSession = Depends(get_db)):
     """강의 완료 시 핵심 개념 3~5개를 그래프 노드로 등록합니다. GPT 실패 시 rule-based fallback."""
     lecture = (await db.execute(
@@ -180,7 +215,7 @@ async def add_nodes_from_lecture(lecture_id: str, db: AsyncSession = Depends(get
     return {"created": created, "lecture": lecture.title, "concepts": [n.label for n in new_nodes]}
 
 
-@router.delete("/nodes/cleanup")
+@router.delete("/nodes/cleanup", response_model=CleanupOut)
 async def cleanup_auto_nodes(db: AsyncSession = Depends(get_db)):
     """note_id 없는 자동생성 노드와 연결된 엣지를 전부 삭제합니다."""
     auto_node_ids = (await db.execute(
@@ -199,7 +234,7 @@ async def cleanup_auto_nodes(db: AsyncSession = Depends(get_db)):
     return {"deleted": len(auto_node_ids)}
 
 
-@router.post("/from-course/{course_id}/completed")
+@router.post("/from-course/{course_id}/completed", response_model=FromCourseOut)
 async def add_nodes_from_completed_lectures(course_id: str, db: AsyncSession = Depends(get_db)):
     """강좌의 완료된 강의들에서 GPT로 개념 노드를 일괄 생성합니다."""
     completed_ids = (await db.execute(
@@ -257,7 +292,7 @@ async def add_nodes_from_completed_lectures(course_id: str, db: AsyncSession = D
     return {"created": total_created, "lectures_processed": len(results), "results": results}
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=GenerateOut)
 async def generate_concept_nodes(db: AsyncSession = Depends(get_db)):
     """강좌 목록을 GPT가 읽고 핵심 개념 노드 최대 50개를 생성합니다."""
     # 강좌 + 강의 수집

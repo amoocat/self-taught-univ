@@ -3,11 +3,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.models.models import FeedItem
 
 router = APIRouter()
+
+
+class FeedItemOut(BaseModel):
+    id: str
+    title: str
+    url: str
+    source: str
+    source_type: str
+    badge: str
+    summary: Optional[str] = None
+    fetched_at: Optional[str] = None
 
 _BADGE = {
     "personal": "badge-personal",
@@ -58,7 +70,7 @@ def _to_out(item: FeedItem) -> dict:
     }
 
 
-@router.get("/")
+@router.get("/", response_model=list[FeedItemOut])
 async def list_feed(
     source_type: Optional[str] = None,
     limit: int = Query(50, le=200),

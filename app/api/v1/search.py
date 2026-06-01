@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
+from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.models.models import Lecture, MyNote, Paper
@@ -9,7 +10,24 @@ from app.models.models import Lecture, MyNote, Paper
 router = APIRouter()
 
 
-@router.get("/")
+class SearchResultItem(BaseModel):
+    type: str
+    id: str
+    title: str
+    subtitle: Optional[str] = None
+    category: Optional[str] = None
+    course_id: Optional[str] = None
+    preview: Optional[str] = None
+    authors: Optional[list[str]] = None
+    arxiv_id: Optional[str] = None
+
+class SearchOut(BaseModel):
+    q: str
+    total: int
+    results: list[SearchResultItem]
+
+
+@router.get("/", response_model=SearchOut)
 async def search(
     q: str,
     type: Optional[str] = None,  # "lecture" | "note" | "paper" | None(전체)

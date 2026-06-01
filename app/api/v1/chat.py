@@ -14,6 +14,13 @@ from app.core.errors import get_or_404
 router = APIRouter()
 client = openai.AsyncOpenAI(api_key=settings.CHATGPT_API_KEY)
 
+
+class SessionOut(BaseModel):
+    session_id: str
+
+class SaveMessagesOut(BaseModel):
+    ok: bool
+
 STUDY_SYSTEM = """
 너는 STU(Self-Taught University)의 AI 학습 튜터야.
 학생이 AI/ML 개념을 공부할 수 있도록 도와줘.
@@ -146,7 +153,7 @@ async def chat_paper_stream(
     )
 
 
-@router.post("/sessions")
+@router.post("/sessions", response_model=SessionOut)
 async def create_session(
     mode: str = "study",
     subject: str = "선형대수학",
@@ -159,7 +166,7 @@ async def create_session(
     return {"session_id": session.id}
 
 
-@router.put("/sessions/{session_id}/messages")
+@router.put("/sessions/{session_id}/messages", response_model=SaveMessagesOut)
 async def save_messages(
     session_id: str,
     messages: list[dict],

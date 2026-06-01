@@ -1,5 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
+const HERO_IMAGES = [
+  { src: "https://images.unsplash.com/photo-1562774053-701939374585?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920", label: "MIT" },
+  { src: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920", label: "Stanford" },
+  { src: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920", label: "KAIST" },
+  { src: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920", label: "Seoul National" },
+  { src: "https://images.unsplash.com/photo-1607237138185-eedd9c632b0b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920", label: "Princeton" },
+];
 import { Button } from "../components/ui/button";
 import { Link } from "react-router";
 import { GraduationCap, Users, Award, BookOpenCheck } from "lucide-react";
@@ -13,6 +21,14 @@ export function Home() {
   const prevSlide = useCallback(() => setSlide(s => (s - 1 + SLIDE_COUNT) % SLIDE_COUNT), []);
   const nextSlide = useCallback(() => setSlide(s => (s + 1) % SLIDE_COUNT), []);
 
+  // Hero 슬라이드쇼
+  const [heroIdx, setHeroIdx] = useState(0);
+  const heroTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    heroTimer.current = setInterval(() => setHeroIdx(i => (i + 1) % HERO_IMAGES.length), 4000);
+    return () => { if (heroTimer.current) clearInterval(heroTimer.current); };
+  }, []);
+
   useEffect(() => {
     api.getCourses().then((data: any[]) => {
       const totalLectures = data.reduce((s: number, c: any) => s + (c.lecture_count ?? 0), 0);
@@ -22,16 +38,21 @@ export function Home() {
 
   return (
     <>
-      {/* Hero Section - Campus Image */}
+      {/* Hero Section - Campus Slideshow */}
       <section className="relative h-[600px] overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1644984875418-7e95a9e48d0a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920"
-            alt="Campus view"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/70" />
-        </div>
+        {/* 슬라이드 이미지들 — 크로스페이드 */}
+        {HERO_IMAGES.map((img, i) => (
+          <div
+            key={img.src}
+            className="absolute inset-0 transition-opacity duration-1000"
+            style={{ opacity: i === heroIdx ? 1 : 0 }}
+          >
+            <img src={img.src} alt={img.label} className="w-full h-full object-cover" />
+          </div>
+        ))}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/70" />
+
+        {/* 텍스트 */}
         <div className="relative h-full max-w-7xl mx-auto px-6 flex items-end pb-20">
           <div className="max-w-3xl text-white">
             <div className="text-xs tracking-wider mb-4 opacity-90" style={{ fontFamily: "'Press Start 2P', monospace" }}>
@@ -44,6 +65,22 @@ export function Home() {
               A tradition of excellence in scholarship and education
             </p>
           </div>
+        </div>
+
+        {/* 인디케이터 dots */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+          {HERO_IMAGES.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setHeroIdx(i)}
+              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === heroIdx ? "bg-white w-4" : "bg-white/40"}`}
+            />
+          ))}
+        </div>
+
+        {/* 현재 대학 라벨 */}
+        <div className="absolute bottom-6 right-8 text-white/50 text-xs font-mono tracking-widest transition-opacity duration-500">
+          {HERO_IMAGES[heroIdx].label}
         </div>
       </section>
 
