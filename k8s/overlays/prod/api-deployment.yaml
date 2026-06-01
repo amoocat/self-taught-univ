@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-deployment
+spec:
+  replicas: 2              # prod는 2개 replica (가용성)
+  template:
+    spec:
+      containers:
+        - name: api
+          image: yourdockerhub/stu-api:latest
+          env:
+            - name: DEBUG
+              value: "false"

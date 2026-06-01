@@ -1,0 +1,91 @@
+# ── PostgreSQL (pgvector) ─────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: stu-postgres
+spec:
+  serviceName: stu-postgres-svc
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stu-postgres
+  template:
+    metadata:
+      labels:
+        app: stu-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: stu
+            - name: POSTGRES_PASSWORD
+              value: stu
+            - name: POSTGRES_DB
+              value: stu
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stu-postgres-svc
+spec:
+  selector:
+    app: stu-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None   # Headless for StatefulSet
+---
+# ── Redis ─────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stu-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stu-redis
+  template:
+    metadata:
+      labels:
+        app: stu-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stu-redis-svc
+spec:
+  selector:
+    app: stu-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
