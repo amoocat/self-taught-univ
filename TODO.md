@@ -8,7 +8,7 @@
 
 ## 🛠️ 백엔드 API 품질 개선
 
-- [ ] **Pydantic response 스키마 명시** — 현재 일부 엔드포인트가 `dict` 그대로 반환
+- [x] **Pydantic response 스키마 명시** — 현재 일부 엔드포인트가 `dict` 그대로 반환
 - [ ] **JWT 인증 기초** — `POST /auth/login`, `POST /auth/refresh`, `get_current_user` 뼈대
 
 ---
@@ -25,7 +25,7 @@
 - [ ] 지식 그래프 → 세계 지도로 완전 대체 여부 결정 (현재 둘 다 존재)
 
 ### 🎓 학교 페이지 고도화
-- [ ] **홈 Hero 캠퍼스 슬라이드쇼** — MIT·Stanford·서울대·KAIST 사진 교차
+- [x] **홈 Hero 캠퍼스 슬라이드쇼** — MIT·Stanford·서울대·KAIST 사진 교차
 - [ ] **Major / Degree 페이지** — Academics 탭에 전공 소개 + 이수 요건 추가
 
 ### 📚 콘텐츠
