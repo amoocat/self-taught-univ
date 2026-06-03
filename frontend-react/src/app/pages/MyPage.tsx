@@ -6,7 +6,7 @@ import { StudyHeatmap } from "../components/StudyHeatmap";
 import { StudyTracker } from "../components/StudyTracker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { BookOpen, FileText, Calendar, Clock, GraduationCap, Plus, Edit, Trash2, Play, Star, TrendingUp, Zap } from "lucide-react";
+import { FileText, GraduationCap, Plus, Edit, Trash2, Play } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
@@ -141,13 +141,6 @@ export function MyPage() {
 
   const totalNotePages = Math.ceil(myNotes.length / PAGE_SIZE);
   const pagedNotes = myNotes.slice((notePage - 1) * PAGE_SIZE, notePage * PAGE_SIZE);
-
-  const weeklyNotes = myNotes.filter((note) => {
-    const noteDate = new Date(note.date);
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return noteDate > weekAgo;
-  }).length;
 
   return (
     <div className="min-h-screen bg-background">

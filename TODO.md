@@ -8,7 +8,7 @@
 
 ## 🛠️ 백엔드 API 품질 개선
 
-- [ ] **Pydantic response 스키마 명시** — 현재 일부 엔드포인트가 `dict` 그대로 반환
+- [x] **Pydantic response 스키마 명시** — 현재 일부 엔드포인트가 `dict` 그대로 반환
 - [ ] **JWT 인증 기초** — `POST /auth/login`, `POST /auth/refresh`, `get_current_user` 뼈대
 
 ---
@@ -25,8 +25,8 @@
 - [ ] 지식 그래프 → 세계 지도로 완전 대체 여부 결정 (현재 둘 다 존재)
 
 ### 🎓 학교 페이지 고도화
-- [ ] **홈 Hero 캠퍼스 슬라이드쇼** — MIT·Stanford·서울대·KAIST 사진 교차
-- [ ] **Major / Degree 페이지** — Academics 탭에 전공 소개 + 이수 요건 추가
+- [x] **홈 Hero 캠퍼스 슬라이드쇼** — MIT·Stanford·서울대·KAIST 사진 교차
+- [x] **Major / Degree 페이지** — Academics 탭에 전공 소개 + 이수 요건 추가
 
 ### 📚 콘텐츠
 - [ ] **신규 강좌: LLM Engineering** — Udemy 강좌 추가
@@ -36,7 +36,7 @@
 
 ### 🔧 개발/인프라
 - [ ] **GitHub Webhook + Projects 연동**
-- [ ] **develop → main 머지 + release 태그** — 첫 릴리즈
+- [x] **develop → main 머지 + release 태그** — 첫 릴리즈
 
 ### 커리큘럼 자동 구성 — 키워드 기반 v1
 - [ ] `app/services/curriculum_builder.py` — CHAPTER_DEFINITIONS + 영상 매칭 로직
@@ -51,7 +51,7 @@
 
 ## 🤖 MCP 개발 (학습봇용) — 우선순위 순
 
-- [ ] **1순위** STU 자체 MCP — 진도·노트·취약점 DB 조회
+- [x] **1순위** STU 자체 MCP — 진도·노트·취약점 DB 조회
 - [ ] **2순위** Brave 웹 검색 MCP
 - [ ] **3순위** arXiv MCP — 논문 검색·요약
 - [ ] **4순위** YouTube MCP — 강의 검색

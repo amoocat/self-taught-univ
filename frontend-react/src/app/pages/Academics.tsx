@@ -4,6 +4,7 @@ import { Link } from "react-router";
 const TABS = [
   { id: "greeting",  label: "설립자 인사말" },
   { id: "majors",    label: "개설 전공" },
+  { id: "degree",    label: "학위 요건" },
   { id: "vision",    label: "학습 비전" },
 ];
 
@@ -35,6 +36,34 @@ const MAJORS = [
     english: "Industrial Engineering",
     desc: "시스템 최적화, 운영 효율화, 의사결정 이론을 바탕으로 AI를 실제 산업 현장에 적용하는 방법론을 연구합니다.",
     courses: ["산업공학", "수치해석·최적화", "인과추론", "ML 시스템 설계"],
+  },
+];
+
+const DEGREE_REQUIREMENTS = [
+  {
+    major: "인공지능 (AI-001)",
+    total: "6개 과목 이수",
+    required: ["선형대수학", "확률·통계", "머신러닝", "딥러닝"],
+    elective: ["컴퓨터 비전", "자연어처리", "LLM", "강화학습"],
+    capstone: "논문 3편 독해 + 지식 그래프 50노드 이상",
+    roadmap: [
+      { phase: "1학기", courses: ["선형대수학", "확률·통계"], label: "수학 기초" },
+      { phase: "2학기", courses: ["머신러닝"], label: "ML 입문" },
+      { phase: "3학기", courses: ["딥러닝"], label: "DL 심화" },
+      { phase: "4학기+", courses: ["컴퓨터 비전", "NLP", "LLM"], label: "응용 전공" },
+    ],
+  },
+  {
+    major: "데이터 사이언스 (DS-002)",
+    total: "5개 과목 이수",
+    required: ["확률·통계", "머신러닝", "데이터 엔지니어링"],
+    elective: ["MLOps", "응용 머신러닝", "인과추론"],
+    capstone: "실전 프로젝트 1건 + 테크 블로그 30편 읽기",
+    roadmap: [
+      { phase: "1학기", courses: ["확률·통계"], label: "통계 기초" },
+      { phase: "2학기", courses: ["머신러닝", "데이터 엔지니어링"], label: "데이터 파이프라인" },
+      { phase: "3학기+", courses: ["MLOps", "응용 머신러닝"], label: "실무 적용" },
+    ],
   },
 ];
 
@@ -184,6 +213,77 @@ export function Academics() {
                     {m.courses.map((c) => (
                       <span key={c} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{c}</span>
                     ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 학위 요건 */}
+          <section id="degree" className="scroll-mt-24">
+            <h2 className="text-3xl md:text-4xl font-bold mb-2" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+              학위 요건
+            </h2>
+            <p className="text-muted-foreground mb-10">각 전공의 이수 기준과 학습 로드맵입니다.</p>
+
+            <div className="space-y-10">
+              {DEGREE_REQUIREMENTS.map((d) => (
+                <div key={d.major} className="rounded-xl border overflow-hidden">
+                  {/* 헤더 */}
+                  <div className="bg-primary/5 border-b px-6 py-4">
+                    <h3 className="text-xl font-bold" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{d.major}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">총 이수 기준: <span className="font-medium text-foreground">{d.total}</span></p>
+                  </div>
+
+                  <div className="p-6 grid md:grid-cols-2 gap-8">
+                    {/* 이수 요건 */}
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">필수 과목</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {d.required.map(c => (
+                            <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-primary text-primary-foreground font-medium">{c}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">선택 과목</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {d.elective.map(c => (
+                            <span key={c} className="text-xs px-2.5 py-1 rounded-full border text-muted-foreground">{c}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">캡스톤 요건</div>
+                        <p className="text-sm text-muted-foreground">{d.capstone}</p>
+                      </div>
+                    </div>
+
+                    {/* 로드맵 */}
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">권장 학습 로드맵</div>
+                      <div className="space-y-2">
+                        {d.roadmap.map((r, i) => (
+                          <div key={i} className="flex gap-3 items-start">
+                            <div className="flex flex-col items-center">
+                              <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0">
+                                {i + 1}
+                              </div>
+                              {i < d.roadmap.length - 1 && <div className="w-px h-4 bg-border mt-1" />}
+                            </div>
+                            <div className="pb-1">
+                              <div className="text-xs font-medium text-muted-foreground">{r.phase} · {r.label}</div>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {r.courses.map(c => (
+                                  <span key={c} className="text-xs px-2 py-0.5 rounded bg-muted text-foreground">{c}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

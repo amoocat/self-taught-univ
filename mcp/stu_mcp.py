@@ -299,3 +299,234 @@ def get_youtube_title(youtube_url: str) -> str:
 
 if __name__ == "__main__":
     mcp.run()
+
+
+# ---------------------------------------------------------------------------
+# Progress & Stats
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def get_study_stats() -> str:
+    """Get study statistics: streak, total completed, weekly count, recent 5 activities."""
+    from datetime import timedelta, date as date_type
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT p.completed_at, l.title AS lecture_title, c.title AS course_title,
+                       l.duration_sec
+                FROM progress p
+                JOIN lectures l ON l.id = p.lecture_id
+                JOIN courses c ON c.id = p.course_id
+                ORDER BY p.completed_at DESC
+            """)
+            rows = cur.fetchall()
+
+    if not rows:
+        return json.dumps({"streak": 0, "total_lectures": 0, "this_week": 0, "recent": []})
+
+    total = len(rows)
+    day_set = {r["completed_at"].date() for r in rows}
+    today = datetime.utcnow().date()
+
+    streak = 0
+    check = today if today in day_set else today - timedelta(days=1)
+    while check in day_set:
+        streak += 1
+        check -= timedelta(days=1)
+
+    week_start = today - timedelta(days=today.weekday())
+    this_week = sum(1 for r in rows if r["completed_at"].date() >= week_start)
+
+    recent = [
+        {
+            "lecture": r["lecture_title"],
+            "course": r["course_title"],
+            "completed_at": r["completed_at"].isoformat(),
+            "duration_min": round((r["duration_sec"] or 0) / 60),
+        }
+        for r in rows[:5]
+    ]
+    return json.dumps({
+        "streak": streak,
+        "total_lectures": total,
+        "this_week": this_week,
+        "recent": recent,
+    }, ensure_ascii=False, default=str)
+
+
+@mcp.tool()
+def get_progress_by_course() -> str:
+    """Get completion percentage for each course."""
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT c.id, c.title, c.category,
+                       COUNT(l.id) AS total,
+                       COUNT(p.lecture_id) AS done
+                FROM courses c
+                LEFT JOIN lectures l ON l.course_id = c.id
+                LEFT JOIN progress p ON p.lecture_id = l.id
+                GROUP BY c.id, c.title, c.category
+                ORDER BY c.category, c.title
+            """)
+            rows = cur.fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["progress_pct"] = round(d["done"] / d["total"] * 100, 1) if d["total"] else 0.0
+        result.append(d)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def get_weak_concepts(limit: int = 10) -> str:
+    """Return graph nodes that have NOT been covered in completed lectures (potential weak spots)."""
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT gn.label, gn.category, gn.has_content
+                FROM graph_nodes gn
+                WHERE gn.has_content = false OR gn.id NOT IN (
+                    SELECT DISTINCT gn2.id
+                    FROM graph_nodes gn2
+                    JOIN progress p ON lower(gn2.label) IN (
+                        SELECT lower(unnest(l.tags))
+                        FROM lectures l WHERE l.id = p.lecture_id
+                    )
+                )
+                ORDER BY gn.category, gn.label
+                LIMIT %s
+            """, (limit,))
+            rows = cur.fetchall()
+    return json.dumps([dict(r) for r in rows], ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# Notes
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def list_notes(limit: int = 20) -> str:
+    """List my notes (most recently updated first)."""
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT id, title, tags, updated_at,
+                       left(content_md, 200) AS preview
+                FROM my_notes
+                ORDER BY updated_at DESC
+                LIMIT %s
+            """, (limit,))
+            rows = cur.fetchall()
+    return json.dumps([dict(r) for r in rows], ensure_ascii=False, default=str)
+
+
+@mcp.tool()
+def get_note(note_id: str) -> str:
+    """Get full content of a note by ID."""
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("SELECT * FROM my_notes WHERE id = %s", (note_id,))
+            row = cur.fetchone()
+    if not row:
+        return json.dumps({"error": "not found"})
+    return json.dumps(dict(row), ensure_ascii=False, default=str)
+
+
+@mcp.tool()
+def search_notes(query: str, limit: int = 10) -> str:
+    """Search notes by title or content."""
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT id, title, tags, updated_at,
+                       left(content_md, 300) AS preview
+                FROM my_notes
+                WHERE title ILIKE %s OR content_md ILIKE %s
+                ORDER BY updated_at DESC
+                LIMIT %s
+            """, (f"%{query}%", f"%{query}%", limit))
+            rows = cur.fetchall()
+    return json.dumps([dict(r) for r in rows], ensure_ascii=False, default=str)
+
+
+@mcp.tool()
+def create_note(title: str, content_md: str, tags: Optional[list] = None) -> str:
+    """Create a new study note."""
+    new_id = str(uuid.uuid4())
+    now = datetime.utcnow()
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("""
+                INSERT INTO my_notes (id, title, content_md, tags, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, title
+            """, (new_id, title, content_md, json.dumps(tags or []), now, now))
+            row = cur.fetchone()
+        con.commit()
+    return json.dumps(dict(row), ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Graph
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def list_graph_nodes(category: Optional[str] = None) -> str:
+    """List knowledge graph nodes, optionally filtered by category (MATH/ML/DL/NLP etc)."""
+    with _conn() as con:
+        with con.cursor() as cur:
+            if category:
+                cur.execute("""
+                    SELECT gn.id, gn.label, gn.category, gn.has_content,
+                           COUNT(DISTINCT ge1.id) + COUNT(DISTINCT ge2.id) AS degree
+                    FROM graph_nodes gn
+                    LEFT JOIN graph_edges ge1 ON ge1.source_id = gn.id
+                    LEFT JOIN graph_edges ge2 ON ge2.target_id = gn.id
+                    WHERE upper(gn.category) = upper(%s)
+                    GROUP BY gn.id ORDER BY degree DESC
+                """, (category,))
+            else:
+                cur.execute("""
+                    SELECT gn.id, gn.label, gn.category, gn.has_content,
+                           COUNT(DISTINCT ge1.id) + COUNT(DISTINCT ge2.id) AS degree
+                    FROM graph_nodes gn
+                    LEFT JOIN graph_edges ge1 ON ge1.source_id = gn.id
+                    LEFT JOIN graph_edges ge2 ON ge2.target_id = gn.id
+                    GROUP BY gn.id ORDER BY degree DESC
+                """)
+            rows = cur.fetchall()
+    return json.dumps([dict(r) for r in rows], ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# Papers
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def list_papers() -> str:
+    """List all papers in the archive."""
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT id, title, authors, year, venue, arxiv_id, category
+                FROM papers ORDER BY year DESC, title
+            """)
+            rows = cur.fetchall()
+    return json.dumps([dict(r) for r in rows], ensure_ascii=False, default=str)
+
+
+@mcp.tool()
+def get_paper_annotations(paper_id: str) -> str:
+    """Get AI annotations (keyword explanations) for a paper."""
+    with _conn() as con:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT keyword, explanation
+                FROM paper_annotations
+                WHERE paper_id = %s
+                ORDER BY keyword
+            """, (paper_id,))
+            rows = cur.fetchall()
+    return json.dumps([dict(r) for r in rows], ensure_ascii=False)
+

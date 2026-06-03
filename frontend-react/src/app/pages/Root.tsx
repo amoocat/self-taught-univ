@@ -18,10 +18,10 @@ export function Root() {
           </Link>
           <div className="flex items-center gap-6">
             <Link to="/academics" className="text-sm hover:text-primary transition-colors">Academics</Link>
-            <Link to="/course-catalog" className="text-sm hover:text-primary transition-colors">Course Catalog</Link>
             <Link to="/admissions" className="text-sm hover:text-primary transition-colors">Admissions</Link>
-            <Link to="/research" className="text-sm hover:text-primary transition-colors">Research</Link>
             <Link to="/campus-life" className="text-sm hover:text-primary transition-colors">Campus Life</Link>
+            <Link to="/course-catalog" className="text-sm hover:text-primary transition-colors">Course Catalog</Link>
+            <Link to="/research" className="text-sm hover:text-primary transition-colors">Research</Link>
             <Link to="/my-page" className="text-sm hover:text-primary transition-colors">My Page</Link>
           </div>
         </div>

@@ -11,7 +11,7 @@ from datetime import datetime
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.models import Course, Lecture, LectureNote, Progress
-from app.core.errors import NotFoundError, get_or_404
+from app.core.errors import get_or_404
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,31 @@ class LectureOut(BaseModel):
     class Config:
         from_attributes = True
 
+
+class HeatmapDay(BaseModel):
+    date: str
+    count: int
+
+class HeatmapOut(BaseModel):
+    heatmap: list[HeatmapDay]
+
+class RecentActivity(BaseModel):
+    lecture_title: str
+    course_title: str
+    completed_at: str
+    duration_sec: int
+
+class StatsOut(BaseModel):
+    streak: int
+    longest_streak: int
+    total_lectures: int
+    total_minutes: int
+    this_week: int
+    today: int
+    recent: list[RecentActivity]
+
+class OkOut(BaseModel):
+    ok: bool = True
 
 class LectureDetailOut(BaseModel):
     id: str
@@ -137,7 +162,7 @@ async def list_courses(
     return result
 
 
-@router.get("/heatmap")
+@router.get("/heatmap", response_model=HeatmapOut)
 async def get_heatmap(db: AsyncSession = Depends(get_db)):
     """최근 365일간 날짜별 완료 강의 수를 반환합니다."""
     from datetime import timedelta
@@ -152,11 +177,11 @@ async def get_heatmap(db: AsyncSession = Depends(get_db)):
     return {"heatmap": [{"date": str(r.day), "count": r.count} for r in rows]}
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=StatsOut)
 async def get_stats(db: AsyncSession = Depends(get_db)):
     """연속 학습일·총 완료·학습 시간·이번 주·최근 활동 등 스터디 통계를 반환합니다."""
     from datetime import timedelta, date
-    from sqlalchemy import cast, Date, join
+    from sqlalchemy import cast, Date
 
     # 완료 기록 전체 (최신순)
     rows = (await db.execute(
@@ -286,7 +311,7 @@ async def list_lectures(
     ]
 
 
-@router.post("/{course_id}/lectures/{lecture_id}/complete", status_code=201)
+@router.post("/{course_id}/lectures/{lecture_id}/complete", status_code=201, response_model=OkOut)
 async def mark_complete(course_id: str, lecture_id: str, db: AsyncSession = Depends(get_db)):
     existing = (await db.execute(
         select(Progress).where(
