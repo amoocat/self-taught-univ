@@ -11,7 +11,7 @@ from datetime import datetime
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.models import Course, Lecture, LectureNote, Progress
-from app.core.errors import NotFoundError, get_or_404
+from app.core.errors import get_or_404
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +181,7 @@ async def get_heatmap(db: AsyncSession = Depends(get_db)):
 async def get_stats(db: AsyncSession = Depends(get_db)):
     """연속 학습일·총 완료·학습 시간·이번 주·최근 활동 등 스터디 통계를 반환합니다."""
     from datetime import timedelta, date
-    from sqlalchemy import cast, Date, join
+    from sqlalchemy import cast, Date
 
     # 완료 기록 전체 (최신순)
     rows = (await db.execute(

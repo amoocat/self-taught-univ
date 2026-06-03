@@ -7,7 +7,6 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
-from typing import Any
 
 from app.core.config import settings
 from app.db.session import get_db
