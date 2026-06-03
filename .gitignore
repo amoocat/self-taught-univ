@@ -8,3 +8,9 @@ venv/
 .claude/
 oauth_tokens/
 
+# 크롤러 작업 상태 파일 (로컬 전용)
+checkpoint.json
+failed.json
+skipped.json
+update_result.json
+
