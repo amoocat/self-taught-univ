@@ -16,10 +16,15 @@ class FeedItemOut(BaseModel):
     title: str
     url: str
     source: str
-    source_type: str
-    badge: str
-    summary: Optional[str] = None
-    fetched_at: Optional[str] = None
+    source_type: str = ""
+    badge: str = ""
+    date: str = ""
+    summary: str = ""
+    keywords: list[str] = []
+    category: str = "etc"
+    color: str = ""
+    courses: list = []
+    related_paper: Optional[str] = None
 
 _BADGE = {
     "personal": "badge-personal",
@@ -57,6 +62,7 @@ def _to_out(item: FeedItem) -> dict:
     return {
         "id": item.id,
         "source": item.source_name,
+        "source_type": item.source_type or "",
         "badge": _badge(item.source_type),
         "date": _fmt_date(item.published_at),
         "title": item.title,

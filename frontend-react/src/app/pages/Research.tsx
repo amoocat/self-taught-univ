@@ -29,6 +29,29 @@ interface BlogPost {
   readTime: string;
 }
 
+function Pagination({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
+  if (total <= 1) return null;
+  const pages = Array.from({ length: total }, (_, i) => i + 1);
+  return (
+    <div className="flex items-center justify-center gap-1 mt-8 pt-6 border-t">
+      <button onClick={() => onChange(page - 1)} disabled={page === 1}
+        className="px-3 py-1.5 text-sm border rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+        ← 이전
+      </button>
+      {pages.map(p => (
+        <button key={p} onClick={() => onChange(p)}
+          className={`w-8 h-8 text-sm rounded-md transition-colors ${p === page ? "bg-primary text-primary-foreground" : "hover:bg-muted border"}`}>
+          {p}
+        </button>
+      ))}
+      <button onClick={() => onChange(page + 1)} disabled={page === total}
+        className="px-3 py-1.5 text-sm border rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+        다음 →
+      </button>
+    </div>
+  );
+}
+
 export function Research() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -36,6 +59,9 @@ export function Research() {
   const [activeTab, setActiveTab] = useState("papers");
   const [papers, setPapers] = useState<Paper[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [paperPage, setPaperPage] = useState(1);
+  const [blogPage, setBlogPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     api.getPapers().then((data: any[]) => setPapers(data.map((p: any, i: number) => {
@@ -87,6 +113,12 @@ export function Research() {
     const matchesCompany = selectedCompany === "All" || post.company === selectedCompany;
     return matchesSearch && matchesCategory && matchesCompany;
   });
+
+  // 페이지네이션
+  const pagedPapers = filteredPapers.slice((paperPage - 1) * PAGE_SIZE, paperPage * PAGE_SIZE);
+  const totalPaperPages = Math.ceil(filteredPapers.length / PAGE_SIZE);
+  const pagedBlogs = filteredBlogs.slice((blogPage - 1) * PAGE_SIZE, blogPage * PAGE_SIZE);
+  const totalBlogPages = Math.ceil(filteredBlogs.length / PAGE_SIZE);
 
 
   return (
@@ -172,7 +204,7 @@ export function Research() {
                 type="text"
                 placeholder="Search papers, authors, companies..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setPaperPage(1); setBlogPage(1); }}
                 className="pl-12 h-12 text-base"
               />
             </div>
@@ -185,6 +217,8 @@ export function Research() {
               setActiveTab(val);
               setSelectedCategory("All");
               setSelectedCompany("All");
+              setPaperPage(1);
+              setBlogPage(1);
             }}
           >
             <TabsList className="mb-8">
@@ -195,34 +229,20 @@ export function Research() {
             {/* Research Papers */}
             <TabsContent value="papers">
               <div className="divide-y">
-                {filteredPapers.map((paper, i) => {
-                  const gradients = [
-                    "from-pink-200 via-rose-100 to-pink-50",
-                    "from-violet-200 via-purple-100 to-violet-50",
-                    "from-lime-200 via-green-100 to-lime-50",
-                    "from-sky-200 via-blue-100 to-sky-50",
-                    "from-amber-200 via-yellow-100 to-amber-50",
-                  ];
-                  const grad = gradients[i % gradients.length];
+                {pagedPapers.map((paper, i) => {
+                  const gradients = ["from-pink-200 via-rose-100 to-pink-50","from-violet-200 via-purple-100 to-violet-50","from-lime-200 via-green-100 to-lime-50","from-sky-200 via-blue-100 to-sky-50","from-amber-200 via-yellow-100 to-amber-50"];
                   return (
-                    <div key={paper.id} className="flex gap-8 py-10">
-                      <Link
-                        to={`/research/paper/${paper.id}`}
-                        state={{ paper }}
-                        className={`hidden sm:block flex-shrink-0 w-56 aspect-[4/3] rounded-xl bg-gradient-to-br ${grad} hover:opacity-90 transition-opacity`}
-                      />
-                      <div className="flex flex-col justify-center gap-3">
-                        <Link
-                          to={`/research/paper/${paper.id}`}
-                          state={{ paper }}
-                          className="text-2xl font-bold leading-snug hover:underline"
-                          style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}
-                        >
+                    <div key={paper.id} className="flex gap-8 py-8">
+                      <Link to={`/research/paper/${paper.id}`} state={{ paper }}
+                        className={`hidden sm:block flex-shrink-0 w-48 aspect-[4/3] rounded-xl bg-gradient-to-br ${gradients[i % gradients.length]} hover:opacity-90 transition-opacity`} />
+                      <div className="flex flex-col justify-center gap-2">
+                        <Link to={`/research/paper/${paper.id}`} state={{ paper }}
+                          className="text-xl font-bold leading-snug hover:underline"
+                          style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
                           {paper.title}
                         </Link>
                         <p className="text-sm text-muted-foreground">
-                          {paper.authors.slice(0, 3).join(", ")}
-                          {paper.authors.length > 3 && " 외"}
+                          {paper.authors.slice(0, 3).join(", ")}{paper.authors.length > 3 && " 외"}
                           {paper.date && ` · ${paper.date}`}
                         </p>
                       </div>
@@ -230,34 +250,22 @@ export function Research() {
                   );
                 })}
               </div>
+              <Pagination page={paperPage} total={totalPaperPages} onChange={p => { setPaperPage(p); window.scrollTo(0,0); }} />
             </TabsContent>
 
             {/* Tech Blogs */}
             <TabsContent value="blogs">
               <div className="divide-y">
-                {filteredBlogs.map((post, i) => {
-                  const gradients = [
-                    "from-sky-200 via-blue-100 to-sky-50",
-                    "from-amber-200 via-yellow-100 to-amber-50",
-                    "from-pink-200 via-rose-100 to-pink-50",
-                    "from-lime-200 via-green-100 to-lime-50",
-                    "from-violet-200 via-purple-100 to-violet-50",
-                  ];
-                  const grad = gradients[i % gradients.length];
+                {pagedBlogs.map((post, i) => {
+                  const gradients = ["from-sky-200 via-blue-100 to-sky-50","from-amber-200 via-yellow-100 to-amber-50","from-pink-200 via-rose-100 to-pink-50","from-lime-200 via-green-100 to-lime-50","from-violet-200 via-purple-100 to-violet-50"];
                   return (
-                    <div key={post.id} className="flex gap-8 py-10">
-                      <Link
-                        to={`/research/blog/${post.id}`}
-                        state={{ post }}
-                        className={`hidden sm:block flex-shrink-0 w-56 aspect-[4/3] rounded-xl bg-gradient-to-br ${grad} hover:opacity-90 transition-opacity`}
-                      />
-                      <div className="flex flex-col justify-center gap-3">
-                        <Link
-                          to={`/research/blog/${post.id}`}
-                          state={{ post }}
-                          className="text-2xl font-bold leading-snug hover:underline"
-                          style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}
-                        >
+                    <div key={post.id} className="flex gap-8 py-8">
+                      <Link to={`/research/blog/${post.id}`} state={{ post }}
+                        className={`hidden sm:block flex-shrink-0 w-48 aspect-[4/3] rounded-xl bg-gradient-to-br ${gradients[i % gradients.length]} hover:opacity-90 transition-opacity`} />
+                      <div className="flex flex-col justify-center gap-2">
+                        <Link to={`/research/blog/${post.id}`} state={{ post }}
+                          className="text-xl font-bold leading-snug hover:underline"
+                          style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
                           {post.title}
                         </Link>
                         <p className="text-sm text-muted-foreground">
@@ -268,6 +276,7 @@ export function Research() {
                   );
                 })}
               </div>
+              <Pagination page={blogPage} total={totalBlogPages} onChange={p => { setBlogPage(p); window.scrollTo(0,0); }} />
             </TabsContent>
           </Tabs>
         </div>
