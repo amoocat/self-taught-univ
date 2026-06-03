@@ -4,30 +4,49 @@ import { api } from "../../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Search } from "lucide-react";
+import { Search, ExternalLink, BookOpen, Rss } from "lucide-react";
 
 interface Paper {
   id: string;
   title: string;
   authors: string[];
   abstract: string;
-  date: string;
+  year: string;
+  venue: string;        // 저널/컨퍼런스
   category: string;
+  arxivId: string;
   url: string;
-  citations: number;
 }
 
 interface BlogPost {
   id: string;
   title: string;
-  company: string;
-  author: string;
-  excerpt: string;
+  company: string;      // 회사명
+  sourceType: string;   // personal / bigtech / korean / arxiv
+  summary: string;
   date: string;
   category: string;
+  keywords: string[];
   url: string;
-  readTime: string;
 }
+
+const SOURCE_TYPE_LABEL: Record<string, string> = {
+  personal: "개인 블로그",
+  bigtech:  "빅테크",
+  korean:   "국내 기업",
+  arxiv:    "arXiv",
+  blog:     "블로그",
+  youtube:  "YouTube",
+};
+
+const SOURCE_TYPE_COLOR: Record<string, string> = {
+  personal: "bg-rose-50 text-rose-600 border-rose-200",
+  bigtech:  "bg-blue-50 text-blue-600 border-blue-200",
+  korean:   "bg-emerald-50 text-emerald-600 border-emerald-200",
+  arxiv:    "bg-violet-50 text-violet-600 border-violet-200",
+  blog:     "bg-rose-50 text-rose-600 border-rose-200",
+  youtube:  "bg-amber-50 text-amber-600 border-amber-200",
+};
 
 function Pagination({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
   if (total <= 1) return null;
@@ -74,44 +93,48 @@ export function Research() {
         title: p.title,
         authors,
         abstract: p.abstract ?? "",
-        date: p.year ? String(p.year) : "",
-        category: p.venue ?? "Research",
+        year: p.year ? String(p.year) : "",
+        venue: p.venue ?? "",
+        category: p.category ?? "",
+        arxivId: p.arxiv_id ?? "",
         url: p.arxiv_id ? `https://arxiv.org/abs/${p.arxiv_id}` : "#",
-        citations: 0,
       };
     }))).catch(console.error);
 
-    api.getFeed(50).then((data: any[]) => setBlogPosts(data.map((f: any, i: number) => ({
+    api.getFeed(200).then((data: any[]) => setBlogPosts(data.map((f: any, i: number) => ({
       id: String(f.id ?? i),
       title: f.title,
-      company: f.source ?? f.source_name ?? "",
-      author: "",
-      excerpt: f.summary ?? "",
+      company: f.source ?? "",
+      sourceType: f.source_type ?? "blog",
+      summary: f.summary ?? "",
       date: f.date ?? "",
-      category: f.category ?? f.source_type ?? "Tech",
+      category: f.category ?? "",
+      keywords: f.keywords ?? [],
       url: f.url ?? "#",
-      readTime: "",
     })))).catch(console.error);
   }, []);
 
-  const categories = ["All", ...Array.from(new Set(papers.map(p => p.category)))];
-  const companies = ["All", ...Array.from(new Set(blogPosts.map(b => b.company)))];
+  const categories = ["All", ...Array.from(new Set(papers.map(p => p.venue).filter(Boolean)))];
+  const companies  = ["All", ...Array.from(new Set(blogPosts.map(b => b.company).filter(Boolean)))];
 
   const filteredPapers = papers.filter((paper) => {
-    const matchesSearch = searchQuery === "" ||
-      paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      paper.authors.some(a => a.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = selectedCategory === "All" || paper.category === selectedCategory;
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      paper.title.toLowerCase().includes(q) ||
+      paper.authors.some(a => a.toLowerCase().includes(q)) ||
+      paper.venue.toLowerCase().includes(q);
+    const matchesCategory = selectedCategory === "All" || paper.venue === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const filteredBlogs = blogPosts.filter((post) => {
-    const matchesSearch = searchQuery === "" ||
-      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.company.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "All" || post.category === selectedCategory;
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      post.title.toLowerCase().includes(q) ||
+      post.company.toLowerCase().includes(q) ||
+      post.summary.toLowerCase().includes(q);
     const matchesCompany = selectedCompany === "All" || post.company === selectedCompany;
-    return matchesSearch && matchesCategory && matchesCompany;
+    return matchesSearch && matchesCompany;
   });
 
   // 페이지네이션
@@ -142,8 +165,8 @@ export function Research() {
             {[
               { value: papers.length, label: "Papers" },
               { value: blogPosts.length, label: "Blog Posts" },
-              { value: 8, label: "Companies" },
-              { value: "24/7", label: "Updated" },
+              { value: new Set(blogPosts.map(b => b.company)).size, label: "Sources" },
+              { value: new Set(blogPosts.map(b => b.sourceType)).size, label: "Types" },
             ].map(({ value, label }) => (
               <div key={label} className="text-center">
                 <div className="text-2xl font-bold" style={{ fontFamily: "'VT323', monospace" }}>{value}</div>
@@ -228,53 +251,114 @@ export function Research() {
 
             {/* Research Papers */}
             <TabsContent value="papers">
-              <div className="divide-y">
-                {pagedPapers.map((paper, i) => {
-                  const gradients = ["from-pink-200 via-rose-100 to-pink-50","from-violet-200 via-purple-100 to-violet-50","from-lime-200 via-green-100 to-lime-50","from-sky-200 via-blue-100 to-sky-50","from-amber-200 via-yellow-100 to-amber-50"];
-                  return (
-                    <div key={paper.id} className="flex gap-8 py-8">
-                      <Link to={`/research/paper/${paper.id}`} state={{ paper }}
-                        className={`hidden sm:block flex-shrink-0 w-48 aspect-[4/3] rounded-xl bg-gradient-to-br ${gradients[i % gradients.length]} hover:opacity-90 transition-opacity`} />
-                      <div className="flex flex-col justify-center gap-2">
-                        <Link to={`/research/paper/${paper.id}`} state={{ paper }}
-                          className="text-xl font-bold leading-snug hover:underline"
-                          style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-                          {paper.title}
-                        </Link>
-                        <p className="text-sm text-muted-foreground">
-                          {paper.authors.slice(0, 3).join(", ")}{paper.authors.length > 3 && " 외"}
-                          {paper.date && ` · ${paper.date}`}
-                        </p>
-                      </div>
+              <div className="space-y-3">
+                {pagedPapers.map((paper) => (
+                  <Link
+                    key={paper.id}
+                    to={`/research/paper/${paper.id}`}
+                    state={{ paper }}
+                    className="block border rounded-xl p-5 hover:border-primary/40 hover:bg-muted/20 transition-all group"
+                  >
+                    {/* 상단: 베뉴 + 연도 + 카테고리 */}
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      {paper.venue && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                          {paper.venue}
+                        </span>
+                      )}
+                      {paper.year && (
+                        <span className="text-xs text-muted-foreground">{paper.year}</span>
+                      )}
+                      {paper.category && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border">
+                          {paper.category}
+                        </span>
+                      )}
+                      {paper.arxivId && (
+                        <span className="text-xs font-mono text-muted-foreground">arXiv:{paper.arxivId}</span>
+                      )}
                     </div>
-                  );
-                })}
+
+                    {/* 제목 */}
+                    <h3 className="text-lg font-bold leading-snug mb-2 group-hover:text-primary transition-colors"
+                      style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+                      {paper.title}
+                    </h3>
+
+                    {/* 저자 */}
+                    <p className="text-sm text-muted-foreground mb-2">
+                      <BookOpen className="inline w-3.5 h-3.5 mr-1 opacity-50" />
+                      {paper.authors.slice(0, 4).join(", ")}
+                      {paper.authors.length > 4 && <span> 외 {paper.authors.length - 4}명</span>}
+                    </p>
+
+                    {/* 초록 미리보기 */}
+                    {paper.abstract && (
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                        {paper.abstract}
+                      </p>
+                    )}
+                  </Link>
+                ))}
               </div>
               <Pagination page={paperPage} total={totalPaperPages} onChange={p => { setPaperPage(p); window.scrollTo(0,0); }} />
             </TabsContent>
 
             {/* Tech Blogs */}
             <TabsContent value="blogs">
-              <div className="divide-y">
-                {pagedBlogs.map((post, i) => {
-                  const gradients = ["from-sky-200 via-blue-100 to-sky-50","from-amber-200 via-yellow-100 to-amber-50","from-pink-200 via-rose-100 to-pink-50","from-lime-200 via-green-100 to-lime-50","from-violet-200 via-purple-100 to-violet-50"];
-                  return (
-                    <div key={post.id} className="flex gap-8 py-8">
-                      <Link to={`/research/blog/${post.id}`} state={{ post }}
-                        className={`hidden sm:block flex-shrink-0 w-48 aspect-[4/3] rounded-xl bg-gradient-to-br ${gradients[i % gradients.length]} hover:opacity-90 transition-opacity`} />
-                      <div className="flex flex-col justify-center gap-2">
-                        <Link to={`/research/blog/${post.id}`} state={{ post }}
-                          className="text-xl font-bold leading-snug hover:underline"
-                          style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
-                          {post.title}
-                        </Link>
-                        <p className="text-sm text-muted-foreground">
-                          {[post.company, post.date].filter(Boolean).join(" · ")}
-                        </p>
-                      </div>
+              <div className="space-y-3">
+                {pagedBlogs.map((post) => (
+                  <Link
+                    key={post.id}
+                    to={`/research/blog/${post.id}`}
+                    state={{ post }}
+                    className="block border rounded-xl p-5 hover:border-primary/40 hover:bg-muted/20 transition-all group"
+                  >
+                    {/* 상단: 회사 + 타입 + 날짜 + 카테고리 */}
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      {post.company && (
+                        <span className="text-xs font-semibold text-foreground">{post.company}</span>
+                      )}
+                      {post.sourceType && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${SOURCE_TYPE_COLOR[post.sourceType] ?? "bg-muted text-muted-foreground border-border"}`}>
+                          {SOURCE_TYPE_LABEL[post.sourceType] ?? post.sourceType}
+                        </span>
+                      )}
+                      {post.category && post.category !== "etc" && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border">
+                          {post.category.toUpperCase()}
+                        </span>
+                      )}
+                      {post.date && (
+                        <span className="text-xs text-muted-foreground ml-auto">{post.date}</span>
+                      )}
                     </div>
-                  );
-                })}
+
+                    {/* 제목 */}
+                    <h3 className="text-lg font-bold leading-snug mb-2 group-hover:text-primary transition-colors"
+                      style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+                      {post.title}
+                    </h3>
+
+                    {/* 요약 */}
+                    {post.summary && (
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-2">
+                        {post.summary}
+                      </p>
+                    )}
+
+                    {/* 키워드 */}
+                    {post.keywords.length > 0 && (
+                      <div className="flex gap-1 flex-wrap">
+                        {post.keywords.slice(0, 5).map(k => (
+                          <span key={k} className="text-[10px] px-1.5 py-0.5 bg-primary/5 text-primary rounded">
+                            #{k}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
+                ))}
               </div>
               <Pagination page={blogPage} total={totalBlogPages} onChange={p => { setBlogPage(p); window.scrollTo(0,0); }} />
             </TabsContent>
