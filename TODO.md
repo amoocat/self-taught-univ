@@ -6,6 +6,26 @@
 
 ---
 
+## 🔒 보안 / 퍼블릭 오픈 전 필수 항목
+
+> SE 관점 코드 리뷰 결과. 🔴 = 퍼블릭 전 필수, 🟡 = 권장, 🟢 = 나중에
+
+### 🔴 퍼블릭 전 필수
+- [ ] **Rate Limiting** — `/api/v1/chat/stream`, `/lecture/{id}/stream`, `/paper/{id}/stream` 에 IP당 분 10회 제한 (`slowapi` 사용)
+- [ ] **최소 API 인증** — `X-API-Key` 헤더 또는 `DEBUG=False` 시 외부 접근 차단. 현재 모든 엔드포인트 무인증 공개 상태
+
+### 🟡 권장
+- [ ] **config.py 기본값 경고** — `DATABASE_URL` 기본값이 `stu:stu` 약한 자격증명. `.env.example`에 `CHANGE_ME` 경고 추가
+- [ ] **서버 로깅 설정** — `logging.basicConfig` 추가, 프로덕션 에러 로그 기록 (현재 스택트레이스 노출은 없지만 서버 사이드 기록 미흡)
+
+### 🟢 나중에 (리팩토링)
+- [ ] `api/v1/youtube.py` (932줄) 분리 — `youtube_oauth.py` / `youtube_playlists.py`
+- [ ] `models/models.py` 분리 — `models/curriculum.py`, `models/notes.py` 등
+- [ ] `api/v1/chat.py` 시스템 프롬프트 → `core/prompts.py`로 분리
+- [ ] `jobs/tasks.py` + `crawlers/scheduler.py` 역할 중복 → 통합 정리
+
+---
+
 ## 🛠️ 백엔드 API 품질 개선
 
 - [x] **Pydantic response 스키마 명시** — 현재 일부 엔드포인트가 `dict` 그대로 반환
