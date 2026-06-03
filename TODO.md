@@ -26,7 +26,7 @@
 
 ### 🎓 학교 페이지 고도화
 - [x] **홈 Hero 캠퍼스 슬라이드쇼** — MIT·Stanford·서울대·KAIST 사진 교차
-- [ ] **Major / Degree 페이지** — Academics 탭에 전공 소개 + 이수 요건 추가
+- [x] **Major / Degree 페이지** — Academics 탭에 전공 소개 + 이수 요건 추가
 
 ### 📚 콘텐츠
 - [ ] **신규 강좌: LLM Engineering** — Udemy 강좌 추가
@@ -51,7 +51,7 @@
 
 ## 🤖 MCP 개발 (학습봇용) — 우선순위 순
 
-- [ ] **1순위** STU 자체 MCP — 진도·노트·취약점 DB 조회
+- [x] **1순위** STU 자체 MCP — 진도·노트·취약점 DB 조회
 - [ ] **2순위** Brave 웹 검색 MCP
 - [ ] **3순위** arXiv MCP — 논문 검색·요약
 - [ ] **4순위** YouTube MCP — 강의 검색
