@@ -36,7 +36,7 @@
 
 ### 🔧 개발/인프라
 - [ ] **GitHub Webhook + Projects 연동**
-- [ ] **develop → main 머지 + release 태그** — 첫 릴리즈
+- [x] **develop → main 머지 + release 태그** — 첫 릴리즈
 
 ### 커리큘럼 자동 구성 — 키워드 기반 v1
 - [ ] `app/services/curriculum_builder.py` — CHAPTER_DEFINITIONS + 영상 매칭 로직
