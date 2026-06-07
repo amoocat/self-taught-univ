@@ -19,9 +19,9 @@
 - [ ] **서버 로깅 설정** — `logging.basicConfig` 추가, 프로덕션 에러 로그 기록 (현재 스택트레이스 노출은 없지만 서버 사이드 기록 미흡)
 
 ### 🟢 나중에 (리팩토링)
-- [ ] `api/v1/youtube.py` (932줄) 분리 — `youtube_oauth.py` / `youtube_playlists.py`
-- [ ] `models/models.py` 분리 — `models/curriculum.py`, `models/notes.py` 등
-- [ ] `api/v1/chat.py` 시스템 프롬프트 → `core/prompts.py`로 분리
+- [x] `api/v1/youtube.py` (932줄) 분리 — `youtube_oauth.py` / `youtube_playlists.py`
+- [x] `models/models.py` 분리 — `curriculum.py` / `research.py` / `graph.py` / `chat.py` / `youtube.py` (models.py는 backward-compat facade로 유지)
+- [x] `api/v1/chat.py` 시스템 프롬프트 → `core/prompts.py`로 분리
 - [ ] `jobs/tasks.py` + `crawlers/scheduler.py` 역할 중복 → 통합 정리
 
 ---
