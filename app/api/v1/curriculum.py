@@ -425,6 +425,38 @@ async def delete_lecture(lecture_id: str, db: AsyncSession = Depends(get_db)):
     return {"ok": True, "deleted": lecture_id}
 
 
+class BulkDeleteIn(BaseModel):
+    ids: list[str]
+
+
+@router.delete("/lectures", status_code=200)
+async def bulk_delete_lectures(body: BulkDeleteIn, db: AsyncSession = Depends(get_db)):
+    """강의 일괄 삭제. body: {"ids": ["uuid", ...]}"""
+    if not body.ids:
+        return {"deleted": 0}
+    lectures = (await db.execute(
+        select(Lecture).where(Lecture.id.in_(body.ids))
+    )).scalars().all()
+    for lec in lectures:
+        await db.delete(lec)
+    await db.commit()
+    return {"deleted": len(lectures)}
+
+
+@router.delete("/{course_id}", status_code=200)
+async def delete_course(course_id: str, db: AsyncSession = Depends(get_db)):
+    """강좌 전체 삭제 (강의 포함)."""
+    course = await get_or_404(db, Course, course_id, "Course")
+    lectures = (await db.execute(
+        select(Lecture).where(Lecture.course_id == course_id)
+    )).scalars().all()
+    for lec in lectures:
+        await db.delete(lec)
+    await db.delete(course)
+    await db.commit()
+    return {"deleted": course_id, "lectures_deleted": len(lectures)}
+
+
 @router.post("/backfill-metadata", status_code=200)
 async def backfill_metadata(reset: bool = False, db: AsyncSession = Depends(get_db)):
     """GPT-4o-mini로 전체 강의에 difficulty(1~3) + module_name 일괄 배정.

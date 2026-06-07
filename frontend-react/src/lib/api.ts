@@ -93,6 +93,12 @@ export const api = {
   generateGraph:         () => request('/graph/generate', { method: 'POST' }),
   addGraphFromLecture:   (lectureId: string) => request(`/graph/from-lecture/${lectureId}`, { method: 'POST' }),
 
+  // ── 강좌/강의 삭제 ───────────────────────────────
+  deleteLecture:      (id: string) => request(`/curriculum/lectures/${id}`, { method: 'DELETE' }),
+  bulkDeleteLectures: (ids: string[]) =>
+    request('/curriculum/lectures', { method: 'DELETE', body: JSON.stringify({ ids }) }),
+  deleteCourse:       (id: string) => request(`/curriculum/${id}`, { method: 'DELETE' }),
+
   // ── YouTube ──────────────────────────────────────
   getYouTubeStatus:       () => request('/youtube/oauth/status'),
   getPlaylists:           () => request('/youtube/playlists'),

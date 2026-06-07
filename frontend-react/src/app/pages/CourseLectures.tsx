@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router";
-import { ArrowLeft, Play, CheckCircle2, Clock, Youtube } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle2, Clock, Youtube, Pencil, Trash2, CheckSquare, Square, X } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Progress } from "../components/ui/progress";
+import { Button } from "../components/ui/button";
 import { api } from "../../lib/api";
 
 interface Lecture {
@@ -56,6 +57,12 @@ export function CourseLectures() {
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 편집 모드
+  const [editMode, setEditMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(false);
+
   useEffect(() => {
     if (!courseId) return;
     Promise.all([api.getCourse(courseId), api.getLectures(courseId)])
@@ -77,6 +84,50 @@ export function CourseLectures() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [courseId]);
+
+  // 편집 모드 종료 시 선택 초기화
+  const exitEditMode = () => {
+    setEditMode(false);
+    setSelected(new Set());
+    setConfirmDeleteCourse(false);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => setSelected(new Set(lectures.map(l => l.id)));
+  const selectNone = () => setSelected(new Set());
+
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return;
+    setDeleting(true);
+    try {
+      await api.bulkDeleteLectures([...selected]);
+      setLectures(prev => prev.filter(l => !selected.has(l.id)));
+      setSelected(new Set());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!courseId) return;
+    setDeleting(true);
+    try {
+      await api.deleteCourse(courseId);
+      navigate("/course-catalog");
+    } catch (e) {
+      console.error(e);
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -130,15 +181,86 @@ export function CourseLectures() {
           </div>
           <Badge variant="secondary" className="text-xs">{course.category.toUpperCase()}</Badge>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground mb-1">
-              {completedCount} / {lectures.length}강 완료
-            </p>
-            <Progress value={progressPct} className="h-1.5 w-32" />
-          </div>
+
+        <div className="flex items-center gap-4">
+          {/* 진행률 */}
+          {!editMode && (
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground mb-1">
+                {completedCount} / {lectures.length}강 완료
+              </p>
+              <Progress value={progressPct} className="h-1.5 w-32" />
+            </div>
+          )}
+
+          {/* 편집 모드 토글 */}
+          {!editMode ? (
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={() => setEditMode(true)}>
+              <Pencil size={13} /> 편집
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              {/* 전체 선택 / 해제 */}
+              <Button variant="ghost" size="sm" className="text-xs h-8 gap-1"
+                onClick={selected.size === lectures.length ? selectNone : selectAll}>
+                {selected.size === lectures.length
+                  ? <><CheckSquare size={13} /> 전체 해제</>
+                  : <><Square size={13} /> 전체 선택</>
+                }
+              </Button>
+
+              {/* 선택 삭제 */}
+              <Button
+                variant="destructive"
+                size="sm"
+                className="text-xs h-8 gap-1"
+                disabled={selected.size === 0 || deleting}
+                onClick={handleBulkDelete}
+              >
+                <Trash2 size={13} />
+                {selected.size > 0 ? `${selected.size}개 삭제` : "삭제"}
+              </Button>
+
+              {/* 강좌 전체 삭제 */}
+              {!confirmDeleteCourse ? (
+                <Button variant="ghost" size="sm" className="text-xs h-8 text-destructive hover:text-destructive gap-1"
+                  onClick={() => setConfirmDeleteCourse(true)}>
+                  <Trash2 size={13} /> 강좌 삭제
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1 bg-destructive/10 border border-destructive/30 rounded-md px-2 py-1">
+                  <span className="text-xs text-destructive font-medium">정말 삭제?</span>
+                  <button className="text-xs text-destructive underline ml-1"
+                    onClick={handleDeleteCourse} disabled={deleting}>
+                    확인
+                  </button>
+                  <button className="text-xs text-muted-foreground ml-1"
+                    onClick={() => setConfirmDeleteCourse(false)}>
+                    취소
+                  </button>
+                </div>
+              )}
+
+              {/* 편집 종료 */}
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={exitEditMode}>
+                <X size={14} />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* 편집 모드 상태 바 */}
+      {editMode && (
+        <div className="bg-amber-50 border-b border-amber-200 px-8 py-2 flex items-center gap-3">
+          <span className="text-xs font-medium text-amber-700">편집 모드</span>
+          <span className="text-xs text-amber-600">
+            {selected.size > 0
+              ? `${selected.size}개 선택됨 · 강의 카드를 클릭해서 선택/해제`
+              : "강의 카드를 클릭해서 선택하세요"}
+          </span>
+        </div>
+      )}
 
       {/* 모듈 가로 스크롤 뷰 */}
       <div className="flex-1 overflow-x-auto overflow-y-auto">
@@ -153,20 +275,42 @@ export function CourseLectures() {
             const groupDone = group.lectures.filter(l => l.completed).length;
             const groupPct = group.lectures.length > 0
               ? Math.round((groupDone / group.lectures.length) * 100) : 0;
+            const groupSelectedCount = group.lectures.filter(l => selected.has(l.id)).length;
 
             return (
               <div key={gi} className="flex items-start">
                 <div className="flex flex-col gap-3" style={{ width: 220 }}>
                   {/* 모듈 헤더 */}
                   <div className="flex flex-col gap-0.5 px-1">
-                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: c.text }}>
-                      Module {gi + 1}
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: c.text }}>
+                        Module {gi + 1}
+                      </span>
+                      {/* 편집 모드: 모듈 전체 선택 */}
+                      {editMode && (
+                        <button
+                          className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                          onClick={() => {
+                            const allInGroup = group.lectures.map(l => l.id);
+                            const allSelected = allInGroup.every(id => selected.has(id));
+                            setSelected(prev => {
+                              const next = new Set(prev);
+                              allSelected
+                                ? allInGroup.forEach(id => next.delete(id))
+                                : allInGroup.forEach(id => next.add(id));
+                              return next;
+                            });
+                          }}
+                        >
+                          {groupSelectedCount === group.lectures.length ? "해제" : "모두 선택"}
+                        </button>
+                      )}
+                    </div>
                     <span className="text-sm font-bold text-foreground">{group.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {group.lectures.length}강 · {groupDone} 완료
+                      {group.lectures.length}강 · {editMode ? `${groupSelectedCount}개 선택` : `${groupDone} 완료`}
                     </span>
-                    <Progress value={groupPct} className="h-1 mt-1" />
+                    {!editMode && <Progress value={groupPct} className="h-1 mt-1" />}
                   </div>
 
                   {/* 모듈 연결 도트 */}
@@ -177,43 +321,68 @@ export function CourseLectures() {
 
                   {/* 강의 카드 목록 */}
                   <div className="flex flex-col gap-2">
-                    {group.lectures.map((lec, idx) => (
-                      <div
-                        key={lec.id}
-                        onClick={() => navigate(`/course/${courseId}/lecture/${lec.id}`)}
-                        className="group relative rounded-xl p-3 border cursor-pointer transition-all hover:shadow-md"
-                        style={{ background: c.bar, borderColor: c.border }}
-                      >
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs mt-0.5 flex-shrink-0 font-medium w-5 text-center"
-                            style={{ color: c.text }}>
-                            {lec.completed
-                              ? <CheckCircle2 size={12} className="inline" style={{ color: c.dot }} />
-                              : idx + 1}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-gray-700 leading-snug line-clamp-3">
-                              {lec.title}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {lec.duration && (
-                                <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                                  <Clock size={9} />{lec.duration}
-                                </span>
-                              )}
-                              {lec.youtube_url && (
-                                <Youtube size={9} className="text-red-400 flex-shrink-0" />
-                              )}
+                    {group.lectures.map((lec, idx) => {
+                      const isSelected = selected.has(lec.id);
+                      return (
+                        <div
+                          key={lec.id}
+                          onClick={() => {
+                            if (editMode) {
+                              toggleSelect(lec.id);
+                            } else {
+                              navigate(`/course/${courseId}/lecture/${lec.id}`);
+                            }
+                          }}
+                          className={`group relative rounded-xl p-3 border cursor-pointer transition-all hover:shadow-md ${
+                            editMode && isSelected
+                              ? "ring-2 ring-destructive border-destructive/40 bg-destructive/5"
+                              : ""
+                          }`}
+                          style={
+                            editMode && isSelected
+                              ? undefined
+                              : { background: c.bar, borderColor: c.border }
+                          }
+                        >
+                          <div className="flex items-start gap-2">
+                            {/* 체크박스 (편집 모드) or 번호 */}
+                            <span className="text-xs mt-0.5 flex-shrink-0 font-medium w-5 text-center"
+                              style={{ color: c.text }}>
+                              {editMode
+                                ? (isSelected
+                                    ? <CheckSquare size={12} className="text-destructive" />
+                                    : <Square size={12} className="text-muted-foreground" />)
+                                : (lec.completed
+                                    ? <CheckCircle2 size={12} className="inline" style={{ color: c.dot }} />
+                                    : idx + 1)
+                              }
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-gray-700 leading-snug line-clamp-3">
+                                {lec.title}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                {lec.duration && (
+                                  <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                                    <Clock size={9} />{lec.duration}
+                                  </span>
+                                )}
+                                {lec.youtube_url && (
+                                  <Youtube size={9} className="text-red-400 flex-shrink-0" />
+                                )}
+                              </div>
                             </div>
+                            {!editMode && (
+                              <Play
+                                size={11}
+                                className="flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ color: c.text }}
+                              />
+                            )}
                           </div>
-                          <Play
-                            size={11}
-                            className="flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ color: c.text }}
-                          />
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
