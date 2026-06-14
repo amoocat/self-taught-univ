@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
-import { Search, Filter, BookOpen } from "lucide-react";
+import { Search, BookOpen, Plus, Check } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
@@ -64,39 +64,84 @@ interface Course {
 
 export function CourseCatalog() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedLevel, setSelectedLevel] = useState("All");
+  const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [enrolled, setEnrolled] = useState<Set<string>>(new Set());
+  const [changed, setChanged] = useState(false);
+  const initialEnrolled = useRef<Set<string>>(new Set());
+  const isSyncing = (location.state as any)?.syncing === true;
+  const [syncDone, setSyncDone] = useState(false);
+  const prevCountRef = useRef<number>(-1);
+
+  // 이전 페이지가 있으면 뒤로, 없으면 /my-courses로
+  const fromPage = (location.state as any)?.from ?? "/my-courses";
+  const handleDone = () => navigate(fromPage);
+
+  const loadCourses = useCallback(async () => {
+    const data: any[] = await api.getCourses();
+    const mapped: Course[] = data
+      .filter((c: any) => (c.lecture_count ?? 0) > 0)
+      .map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        description: c.source || c.description || `${c.lecture_count ?? 0}개 강의`,
+        instructor: "Self-Taught University",
+        category: c.category,
+        categoryLabel: CATEGORY_LABELS[c.category] ?? c.category?.toUpperCase(),
+        level: getLevel(c.lecture_count ?? 0),
+        lectureCount: c.lecture_count ?? 0,
+        imageUrl: CATEGORY_IMAGES[c.category] ?? DEFAULT_IMAGE,
+        source: c.source ?? "",
+      }));
+    setAllCourses(mapped);
+    const enrolledSet = new Set<string>(data.filter((c: any) => c.is_enrolled).map((c: any) => c.id));
+    setEnrolled(enrolledSet);
+    initialEnrolled.current = new Set(enrolledSet);
+    return mapped.length;
+  }, []);
 
   useEffect(() => {
-    api.getCourses().then((data: any[]) => {
-      // 강의 수 0개인 강좌는 숨김
-      const mapped: Course[] = data
-        .filter((c: any) => (c.lecture_count ?? 0) > 0)
-        .map((c: any) => ({
-          id: c.id,
-          title: c.title,
-          description: c.source || c.description || `${c.lecture_count ?? 0}개 강의`,
-          instructor: "Self-Taught University",
-          category: c.category,
-          categoryLabel: CATEGORY_LABELS[c.category] ?? c.category?.toUpperCase(),
-          level: getLevel(c.lecture_count ?? 0),
-          lectureCount: c.lecture_count ?? 0,
-          imageUrl: CATEGORY_IMAGES[c.category] ?? DEFAULT_IMAGE,
-          source: c.source ?? "",
-        }));
-      setAllCourses(mapped);
-    }).catch(console.error)
-    .finally(() => setLoading(false));
+    loadCourses().catch(console.error).finally(() => setLoading(false));
   }, []);
+
+  // 동기화 중이면 5초마다 폴링 — 강좌 수가 늘면 완료로 표시
+  useEffect(() => {
+    if (!isSyncing || syncDone) return;
+    const poll = setInterval(async () => {
+      const count = await loadCourses().catch(() => -1);
+      if (prevCountRef.current === -1) { prevCountRef.current = count; return; }
+      if (count > prevCountRef.current) { setSyncDone(true); clearInterval(poll); }
+    }, 5000);
+    return () => clearInterval(poll);
+  }, [isSyncing, syncDone]);
 
   const categories = ["All", ...Array.from(new Set(allCourses.map(c => c.categoryLabel))).sort()];
   const levels = ["All", "Undergraduate", "Intermediate", "Graduate", "Advanced"];
 
   const handleViewCourse = (courseId: string) => {
     navigate(`/course/${courseId}`);
+  };
+
+  const handleEnroll = async (e: React.MouseEvent, courseId: string) => {
+    e.stopPropagation();
+    setEnrolling(courseId);
+    try {
+      if (enrolled.has(courseId)) {
+        await api.unenrollCourse(courseId);
+        setEnrolled(prev => { const n = new Set(prev); n.delete(courseId); return n; });
+      } else {
+        await api.enrollCourse(courseId);
+        setEnrolled(prev => new Set([...prev, courseId]));
+      }
+      setChanged(true);
+    } finally {
+      setEnrolling(null);
+    }
   };
 
   const filteredCourses = allCourses.filter((course) => {
@@ -115,6 +160,9 @@ export function CourseCatalog() {
     return matchesSearch && matchesCategory && matchesLevel;
   });
 
+  const addedCount = [...enrolled].filter(id => !initialEnrolled.current.has(id)).length;
+  const removedCount = [...initialEnrolled.current].filter(id => !enrolled.has(id)).length;
+
   return (
     <>
       {/* Hero Section */}
@@ -125,11 +173,42 @@ export function CourseCatalog() {
               Course Catalog
             </h1>
             <p className="text-sm text-muted-foreground">
-              Browse our complete collection of courses.
+              강좌를 선택한 뒤 <strong>등록 완료</strong>를 눌러 돌아가세요.
             </p>
           </div>
         </div>
       </section>
+
+      {/* YouTube 동기화 상태 배너 */}
+      {isSyncing && !syncDone && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 text-sm text-amber-800">
+          <div className="w-3.5 h-3.5 border-2 border-amber-400 border-t-amber-800 rounded-full animate-spin shrink-0" />
+          YouTube 동기화 진행 중입니다. 강좌가 생성되면 자동으로 목록에 나타납니다.
+        </div>
+      )}
+      {isSyncing && syncDone && (
+        <div className="bg-green-50 border-b border-green-200 px-6 py-3 text-sm text-green-800">
+          ✅ 동기화 완료 — 새 강좌가 목록에 추가됐습니다.
+        </div>
+      )}
+
+      {/* 등록 변경 시 배너 */}
+      {changed && (
+        <div className="sticky top-0 z-50 bg-primary text-primary-foreground px-6 py-3 flex items-center justify-between shadow-md">
+          <span className="text-sm font-medium">
+            {addedCount > 0 && `${addedCount}개 추가`}
+            {addedCount > 0 && removedCount > 0 && " · "}
+            {removedCount > 0 && `${removedCount}개 제거`}
+            {addedCount === 0 && removedCount === 0 && "변경 없음"}
+          </span>
+          <button
+            onClick={handleDone}
+            className="bg-primary-foreground text-primary text-sm font-semibold px-5 py-1.5 rounded-full hover:opacity-90 transition-opacity"
+          >
+            등록 완료 →
+          </button>
+        </div>
+      )}
 
       {/* Main Layout: 좌측 필터 + 우측 그리드 */}
       <div className="max-w-7xl mx-auto px-6 py-8 flex gap-8 items-start">
@@ -233,9 +312,24 @@ export function CourseCatalog() {
                     <CardTitle className="line-clamp-2 text-base">{course.title}</CardTitle>
                     <CardDescription className="line-clamp-1 text-xs">{course.description}</CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-0">
-                    <Button className="w-full h-8 text-sm" onClick={(e) => { e.stopPropagation(); handleViewCourse(course.id); }}>
+                  <CardContent className="pt-0 flex gap-2">
+                    <Button className="flex-1 h-8 text-sm" onClick={(e) => { e.stopPropagation(); handleViewCourse(course.id); }}>
                       강의 보기
+                    </Button>
+                    <Button
+                      variant={enrolled.has(course.id) ? "secondary" : "outline"}
+                      className="h-8 text-xs gap-1 px-3 shrink-0"
+                      disabled={enrolling === course.id}
+                      onClick={(e) => handleEnroll(e, course.id)}
+                      title={enrolled.has(course.id) ? "내 강좌에서 제거" : "내 강좌에 추가"}
+                    >
+                      {enrolling === course.id ? (
+                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : enrolled.has(course.id) ? (
+                        <><Check size={12} /> 등록됨</>
+                      ) : (
+                        <><Plus size={12} /> 내 강좌</>
+                      )}
                     </Button>
                   </CardContent>
                   <CardFooter className="flex justify-between text-xs text-muted-foreground pt-0">

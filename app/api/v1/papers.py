@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 import openai
 import httpx
@@ -56,24 +55,22 @@ class AnnotationOut(BaseModel):
     keyword: str
     explanation: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaperOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     title: str
     authors: str
     year: int
-    venue: Optional[str]
-    abstract: Optional[str]
-    arxiv_id: Optional[str]
-    category: Optional[str] = None
+    venue: str | None
+    abstract: str | None
+    arxiv_id: str | None
+    category: str | None = None
     created_at: datetime
     annotations: list[AnnotationOut] = []
-
-    class Config:
-        from_attributes = True
 
 
 _ARXIV_NS = "http://www.w3.org/2005/Atom"
@@ -165,7 +162,7 @@ async def delete_paper(paper_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/", response_model=list[PaperOut])
 async def list_papers(
-    q: Optional[str] = None,
+    q: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     papers = (await db.execute(

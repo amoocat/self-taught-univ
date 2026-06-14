@@ -53,7 +53,7 @@ export const api = {
   // ── 커리큘럼 ─────────────────────────────────────
   getHeatmap: () => request('/curriculum/heatmap'),
   getStudyStats: () => request('/curriculum/stats'),
-  getCourses: (params?: { q?: string; category?: string; limit?: number; offset?: number }) =>
+  getCourses: (params?: { q?: string; category?: string; enrolled?: boolean; limit?: number; offset?: number }) =>
     request(`/curriculum/${params ? `?${new URLSearchParams(Object.entries(params).filter(([,v]) => v != null).map(([k,v])=>[k,String(v)])).toString()}` : ''}`),
   getCourse:  (id: string) => request(`/curriculum/${id}`),
   getLectures:(courseId: string, params?: { q?: string; limit?: number; offset?: number }) =>
@@ -92,6 +92,20 @@ export const api = {
   getGraph:              () => request('/graph/'),
   generateGraph:         () => request('/graph/generate', { method: 'POST' }),
   addGraphFromLecture:   (lectureId: string) => request(`/graph/from-lecture/${lectureId}`, { method: 'POST' }),
+
+  // ── 강좌/강의 삭제·수정 ─────────────────────────
+  deleteLecture:      (id: string) => request(`/curriculum/lectures/${id}`, { method: 'DELETE' }),
+  bulkDeleteLectures: (ids: string[]) =>
+    request('/curriculum/lectures', { method: 'DELETE', body: JSON.stringify({ ids }) }),
+  deleteCourse:       (id: string) => request(`/curriculum/${id}`, { method: 'DELETE' }),
+  bulkDeleteCourses:  (ids: string[]) =>
+    request('/curriculum/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) }),
+  updateCourse: (id: string, body: { title?: string; category?: string; source?: string }) =>
+    request(`/curriculum/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  resetCourseProgress: (id: string) =>
+    request(`/curriculum/${id}/reset-progress`, { method: 'POST' }),
+  enrollCourse:   (id: string) => request(`/curriculum/${id}/enroll`,   { method: 'POST' }),
+  unenrollCourse: (id: string) => request(`/curriculum/${id}/unenroll`, { method: 'POST' }),
 
   // ── YouTube ──────────────────────────────────────
   getYouTubeStatus:       () => request('/youtube/oauth/status'),

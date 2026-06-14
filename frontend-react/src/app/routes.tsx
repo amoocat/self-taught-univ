@@ -18,6 +18,7 @@ import { GeneratedCourses } from "./pages/GeneratedCourses";
 import { Admissions } from "./pages/Admissions";
 import { CampusLife } from "./pages/CampusLife";
 import { WorldMap } from "./pages/WorldMap";
+import { MyCourses } from "./pages/MyCourses";
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: "admissions", Component: Admissions },
       { path: "campus-life", Component: CampusLife },
       { path: "world-map", Component: WorldMap },
+      { path: "my-courses", Component: MyCourses },
     ],
   },
 ]);

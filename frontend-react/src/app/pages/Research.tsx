@@ -50,22 +50,37 @@ const SOURCE_TYPE_COLOR: Record<string, string> = {
 
 function Pagination({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
   if (total <= 1) return null;
-  const pages = Array.from({ length: total }, (_, i) => i + 1);
+
+  const getPages = (): (number | "...")[] => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages: (number | "...")[] = [1];
+    if (page > 3) pages.push("...");
+    for (let p = Math.max(2, page - 1); p <= Math.min(total - 1, page + 1); p++) pages.push(p);
+    if (page < total - 2) pages.push("...");
+    pages.push(total);
+    return pages;
+  };
+
+  const btnBase = "h-8 min-w-[2rem] px-2 text-sm rounded-md transition-colors";
   return (
     <div className="flex items-center justify-center gap-1 mt-8 pt-6 border-t">
       <button onClick={() => onChange(page - 1)} disabled={page === 1}
-        className="px-3 py-1.5 text-sm border rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-        ← 이전
+        className={`${btnBase} border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed px-3`}>
+        ←
       </button>
-      {pages.map(p => (
-        <button key={p} onClick={() => onChange(p)}
-          className={`w-8 h-8 text-sm rounded-md transition-colors ${p === page ? "bg-primary text-primary-foreground" : "hover:bg-muted border"}`}>
-          {p}
-        </button>
-      ))}
+      {getPages().map((p, i) =>
+        p === "..." ? (
+          <span key={`ellipsis-${i}`} className="h-8 min-w-[2rem] flex items-center justify-center text-sm text-muted-foreground">…</span>
+        ) : (
+          <button key={p} onClick={() => onChange(p)}
+            className={`${btnBase} ${p === page ? "bg-primary text-primary-foreground" : "border hover:bg-muted"}`}>
+            {p}
+          </button>
+        )
+      )}
       <button onClick={() => onChange(page + 1)} disabled={page === total}
-        className="px-3 py-1.5 text-sm border rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-        다음 →
+        className={`${btnBase} border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed px-3`}>
+        →
       </button>
     </div>
   );

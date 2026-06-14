@@ -6,159 +6,103 @@
 
 ---
 
-## 🛠️ 백엔드 API 품질 개선
+## 🔒 보안 / 퍼블릭 오픈 전 필수
 
-- [x] **Pydantic response 스키마 명시** — 현재 일부 엔드포인트가 `dict` 그대로 반환
-- [ ] **JWT 인증 기초** — `POST /auth/login`, `POST /auth/refresh`, `get_current_user` 뼈대
+- [ ] **Rate Limiting** — AI 엔드포인트 IP당 분 10회 (`slowapi`)
+- [ ] **최소 API 인증** — `X-API-Key` 헤더 또는 `DEBUG=False` 외부 차단
+- [ ] **`.env.example`** — `CHANGE_ME` 경고 추가
 
 ---
 
 ## 🔥 지금 할 것 (Current Sprint)
 
-### 🤖 에이전트 / AI 고도화
-- [ ] **멀티에이전트 커리큘럼 검증** — Critic/Defender/Judge 에이전트가 토론해서 커리큘럼 품질 검증
-  - `POST /api/v1/curriculum/validate` — 결과 JSON + 프론트 리포트
-- [ ] **1인 데이터팀 멀티에이전트** — 크롤링·분류·요약을 각각 다른 에이전트가 담당
-- [ ] **N8n 워크플로우** — 블로그 크롤링·논문 알림·강의 업데이트 자동화 파이프라인
+### 🎓 인증 / 학교 페이지
+- [ ] **JWT 인증** — `POST /auth/register`, `/auth/login`, `/auth/refresh` + User 테이블 (전공·학위·가입일)
+- [ ] **Admissions 신청 페이지** — `/admissions/apply`: 전공 선택 + 학위 과정 + 주당 목표 → 해당 전공 강좌 자동 enrolled
+- [ ] **학생증 강화** — My Page: 학번·입학일·전공·학위·학년(진도 기반) + PDF 다운로드
 
-### 🗺️ 지식 지도
-- [ ] 지식 그래프 → 세계 지도로 완전 대체 여부 결정 (현재 둘 다 존재)
+### 🤖 MCP / AI
+- [ ] **콘텐츠 자동 요약 MCP** (2순위)
+  - 툴 3개: `get_unsummarized_content` / `summarize_content` / `get_content_summary`
+  - 대상: 강좌, 블로그(`feed_items`), 논문(`papers`)
+  - DB: `courses.summary`, `feed_items.summary`, `papers.ai_summary` 컬럼 추가
+  - 슬래시 명령 `/stu-summarize`
+- [ ] **Brave 웹 검색 MCP** (3순위)
 
-### 🎓 학교 페이지 고도화
-- [x] **홈 Hero 캠퍼스 슬라이드쇼** — MIT·Stanford·서울대·KAIST 사진 교차
-- [x] **Major / Degree 페이지** — Academics 탭에 전공 소개 + 이수 요건 추가
+### 🛠️ 백엔드 정리
+- [ ] `jobs/tasks.py` + `crawlers/scheduler.py` 통합
+- [ ] 서버 로깅 설정 (`logging.basicConfig`)
 
 ### 📚 콘텐츠
-- [ ] **신규 강좌: LLM Engineering** — Udemy 강좌 추가
-- [ ] **같이 논문읽기** — 논문 공동 주석 기능
-- [ ] medium 계정 연동 크롤링
-- [ ] 신규 강좌 — TED 행복 강좌, MLVU
+- [ ] 신규 강좌: LLM Engineering (Udemy)
+- [ ] 신규 강좌: TED 행복 강좌, MLVU
+- [ ] Medium 계정 연동 크롤링
 
-### 🔧 개발/인프라
-- [ ] **GitHub Webhook + Projects 연동**
-- [x] **develop → main 머지 + release 태그** — 첫 릴리즈
-
-### 커리큘럼 자동 구성 — 키워드 기반 v1
-- [ ] `app/services/curriculum_builder.py` — CHAPTER_DEFINITIONS + 영상 매칭 로직
-- [ ] `POST /api/v1/curriculum/build?category=` + `build-all`
-
-### AI 챗봇 / 노트 — 하드코딩 제거
-- [ ] **렉쳐 노트 비어있음** — AI 자동 생성 예정
-- [ ] **컨텍스트 바 하드코딩** — 실제 강의 상태 반영
-- [ ] **취약 개념 칩** — 동적 생성
-
----
-
-## 🤖 MCP 개발 (학습봇용) — 우선순위 순
-
-- [x] **1순위** STU 자체 MCP — 진도·노트·취약점 DB 조회
-- [ ] **2순위** Brave 웹 검색 MCP
-- [ ] **3순위** arXiv MCP — 논문 검색·요약
-- [ ] **4순위** YouTube MCP — 강의 검색
-- [ ] **5순위** Obsidian MCP — 대화 내용 노트 자동 저장
-- [ ] **6순위** 테크 블로그 크롤링 MCP
-- [ ] **7순위** Obsidian 링크 자동정리 MCP
-- [ ] **8순위** Gemini 파이프라인 MCP — 논문·자료 → Obsidian → STU
-- [ ] **9순위** YouTube 시청기록 MCP
-- [ ] **10순위** 강의·논문·블로그 → RAG 챗봇 고도화
-
----
-
-## 🔍 검색 고도화
-- [ ] `tsvector` 풀텍스트 인덱스 (현재 ILIKE → 성능 개선)
-
----
-
-## ☸️ 인프라 — Jenkins + ArgoCD 실제 연결
-
-- [ ] Step 1 ~ 7 (minikube, Jenkins, Credentials, Jenkinsfile, Webhook, ArgoCD, E2E 테스트)
+### 🗺️ 기타
+- [ ] 지식 그래프 vs 세계 지도 — 중복 여부 결정
+- [ ] `tsvector` 풀텍스트 인덱스 (ILIKE → 성능 개선)
 
 ---
 
 ## 🔵 Phase 3 — 벡터 임베딩 & RAG
 
 - [ ] pgvector 임베딩 파이프라인
-- [ ] 시맨틱 검색 (ILIKE → 벡터 유사도)
+- [ ] 시맨틱 검색
 - [ ] RAG 챗봇 — 출처 표시
 - [ ] 그래프 노드 임베딩 → "유사한 개념" 사이드패널
 
 ---
 
-## 🟢 나중에 (Phase 4~7)
+## 🟢 나중에
 
-- [ ] Redis 캐싱·Rate limiting
-- [ ] MongoDB — 논문 전문 + 렉쳐 노트 본문
-- [ ] Kafka + Flink — 크롤러 이벤트 스트리밍
-- [ ] FastAPI 미들웨어 요청 로깅 + event_logs 테이블
-- [ ] API 키 사용량 대시보드
-- [ ] 로그인 기능 — 유저별 커리큘럼
-- [ ] 0원 챌린지 — Vercel + Railway + Supabase
-- [ ] 사주 챗봇, 멘탈케어 MCP, ETL 그래프 MCP, 포트폴리오 MCP
+- [ ] Redis 캐싱
+- [ ] Kafka + Flink 크롤러 스트리밍
+- [ ] GitHub Webhook + Projects 연동
+- [ ] Jenkins + ArgoCD 실제 연결
+- [ ] 로그인 → 유저별 커리큘럼
+- [ ] 0원 챌린지 (Vercel + Railway + Supabase)
 
 ---
 
 ## ✅ 완료된 것들
 
+### 강좌 관리 고도화
+- [x] **강좌 관리 페이지** (`/my-courses`) — 검색(서버사이드), 편집 모드, 일괄 삭제, 이름 수정, 진도 초기화
+- [x] **강좌 카탈로그 Enroll** — "내 강좌" 버튼으로 등록/해제, `is_enrolled` 컬럼 (migration 0013)
+- [x] **My Page / 강좌 관리 동기화** — 둘 다 `enrolled=true` 필터로 통일
+- [x] **강좌 삭제 FK 수정** — `PaperAnnotation` 포함 연관 레코드 bulk DELETE로 처리
+- [x] **`POST /curriculum/bulk` DELETE** — 여러 강좌 한 트랜잭션 삭제
+- [x] **진도 초기화** — `POST /curriculum/{id}/reset-progress`
+- [x] **강좌 수정** — `PATCH /curriculum/{id}` 제목·카테고리·출처 수정
+
+### 강의 플레이어
+- [x] **Skilljar 스타일 플레이어** — 좌측 사이드바 + 비디오 + 탭(노트/강의정보) + 이전/다음 네비
+
+### 리팩토링
+- [x] `youtube.py` 분리 → `youtube_oauth.py` / `youtube_playlists.py`
+- [x] `models/models.py` → 도메인별 분리 (facade 유지)
+- [x] `chat.py` 프롬프트 → `core/prompts.py`
+
 ### MyPage 고도화
-- [x] **학생 카드** — 학번·전공·진도·최근활동·AI점수, 지식그래프/세계지도 2열 버튼
-- [x] **공부 잔디** — 가로 전체 너비 히트맵, 365일, 5단계 색상, 월/요일 라벨, 호버 툴팁
-- [x] **스터디 트래커** — 연속학습일·최장연속·총완료·총학습시간 카드 + 주간목표 링 + 최근학습 3개
-- [x] Stats Strip (Enrolled/Notes/This Week/Explore) 제거 — 스터디 트래커로 대체
-- [x] `GET /curriculum/heatmap` + `GET /curriculum/stats` 엔드포인트 (route 순서 버그 수정 포함)
-- [x] 세계지도 뒤로가기 → My Page로 수정
+- [x] 학생 카드, 공부 잔디, 스터디 트래커
+- [x] `GET /curriculum/heatmap` + `/stats`
 
 ### 지식 세계 지도
-- [x] `/world-map` 신규 페이지 — SVG 대륙 8개, 진도에 따라 컬러/안개, 개념 도시 dot
-- [x] 대륙 클릭 → 사이드 패널 (개념 도시 목록, 관련 강좌, 진도 바)
-- [x] Course Catalog 하단 진입 배너
+- [x] `/world-map` SVG 대륙, 진도 컬러, 개념 도시
 
-### 버그 수정 / UX 개선
-- [x] 논문 페이지 새로고침 시 기존 주석 자동 로드
-- [x] 지식 그래프 노드 클릭 상세 패널 (연결 개념 칩, 출처, 추가일)
-- [x] 그래프 노드 생성: YouTube 태그 → GPT 학문 개념 추출 + rule-based fallback
-- [x] `DELETE /graph/nodes/cleanup` + `POST /graph/from-course/{id}/completed`
+### API 품질
+- [x] 페이지네이션, 에러 통일, 통합 검색
+- [x] Pydantic response 스키마
 
-### API 품질 개선
-- [x] **페이지네이션** — notes/curriculum/lectures `?limit=&offset=`
-- [x] **API 에러 통일** — HTTPException + unhandled → `{"error":"...","detail":"..."}`
-- [x] **통합 검색** — `GET /api/v1/search/?q=&type=` (강의·노트·논문 ILIKE)
-- [x] 개별 검색 파라미터 — notes/curriculum/lectures `?q=`
-
-### React 전환 + AI 기능
-- [x] 바닐라 JS frontend/ 전체 삭제 → React 완전 전환
-- [x] Admissions / Campus Life 페이지
-- [x] 모든 페이지 hero 스타일 통일 (CourseCatalog 기준)
-- [x] 플로팅 AI 챗봇 — 학습/테스트 모드, SSE 스트리밍, 하단 pill 버튼
-- [x] 강의 AI 힌트 패널 — 우측 슬라이드인, 강의 내용 기반
-- [x] 논문 AI 키워드 주석 패널 + Q&A 챗
-- [x] 지식 그래프 AI 노드 생성 버튼
-- [x] 지식 그래프 모던 리디자인 — pill 카드, 베지어 엣지, 카테고리 필터, MiniMap
-- [x] 강의 완료 → 그래프 노드 자동 등록 (`POST /graph/from-lecture/{id}`)
-- [x] 노트 태그 표시
-- [x] api.ts SSE 헬퍼 + 신규 API 메서드들
-- [x] 웹사이트 대문 (EduPrime University React 앱)
+### React + AI
+- [x] 바닐라 JS → React 전환
+- [x] 플로팅 AI 챗봇 (학습/테스트 모드, SSE)
+- [x] 강의 AI 힌트 패널, 논문 AI 주석
+- [x] 지식 그래프 리디자인
 
 ### YouTube 연동
-- [x] 정기 동기화 (일 1회 배치)
-- [x] GPT 기반 플리 자동 선별
-- [x] YouTube OAuth 에러 정비
-- [x] 커리큘럼 자동 재구성 (`reorganize_courses`)
-- [x] 플레이리스트 URL 직접 입력 / 채널 탐색 / 좋아요 기반 발견
-- [x] VideoInbox → 즉시 큐레이션 파이프라인
-
-### 강의 메타데이터·그래프 고도화
-- [x] `published_at` 컬럼 + YouTube API 백필 (282개)
-- [x] `meta_source` 컬럼 + GPT 자동 태깅
-- [x] 전체 350개 강의 module_name + difficulty 직접 배정
-- [x] `POST /graph/generate` — GPT 개념 노드 최대 50개
-- [x] `POST /graph/from-lecture/{id}` — 강의 완료 시 개념 자동 등록
+- [x] OAuth, 동기화, GPT 분류, VideoInbox 파이프라인
 
 ### 백엔드 기반
-- [x] FastAPI + SQLAlchemy 2.0 async
-- [x] ORM 모델 14개 테이블
-- [x] CRUD API + APScheduler 배치
-- [x] YouTube / arXiv / 블로그 크롤러
-- [x] pytest 37개 통합 테스트
-
-### 인프라 (YAML 완료)
-- [x] K8s YAML, Jenkinsfile, GitHub Actions, ArgoCD, Prometheus+Grafana, Docker Compose
+- [x] FastAPI + SQLAlchemy 2.0 async, ORM 14테이블
+- [x] pytest 37개, K8s/Jenkins/ArgoCD YAML
