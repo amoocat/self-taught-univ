@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
-import { Search, Filter, BookOpen, Plus, Check } from "lucide-react";
+import { Search, BookOpen, Plus, Check } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";

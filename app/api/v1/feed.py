@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -24,7 +23,7 @@ class FeedItemOut(BaseModel):
     category: str = "etc"
     color: str = ""
     courses: list = []
-    related_paper: Optional[str] = None
+    related_paper: str | None = None
 
 _BADGE = {
     "personal": "badge-personal",
@@ -53,7 +52,7 @@ def _color(source_type: str) -> str:
     return _COLOR.get(source_type.lower(), "#0a1628")
 
 
-def _fmt_date(dt: Optional[datetime]) -> str:
+def _fmt_date(dt: datetime | None) -> str:
     return dt.strftime("%Y.%m.%d") if dt else ""
 
 
@@ -78,7 +77,7 @@ def _to_out(item: FeedItem) -> dict:
 
 @router.get("/", response_model=list[FeedItemOut])
 async def list_feed(
-    source_type: Optional[str] = None,
+    source_type: str | None = None,
     limit: int = Query(50, le=200),
     offset: int = 0,
     db: AsyncSession = Depends(get_db),

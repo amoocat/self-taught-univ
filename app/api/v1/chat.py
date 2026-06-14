@@ -3,7 +3,6 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from typing import Optional
 import openai
 import json
 
@@ -25,7 +24,7 @@ class SaveMessagesOut(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    session_id: Optional[str] = None
+    session_id: str | None = None
     mode: str = "study"
     subject: str = "선형대수학"
     message: str

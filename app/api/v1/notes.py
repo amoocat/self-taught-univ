@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, model_validator
-from typing import Optional
 from datetime import datetime
 import openai
 import json
@@ -55,7 +54,7 @@ class NoteCreate(BaseModel):
     title: str
     content_md: str = ""
     content: str = ""  # alias for content_md from frontend
-    lecture_id: Optional[str] = None
+    lecture_id: str | None = None
     tags: list[str] = []
 
     @model_validator(mode='after')
@@ -66,10 +65,10 @@ class NoteCreate(BaseModel):
 
 
 class NoteUpdate(BaseModel):
-    title: Optional[str] = None
-    content_md: Optional[str] = None
-    content: Optional[str] = None  # alias for content_md
-    tags: Optional[list[str]] = None
+    title: str | None = None
+    content_md: str | None = None
+    content: str | None = None  # alias for content_md
+    tags: list[str] | None = None
 
     @model_validator(mode='after')
     def sync_content(self):
@@ -83,7 +82,7 @@ class NoteOut(BaseModel):
     title: str
     content_md: str
     content: str = ""
-    lecture_id: Optional[str]
+    lecture_id: str | None
     tags: list
     created_at: datetime
     updated_at: datetime
@@ -100,8 +99,8 @@ class NoteOut(BaseModel):
 
 @router.get("/", response_model=list[NoteOut])
 async def list_notes(
-    q: Optional[str] = None,
-    lecture_id: Optional[str] = None,
+    q: str | None = None,
+    lecture_id: str | None = None,
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),

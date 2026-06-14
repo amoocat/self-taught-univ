@@ -3,14 +3,13 @@ import logging
 import openai
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, text
-from pydantic import BaseModel
-from typing import Optional
+from sqlalchemy import select, func, text
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models.models import Course, Lecture, LectureNote, MyNote, Progress, NoteEmbedding
+from app.models.models import Course, Lecture, LectureNote, Progress
 from app.models.research import PaperAnnotation
 from app.core.errors import get_or_404
 
@@ -35,25 +34,24 @@ _CATEGORY_CODE = {
 
 
 class LectureOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     title: str
-    subtitle: Optional[str] = None
+    subtitle: str | None = None
     number: int
-    category: Optional[str] = None
+    category: str | None = None
     tags: list[str] = []
     prerequisites: list[str] = []
-    youtube_url: Optional[str] = None
-    youtube_video_id: Optional[str] = None
-    thumbnail_url: Optional[str] = None
+    youtube_url: str | None = None
+    youtube_video_id: str | None = None
+    thumbnail_url: str | None = None
     is_available: bool = True
-    duration_sec: Optional[int] = None
-    difficulty: Optional[int] = None
-    module_name: Optional[str] = None
-    meta_source: Optional[str] = None
+    duration_sec: int | None = None
+    difficulty: int | None = None
+    module_name: str | None = None
+    meta_source: str | None = None
     completed: bool = False
-
-    class Config:
-        from_attributes = True
 
 
 class HeatmapDay(BaseModel):
@@ -82,25 +80,26 @@ class OkOut(BaseModel):
     ok: bool = True
 
 class LectureDetailOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     title: str
-    subtitle: Optional[str] = None
+    subtitle: str | None = None
     number: int
-    category: Optional[str] = None
+    category: str | None = None
     tags: list[str] = []
     prerequisites: list[str] = []
-    youtube_url: Optional[str] = None
-    youtube_video_id: Optional[str] = None
-    thumbnail_url: Optional[str] = None
+    youtube_url: str | None = None
+    youtube_video_id: str | None = None
+    thumbnail_url: str | None = None
     is_available: bool = True
-    duration_sec: Optional[int] = None
+    duration_sec: int | None = None
     content: str = ""
-
-    class Config:
-        from_attributes = True
 
 
 class CourseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     code: str = ""
     title: str
@@ -108,30 +107,27 @@ class CourseOut(BaseModel):
     category: str
     order_index: int
     is_enrolled: bool = False
-    description: Optional[str] = None
+    description: str | None = None
     objectives: list[str] = []
     lecture_count: int = 0
     completed_count: int = 0
     progress_pct: float = 0.0
     status: str = "todo"
 
-    class Config:
-        from_attributes = True
-
 
 class CourseUpdateIn(BaseModel):
-    title: Optional[str] = None
-    category: Optional[str] = None
-    source: Optional[str] = None
-    description: Optional[str] = None
-    objectives: Optional[list[str]] = None
+    title: str | None = None
+    category: str | None = None
+    source: str | None = None
+    description: str | None = None
+    objectives: list[str] | None = None
 
 
 @router.get("/", response_model=list[CourseOut])
 async def list_courses(
-    q: Optional[str] = None,
-    category: Optional[str] = None,
-    enrolled: Optional[bool] = None,
+    q: str | None = None,
+    category: str | None = None,
+    enrolled: bool | None = None,
     limit: int = 100,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
@@ -146,18 +142,30 @@ async def list_courses(
     stmt = stmt.offset(offset).limit(limit)
     courses = (await db.execute(stmt)).scalars().all()
 
+    if not courses:
+        return []
+
+    course_ids = [c.id for c in courses]
+
+    # 강의 수, 완료 수를 한 번에 집계 (N+1 방지)
+    lec_counts = {
+        row[0]: row[1]
+        for row in (await db.execute(
+            select(Lecture.course_id, func.count()).where(Lecture.course_id.in_(course_ids)).group_by(Lecture.course_id)
+        )).all()
+    }
+    done_counts = {
+        row[0]: row[1]
+        for row in (await db.execute(
+            select(Progress.course_id, func.count()).where(Progress.course_id.in_(course_ids)).group_by(Progress.course_id)
+        )).all()
+    }
+
     result = []
     for c in courses:
-        lec_count = (await db.execute(
-            select(func.count()).where(Lecture.course_id == c.id)
-        )).scalar() or 0
-
-        done_count = (await db.execute(
-            select(func.count()).where(Progress.course_id == c.id)
-        )).scalar() or 0
-
+        lec_count = lec_counts.get(c.id, 0)
+        done_count = done_counts.get(c.id, 0)
         pct = round(done_count / lec_count * 100, 1) if lec_count > 0 else 0.0
-
         code = _CATEGORY_CODE.get(c.category.lower(), c.category.upper())
         status = "done" if pct >= 100 else ("active" if pct > 0 else "todo")
         result.append(CourseOut(
@@ -289,7 +297,7 @@ async def get_course(course_id: str, db: AsyncSession = Depends(get_db)):
 @router.get("/{course_id}/lectures", response_model=list[LectureOut])
 async def list_lectures(
     course_id: str,
-    q: Optional[str] = None,
+    q: str | None = None,
     limit: int = 200,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
@@ -427,16 +435,16 @@ async def unenroll_course(course_id: str, db: AsyncSession = Depends(get_db)):
 
 class LectureMetaPatch(BaseModel):
     id: str
-    module_name: Optional[str] = None
-    difficulty: Optional[int] = None
-    meta_source: Optional[str] = None
-    number: Optional[int] = None
+    module_name: str | None = None
+    difficulty: int | None = None
+    meta_source: str | None = None
+    number: int | None = None
 
 
 @router.patch("/lectures/batch-meta", status_code=200)
 async def batch_update_lecture_meta(
     items: list[LectureMetaPatch],
-    source: Optional[str] = None,
+    source: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """강의 module_name / difficulty / meta_source 일괄 업데이트.
