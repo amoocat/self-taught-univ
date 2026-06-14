@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { StudyHeatmap } from "../components/StudyHeatmap";
 import { StudyTracker } from "../components/StudyTracker";
-import { Card, CardContent } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { FileText, GraduationCap, Plus, Edit, Trash2, Play, Settings2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Input } from "../components/ui/input";

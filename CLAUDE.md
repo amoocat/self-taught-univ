@@ -71,6 +71,16 @@ gh pr create --base develop
 
 ---
 
+## PR 올리기 전 필수 체크
+
+1. **`npm run build`** — `tsc --noEmit`만으로는 부족. 실제 빌드가 통과해야 함
+2. **백엔드 문법 검사** — `python3 -m py_compile` 또는 서버 재시작 후 임포트 오류 없는지 확인
+3. 수정한 페이지를 브라우저에서 직접 열어 동작 확인
+
+**반면교사**: `tsc --noEmit`은 통과했지만 빌드에서 `Input`, `CardHeader`, `CardTitle` import 누락으로 실패한 채 PR을 올린 사례.
+
+---
+
 ## 테스트 시 데이터 보호 원칙
 
 **실제 운영 데이터에 DELETE/수정 curl을 직접 날리지 않는다.**
