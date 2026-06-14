@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { api } from "../../lib/api";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { StudyHeatmap } from "../components/StudyHeatmap";
 import { StudyTracker } from "../components/StudyTracker";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { FileText, GraduationCap, Plus, Edit, Trash2, Play } from "lucide-react";
+import { Card, CardContent } from "../components/ui/card";
+import { FileText, GraduationCap, Plus, Edit, Trash2, Play, Settings2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
@@ -47,23 +46,19 @@ function getCategoryAccent(category: string) {
 
 export function MyPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const syncStarted = (location.state as any)?.syncStarted === true;
   const [myCourses, setMyCourses] = useState<Course[]>([]);
   const [myNotes, setMyNotes] = useState<Note[]>([]);
   const [isCreatingNote, setIsCreatingNote] = useState(false);
-  const [newNote, setNewNote] = useState({
-    title: "",
-    course: "",
-    content: "",
-    category: "Lecture",
-  });
+  const [newNote, setNewNote] = useState({ title: "", course: "", content: "", category: "Lecture" });
   const [coursePage, setCoursePage] = useState(1);
   const [notePage, setNotePage] = useState(1);
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 8;
 
   useEffect(() => {
     // API에서 강좌와 노트 로드
-    api.getCourses().then((data: any[]) => {
+    api.getCourses({ enrolled: true }).then((data: any[]) => {
       setMyCourses(data.map((c: any) => ({
         id: c.id,
         title: c.title,
@@ -110,16 +105,9 @@ export function MyPage() {
     setIsCreatingNote(false);
   };
 
-  const handleDeleteNote = (id: string) => {
-    const updatedNotes = myNotes.filter((note) => note.id !== id);
-    setMyNotes(updatedNotes);
-    localStorage.setItem("lectureNotes", JSON.stringify(updatedNotes));
-  };
-
-  const handleDeleteCourse = (id: string) => {
-    const updatedCourses = myCourses.filter((course) => course.id !== id);
-    setMyCourses(updatedCourses);
-    localStorage.setItem("myCourses", JSON.stringify(updatedCourses));
+  const handleDeleteNote = async (id: string) => {
+    try { await api.deleteNote(id); } catch {}
+    setMyNotes(prev => prev.filter(n => n.id !== id));
   };
 
   const formatDate = (dateString: string) => {
@@ -217,138 +205,61 @@ export function MyPage() {
           </TabsList>
 
           {/* Courses Tab */}
-          <TabsContent value="courses" className="space-y-6">
-            <div className="flex items-end justify-between mb-8">
+          <TabsContent value="courses" className="space-y-4">
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl" style={{ fontFamily: "'Crimson Pro', serif" }}>My Courses</h2>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Track your enrolled courses and progress
-                </p>
+                <h2 className="text-2xl" style={{ fontFamily: "'Crimson Pro', serif" }}>My Courses</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{myCourses.length}개 강좌 · 평균 {avgProgress}% 완료</p>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" asChild>
-                  <Link to="/course-catalog">Browse Courses</Link>
-                </Button>
-                <Button asChild>
-                  <Link to="/add-course">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Course
-                  </Link>
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" className="text-xs h-8 gap-1.5" asChild>
+                <Link to="/my-courses"><Settings2 size={12} /> 강좌 관리</Link>
+              </Button>
             </div>
 
             {myCourses.length === 0 ? (
-              <Card>
-                <CardContent className="py-16 text-center">
-                  <GraduationCap className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-bold mb-2">No courses yet</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Start learning by enrolling in your first course
-                  </p>
-                  <Button asChild>
-                    <Link to="/course-catalog">Browse Course Catalog</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="py-16 text-center">
+                <GraduationCap className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground mb-4">아직 강좌가 없습니다.</p>
+                <Button size="sm" asChild><Link to="/course-catalog" state={{ from: "/my-page" }}>강좌 카탈로그 보기</Link></Button>
+              </CardContent></Card>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {pagedCourses.map((course) => {
                   const accent = getCategoryAccent(course.category);
                   return (
-                    <div
-                      key={course.id}
-                      className="flex items-center gap-5 px-5 py-4 rounded-2xl bg-background border hover:bg-muted/30 transition-colors group"
-                    >
-                      {/* left color pill */}
-                      <div
-                        className={`w-1 self-stretch rounded-full bg-gradient-to-b ${accent.bar} shrink-0`}
-                        style={{ minHeight: "2.5rem" }}
-                      />
-
-                      {/* title + meta */}
+                    <Link key={course.id} to={`/course/${course.id}`} state={{ backLabel: "My Page" }}
+                      className="flex items-center gap-4 px-4 py-3 rounded-xl border bg-background hover:bg-muted/20 transition-colors group">
+                      <div className={`w-1 self-stretch rounded-full bg-gradient-to-b ${accent.bar} shrink-0`} style={{ minHeight: "2rem" }} />
                       <div className="flex-1 min-w-0">
-                        <span className={`text-xs px-2 py-0.5 rounded-full inline-block mb-1 ${accent.badge}`}>
-                          {course.category}
-                        </span>
-                        <h3
-                          className="leading-snug truncate"
-                          style={{ fontFamily: "'Crimson Pro', serif", fontSize: "1.1rem", fontWeight: 600 }}
-                        >
-                          {course.title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground truncate">{course.instructor}</p>
+                        <span className={`text-[10px] px-1.5 py-px rounded-full ${accent.badge} border inline-block mb-0.5`}>{course.category}</span>
+                        <p className="text-sm font-semibold truncate">{course.title}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{course.instructor}</p>
                       </div>
-
-                      {/* progress track */}
-                      <div className="hidden md:flex flex-col gap-1 w-52 shrink-0">
+                      <div className="hidden md:flex flex-col gap-1 w-40 shrink-0">
                         <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full bg-gradient-to-r ${accent.bar} transition-all`}
-                            style={{ width: `${course.progress}%` }}
-                          />
+                          <div className="h-full bg-foreground/70 rounded-full transition-all" style={{ width: `${course.progress}%` }} />
                         </div>
-                        <span className="text-xs text-muted-foreground">{course.progress}% complete</span>
+                        <span className="text-[10px] text-muted-foreground">{course.progress}% 완료</span>
                       </div>
-
-                      {/* actions */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button size="sm" asChild>
-                          <Link to={`/course/${course.id}`} state={{ backLabel: "My Page" }}>
-                            <Play className="w-3 h-3 mr-1.5" />
-                            Continue
-                          </Link>
-                        </Button>
-                        <button
-                          className="p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10"
-                          onClick={() => {
-                            if (confirm("Remove this course from your list?")) {
-                              handleDeleteCourse(course.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive transition-colors" />
-                        </button>
-                      </div>
-                    </div>
+                      <Play size={12} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </Link>
                   );
                 })}
               </div>
             )}
 
             {totalCoursePages > 1 && (
-              <div className="flex items-center justify-between pt-4">
-                <span className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-muted-foreground">
                   {(coursePage - 1) * PAGE_SIZE + 1}–{Math.min(coursePage * PAGE_SIZE, myCourses.length)} / {myCourses.length}개
                 </span>
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={coursePage === 1}
-                    onClick={() => setCoursePage((p) => p - 1)}
-                  >
-                    ←
-                  </Button>
+                  <Button variant="outline" size="sm" disabled={coursePage === 1} onClick={() => setCoursePage(p => p - 1)}>←</Button>
                   {Array.from({ length: totalCoursePages }, (_, i) => i + 1).map((p) => (
-                    <Button
-                      key={p}
-                      variant={p === coursePage ? "default" : "outline"}
-                      size="sm"
-                      className="w-8 h-8 p-0"
-                      onClick={() => setCoursePage(p)}
-                    >
-                      {p}
-                    </Button>
+                    <Button key={p} variant={p === coursePage ? "default" : "outline"} size="sm"
+                      className="w-8 h-8 p-0" onClick={() => setCoursePage(p)}>{p}</Button>
                   ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={coursePage === totalCoursePages}
-                    onClick={() => setCoursePage((p) => p + 1)}
-                  >
-                    →
-                  </Button>
+                  <Button variant="outline" size="sm" disabled={coursePage === totalCoursePages} onClick={() => setCoursePage(p => p + 1)}>→</Button>
                 </div>
               </div>
             )}

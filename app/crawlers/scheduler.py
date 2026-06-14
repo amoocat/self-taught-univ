@@ -268,20 +268,20 @@ async def job_tag_lectures():
 
     logger.info(f"[Job] 태그 없는 강의 {len(rows)}개 태깅 시작")
     tagged = 0
-    async with AsyncSessionLocal() as db:
-        for lec in rows:
-            try:
-                meta = await extract_all(lec.title, category=lec.category or "")
+    for lec in rows:
+        try:
+            meta = await extract_all(lec.title, category=lec.category or "")
+            async with AsyncSessionLocal() as db:
                 lec_db = (await db.execute(
                     select(Lecture).where(Lecture.id == lec.id)
                 )).scalar_one_or_none()
                 if lec_db:
-                    lec_db.tags         = meta["tags"]
+                    lec_db.tags          = meta["tags"]
                     lec_db.prerequisites = meta["prerequisites"]
+                    await db.commit()
                     tagged += 1
-            except Exception as e:
-                logger.warning(f"[Job] 태그 실패 ({lec.title[:40]}): {e}")
-        await db.commit()
+        except Exception as e:
+            logger.warning(f"[Job] 태그 실패 ({lec.title[:40]}): {e}")
 
     logger.info(f"[Job] 태깅 완료 — {tagged}개")
 

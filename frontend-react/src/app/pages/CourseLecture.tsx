@@ -7,30 +7,14 @@ declare global {
   }
 }
 import { useParams, useNavigate } from "react-router";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Textarea } from "../components/ui/textarea";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
-  ArrowLeft,
-  Save,
-  BookOpen,
-  Video,
-  ChevronRight,
-  Clock,
-  FileText,
-  Maximize2,
-  Minimize2,
-  Pencil,
-  Tag,
-  CheckCircle2,
-  Lightbulb,
-  Send,
-  X,
+  ArrowLeft, ArrowRight, Save, BookOpen, CheckCircle2, Clock,
+  ChevronRight, Tag, Lightbulb, Send, X, Play,
 } from "lucide-react";
-import { DrawingCanvas } from "../components/DrawingCanvas";
 import { api, streamSSE } from "../../lib/api";
 
 interface Note {
@@ -39,7 +23,6 @@ interface Note {
   course: string;
   content: string;
   date: string;
-  category: string;
 }
 
 interface Lecture {
@@ -60,9 +43,8 @@ interface Lecture {
 interface Course {
   id: string;
   title: string;
-  instructor: string;
   category: string;
-  progress: number;
+  source: string;
 }
 
 function fmtDuration(sec?: number): string {
@@ -82,23 +64,24 @@ function toEmbedUrl(url?: string): string {
 export function CourseLecture() {
   const { courseId, lectureId } = useParams();
   const navigate = useNavigate();
+
   const [course, setCourse] = useState<Course | null>(null);
   const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
   const [courseLectures, setCourseLectures] = useState<Lecture[]>([]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // 노트
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
   const [savedNotes, setSavedNotes] = useState<Note[]>([]);
-  const [activeTab, setActiveTab] = useState("take-notes");
-  const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [noteSaving, setNoteSaving] = useState(false);
+
+  // 완료
   const [completing, setCompleting] = useState(false);
 
   // 힌트 패널
   const [hintOpen, setHintOpen] = useState(false);
-  const [hintMsgs, setHintMsgs] = useState<{ role: "user"|"ai"; text: string }[]>([
+  const [hintMsgs, setHintMsgs] = useState<{ role: "user" | "ai"; text: string }[]>([
     { role: "ai", text: "막히는 부분을 질문해보세요. 단계적인 힌트를 드릴게요!" },
   ]);
   const [hintInput, setHintInput] = useState("");
@@ -106,10 +89,136 @@ export function CourseLecture() {
   const hintAbortRef = useRef<AbortController | null>(null);
   const hintBottomRef = useRef<HTMLDivElement>(null);
 
+  // 사이드바 모듈 접기/펼치기
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+
   const playerRef = useRef<any>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const completingRef = useRef(false);
+  const activeLectureRef = useRef<HTMLDivElement>(null);
 
+  // ── 데이터 로드 ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!courseId || !lectureId) return;
+    Promise.all([
+      api.getCourse(courseId),
+      api.getLecture(lectureId),
+      api.getLectures(courseId),
+    ]).then(([c, lec, lecs]: [any, any, any[]]) => {
+      setCourse({ id: c.id, title: c.title, category: c.category, source: c.source ?? "" });
+      const mapped = (l: any): Lecture => ({
+        id: l.id, title: l.title,
+        duration: fmtDuration(l.duration_sec), duration_sec: l.duration_sec,
+        videoUrl: toEmbedUrl(l.youtube_url), youtube_url: l.youtube_url,
+        completed: l.is_completed ?? false, is_completed: l.is_completed,
+        number: l.number, module_name: l.module_name,
+        keywords: l.tags ?? [], tags: l.tags ?? [],
+      });
+      setCurrentLecture(mapped(lec));
+      setCourseLectures(lecs.map(mapped));
+      setNoteTitle(`Notes: ${lec.title}`);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [courseId, lectureId]);
+
+  // 노트 로드
+  useEffect(() => {
+    if (!course) return;
+    api.getNotes().then((notes: any[]) => {
+      setSavedNotes(notes
+        .filter((n: any) => n.title.includes(course.title) || n.content_md?.includes(course.title))
+        .map((n: any) => ({
+          id: n.id, title: n.title, course: course.title,
+          content: n.content_md ?? "", date: n.updated_at ?? n.created_at ?? "",
+        })));
+    }).catch(console.error);
+  }, [course]);
+
+  // 활성 강의 사이드바 스크롤
+  useEffect(() => {
+    setTimeout(() => activeLectureRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 100);
+  }, [lectureId]);
+
+  // ── 완료 처리 ────────────────────────────────────────────────
+  const markCompleteRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    markCompleteRef.current = async () => {
+      if (!courseId || !lectureId || completingRef.current) return;
+      completingRef.current = true;
+      setCompleting(true);
+      try {
+        await api.completeLecture(courseId, lectureId);
+        setCurrentLecture(prev => prev ? { ...prev, completed: true } : prev);
+        setCourseLectures(prev => prev.map(l => l.id === lectureId ? { ...l, completed: true } : l));
+        api.addGraphFromLecture(lectureId).catch(() => {});
+      } finally {
+        setCompleting(false);
+      }
+    };
+  }, [courseId, lectureId]);
+
+  const handleMarkComplete = () => markCompleteRef.current();
+
+  // ── YouTube IFrame API ───────────────────────────────────────
+  useEffect(() => {
+    const videoId = currentLecture?.youtube_url?.match(
+      /(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/
+    )?.[1];
+    if (!videoId || currentLecture?.completed) return;
+    completingRef.current = false;
+
+    const initPlayer = () => {
+      const container = playerContainerRef.current;
+      if (!container) return;
+      playerRef.current?.destroy?.();
+      container.innerHTML = "";
+      const div = document.createElement("div");
+      container.appendChild(div);
+      playerRef.current = new window.YT.Player(div, {
+        host: "https://www.youtube-nocookie.com",
+        videoId,
+        width: "100%", height: "100%",
+        playerVars: { rel: 0, modestbranding: 1 },
+        events: { onStateChange: (e: any) => { if (e.data === 0) markCompleteRef.current(); } },
+      });
+    };
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      if (!document.getElementById("yt-iframe-api")) {
+        const tag = document.createElement("script");
+        tag.id = "yt-iframe-api";
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+      window.onYouTubeIframeAPIReady = initPlayer;
+    }
+    return () => {
+      playerRef.current?.destroy?.();
+      playerRef.current = null;
+      if (playerContainerRef.current) playerContainerRef.current.innerHTML = "";
+    };
+  }, [currentLecture?.id, currentLecture?.completed]);
+
+  // ── 노트 저장 ────────────────────────────────────────────────
+  const handleSaveNote = async () => {
+    if (!noteTitle || !noteContent || !course) return;
+    setNoteSaving(true);
+    try {
+      const created: any = await api.createNote({ title: noteTitle, content_md: noteContent });
+      setSavedNotes(prev => [{
+        id: created.id, title: noteTitle, course: course.title,
+        content: noteContent, date: new Date().toISOString(),
+      }, ...prev]);
+      setNoteContent("");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
+  // ── AI 힌트 ──────────────────────────────────────────────────
   async function sendHint() {
     const message = hintInput.trim();
     if (!message || hintStreaming || !lectureId) return;
@@ -142,463 +251,365 @@ export function CourseLecture() {
     }
   }
 
-  useEffect(() => {
-    if (!courseId || !lectureId) return;
-    Promise.all([
-      api.getCourse(courseId),
-      api.getLecture(lectureId),
-      api.getLectures(courseId),
-    ]).then(([c, lec, lecs]: [any, any, any[]]) => {
-      setCourse({
-        id: c.id, title: c.title,
-        instructor: "Self-Taught University",
-        category: c.category, progress: 0,
-      });
-      const mapped = (l: any): Lecture => ({
-        id: l.id, title: l.title,
-        duration: fmtDuration(l.duration_sec), duration_sec: l.duration_sec,
-        videoUrl: toEmbedUrl(l.youtube_url), youtube_url: l.youtube_url,
-        completed: l.is_completed ?? false, is_completed: l.is_completed,
-        number: l.number, module_name: l.module_name,
-        keywords: l.tags ?? [], tags: l.tags ?? [],
-      });
-      setCurrentLecture(mapped(lec));
-      setCourseLectures(lecs.map(mapped));
-      setNoteTitle(`Notes: ${lec.title}`);
-    }).catch(() => {
-      // localStorage 폴백
-      const savedCourses = localStorage.getItem("myCourses");
-      if (savedCourses) {
-        const courses = JSON.parse(savedCourses);
-        const c = courses.find((x: any) => x.id === courseId);
-        if (c) setCourse({ ...c, instructor: c.instructor ?? "Self-Taught University" });
-      }
-      const savedLectures = localStorage.getItem(`lectures-${courseId}`);
-      if (savedLectures) {
-        const lecs: Lecture[] = JSON.parse(savedLectures).map((l: any) => ({
-          ...l, completed: l.completed ?? false, keywords: l.keywords ?? [],
-          videoUrl: toEmbedUrl(l.videoUrl || l.youtube_url),
-        }));
-        setCourseLectures(lecs);
-        const found = lecs.find(l => l.id === lectureId);
-        if (found) { setCurrentLecture(found); setNoteTitle(`Notes: ${found.title}`); }
-      }
-    }).finally(() => setLoading(false));
-  }, [courseId, lectureId]);
+  // ── 모듈 그룹핑 ─────────────────────────────────────────────
+  const groups: { name: string; lectures: Lecture[] }[] = [];
+  for (const lec of courseLectures) {
+    const name = lec.module_name || "기타";
+    const g = groups.find(g => g.name === name);
+    if (g) g.lectures.push(lec);
+    else groups.push({ name, lectures: [lec] });
+  }
 
-  useEffect(() => {
-    // API 노트 불러오기
-    api.getNotes().then((notes: any[]) => {
-      const courseTitle = course?.title ?? "";
-      setSavedNotes(notes.filter((n: any) => n.title.includes(courseTitle) || n.content_md?.includes(courseTitle)).map((n: any) => ({
-        id: n.id, title: n.title, course: courseTitle,
-        content: n.content_md ?? "", date: n.updated_at ?? n.created_at ?? "",
-        category: "Lecture",
-      })));
-    }).catch(() => {
-      // localStorage 폴백
-      const data = localStorage.getItem("lectureNotes");
-      if (data && course) {
-        const notes = JSON.parse(data);
-        setSavedNotes(notes.filter((n: Note) => n.course.includes(course.title)));
-      }
+  const completedCount = courseLectures.filter(l => l.completed).length;
+  const progressPct = courseLectures.length > 0
+    ? Math.round((completedCount / courseLectures.length) * 100) : 0;
+
+  const currentIdx = courseLectures.findIndex(l => l.id === lectureId);
+  const prevLecture = currentIdx > 0 ? courseLectures[currentIdx - 1] : null;
+  const nextLecture = currentIdx < courseLectures.length - 1 ? courseLectures[currentIdx + 1] : null;
+
+  const toggleModule = (name: string) =>
+    setCollapsedModules(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
     });
-  }, [course]);
 
-  const handleSaveNote = async () => {
-    if (!noteTitle || !noteContent || !course) return;
-    setNoteSaving(true);
-    try {
-      const created: any = await api.createNote({ title: noteTitle, content_md: noteContent });
-      const note: Note = {
-        id: created.id, title: noteTitle, course: course.title,
-        content: noteContent, date: new Date().toISOString(), category: "Lecture",
-      };
-      setSavedNotes(prev => [note, ...prev]);
-      setNoteContent("");
-      setNoteTitle(`Notes: ${currentLecture?.title ?? ""}`);
-    } catch {
-      // localStorage 폴백
-      const note: Note = {
-        id: Date.now().toString(), title: noteTitle, course: course.title,
-        content: noteContent, date: new Date().toISOString(), category: "Lecture",
-      };
-      const allNotes = localStorage.getItem("lectureNotes");
-      const notes = allNotes ? JSON.parse(allNotes) : [];
-      localStorage.setItem("lectureNotes", JSON.stringify([note, ...notes]));
-      setSavedNotes(prev => [note, ...prev]);
-      setNoteContent("");
-    } finally {
-      setNoteSaving(false);
-    }
-  };
-
-  // ref로 최신 완료 함수 유지 — 플레이어 이벤트 클로저에서 stale 참조 방지
-  const markCompleteRef = useRef<() => Promise<void>>(async () => {});
-  useEffect(() => {
-    markCompleteRef.current = async () => {
-      if (!courseId || !lectureId || completingRef.current) return;
-      completingRef.current = true;
-      setCompleting(true);
-      try {
-        await api.completeLecture(courseId, lectureId);
-        setCurrentLecture(prev => prev ? { ...prev, completed: true, is_completed: true } : prev);
-        setCourseLectures(prev => prev.map(l =>
-          l.id === lectureId ? { ...l, completed: true } : l
-        ));
-        // 강의 키워드를 지식 그래프 노드로 등록
-        api.addGraphFromLecture(lectureId).catch(() => {});
-      } finally {
-        setCompleting(false);
-      }
-    };
-  }, [courseId, lectureId]);
-
-  const handleMarkComplete = () => markCompleteRef.current();
-
-  // YouTube IFrame Player API — 영상 종료 시 자동 완료
-  useEffect(() => {
-    const videoId = currentLecture?.youtube_url?.match(
-      /(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/
-    )?.[1];
-    if (!videoId || currentLecture?.completed) return;
-
-    completingRef.current = false;
-
-    const initPlayer = () => {
-      const container = playerContainerRef.current;
-      if (!container) return;
-
-      playerRef.current?.destroy?.();
-
-      // destroy()가 iframe을 제거하므로 매번 새 div를 생성
-      container.innerHTML = "";
-      const playerDiv = document.createElement("div");
-      container.appendChild(playerDiv);
-
-      playerRef.current = new window.YT.Player(playerDiv, {
-        host: "https://www.youtube-nocookie.com",
-        videoId,
-        width: "100%",
-        height: "100%",
-        playerVars: { rel: 0, modestbranding: 1 },
-        events: {
-          onStateChange: (e: any) => {
-            if (e.data === 0) markCompleteRef.current(); // ENDED
-          },
-        },
-      });
-    };
-
-    if (window.YT?.Player) {
-      initPlayer();
-    } else {
-      if (!document.getElementById("yt-iframe-api")) {
-        const tag = document.createElement("script");
-        tag.id = "yt-iframe-api";
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-      }
-      window.onYouTubeIframeAPIReady = initPlayer;
-    }
-
-    return () => {
-      playerRef.current?.destroy?.();
-      playerRef.current = null;
-      if (playerContainerRef.current) playerContainerRef.current.innerHTML = "";
-    };
-  }, [currentLecture?.id, currentLecture?.completed]);
-
-  const handleSaveDrawing = (dataUrl: string) => {
-    setSavedDrawings((prev) => [dataUrl, ...prev]);
-  };
-
+  // ── 로딩 / 에러 ─────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">불러오는 중...</p>
+        <p className="text-muted-foreground text-sm">불러오는 중...</p>
       </div>
     );
   }
-
   if (!course || !currentLecture) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">
-            {!course ? "Course not found" : "Lecture not found"}
-          </h2>
-          <Button onClick={() => navigate("/my-page")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to My Page
-          </Button>
+      <div className="min-h-screen flex items-center justify-center text-center">
+        <div>
+          <p className="text-lg font-bold mb-3">강의를 찾을 수 없습니다</p>
+          <button onClick={() => navigate(-1)} className="text-sm text-primary underline">돌아가기</button>
         </div>
       </div>
     );
   }
 
+  // ── 렌더 ────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background sticky top-0 z-40">
-        <div className="max-w-[2000px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(-1)}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Lectures
-              </Button>
-              <div>
-                <h1 className="font-bold text-lg">{course.title}</h1>
-                <p className="text-sm text-muted-foreground">{course.instructor}</p>
-              </div>
-            </div>
-            <Badge variant="secondary">{course.category}</Badge>
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+
+      {/* ── TOP BAR ── */}
+      <header className="h-[52px] flex-shrink-0 flex items-center gap-3 px-5 border-b bg-background">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
+        >
+          <ArrowLeft size={14} />
+          강좌 목록
+        </button>
+        <div className="w-px h-5 bg-border" />
+        <span className="text-sm font-semibold truncate flex-1">{course.title}</span>
+
+        {/* 진행률 */}
+        <div className="hidden md:flex items-center gap-2.5 flex-shrink-0">
+          <span className="text-xs text-muted-foreground">진도</span>
+          <div className="w-28 h-1 bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${progressPct}%` }} />
           </div>
+          <span className="text-xs font-semibold">{progressPct}%</span>
+          <span className="text-xs text-muted-foreground">· {completedCount} / {courseLectures.length}강</span>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-[2000px] mx-auto">
-        <div className={`grid ${isFullscreen ? 'grid-cols-1' : 'lg:grid-cols-[1fr_500px]'} gap-0`}>
-          {/* Video and Lecture List Section */}
-          <div className="flex flex-col">
-            {/* Video Player */}
-            <div className="bg-black aspect-video relative">
-              <div ref={playerContainerRef} className="w-full h-full" />
-            </div>
+      {/* ── MAIN ── */}
+      <div className="flex flex-1 overflow-hidden">
 
-            {/* Current Lecture Info */}
-            <div className="p-6 border-b">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold mb-2">{currentLecture.title}</h2>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {currentLecture.duration}
+        {/* ── LEFT SIDEBAR ── */}
+        <aside className="hidden md:flex w-[300px] flex-shrink-0 flex-col border-r bg-muted/20 overflow-hidden">
+          {/* 사이드바 헤더 */}
+          <div className="px-5 py-3.5 border-b flex-shrink-0">
+            <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-0.5">커리큘럼</p>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">{completedCount}</span> / {courseLectures.length}강 완료
+            </p>
+          </div>
+
+          {/* 모듈 목록 */}
+          <div className="flex-1 overflow-y-auto py-2">
+            {groups.map((group, gi) => {
+              const isCollapsed = collapsedModules.has(group.name);
+              const groupDone = group.lectures.filter(l => l.completed).length;
+              return (
+                <div key={gi}>
+                  {/* 모듈 헤더 */}
+                  <button
+                    onClick={() => toggleModule(group.name)}
+                    className="w-full flex items-center gap-2 px-5 py-2 hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <ChevronRight
+                      size={12}
+                      className="text-muted-foreground transition-transform flex-shrink-0"
+                      style={{ transform: isCollapsed ? "" : "rotate(90deg)" }}
+                    />
+                    <span className="text-xs font-semibold flex-1 truncate">{group.name}</span>
+                    <span className="text-[10px] text-muted-foreground bg-background border rounded-full px-2 py-px flex-shrink-0">
+                      {groupDone}/{group.lectures.length}
                     </span>
-                    <Badge variant={currentLecture.completed ? "default" : "outline"}>
-                      {currentLecture.completed ? "Completed" : "In Progress"}
-                    </Badge>
-                    {!currentLecture.completed && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
-                        onClick={handleMarkComplete}
-                        disabled={completing}
+                  </button>
+
+                  {/* 강의 목록 */}
+                  {!isCollapsed && group.lectures.map((lec) => {
+                    const isActive = lec.id === lectureId;
+                    return (
+                      <div
+                        key={lec.id}
+                        ref={isActive ? activeLectureRef : undefined}
+                        onClick={() => navigate(`/course/${courseId}/lecture/${lec.id}`)}
+                        className={`flex items-center gap-2.5 pl-9 pr-4 py-2.5 cursor-pointer transition-colors border-r-2 ${
+                          isActive
+                            ? "bg-accent border-foreground"
+                            : "border-transparent hover:bg-muted/40"
+                        }`}
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        {completing ? "저장 중..." : "완료로 표시"}
-                      </Button>
-                    )}
-                  </div>
-                  {currentLecture.keywords && currentLecture.keywords.length > 0 && (
-                    <div className="flex items-start gap-2">
-                      <Tag className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
-                      <div className="flex flex-wrap gap-2">
-                        {currentLecture.keywords.map((keyword, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {keyword}
-                          </Badge>
-                        ))}
+                        {/* 아이콘 */}
+                        <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center flex-shrink-0 border ${
+                          lec.completed
+                            ? "bg-foreground border-foreground"
+                            : isActive
+                            ? "bg-foreground border-foreground"
+                            : "bg-background border-border"
+                        }`}>
+                          {lec.completed ? (
+                            <svg width="9" height="9" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24">
+                              <path d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : isActive ? (
+                            <svg width="7" height="7" fill="white" viewBox="0 0 24 24">
+                              <polygon points="5,3 19,12 5,21" />
+                            </svg>
+                          ) : null}
+                        </div>
+
+                        {/* 제목 + 시간 */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs leading-snug line-clamp-2 ${
+                            lec.completed ? "text-muted-foreground/60" : isActive ? "font-semibold text-foreground" : "text-foreground/80"
+                          }`}>
+                            {lec.title}
+                          </p>
+                          {lec.duration && lec.duration !== "—" && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                              <Clock size={9} />{lec.duration}
+                            </p>
+                          )}
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* ── PLAYER AREA ── */}
+        <div className="flex-1 flex flex-col overflow-y-auto">
+
+          {/* 비디오 */}
+          <div className="bg-black w-full flex-shrink-0" style={{ maxHeight: "62vh", aspectRatio: "16/9" }}>
+            <div ref={playerContainerRef} className="w-full h-full">
+              {!currentLecture.youtube_url && (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-zinc-950">
+                  <div className="w-16 h-16 rounded-full bg-white/10 border border-white/30 flex items-center justify-center">
+                    <Play size={24} className="text-white ml-1" />
+                  </div>
+                  <p className="text-sm text-white/50">YouTube URL이 없습니다</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 이전 / 완료 / 다음 */}
+          <div className="flex items-center justify-between px-7 py-3 border-b bg-muted/20 flex-shrink-0">
+            <button
+              disabled={!prevLecture}
+              onClick={() => prevLecture && navigate(`/course/${courseId}/lecture/${prevLecture.id}`)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground border rounded-md px-3 py-1.5 hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ArrowLeft size={12} /> 이전 강의
+            </button>
+
+            {currentLecture.completed ? (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground border rounded-md px-3 py-1.5 bg-muted">
+                <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+                완료됨
+              </div>
+            ) : (
+              <button
+                onClick={handleMarkComplete}
+                disabled={completing}
+                className="flex items-center gap-1.5 text-xs font-semibold text-background bg-foreground rounded-md px-4 py-1.5 hover:opacity-75 transition-opacity disabled:opacity-50"
+              >
+                <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+                {completing ? "저장 중..." : "완료로 표시"}
+              </button>
+            )}
+
+            <button
+              disabled={!nextLecture}
+              onClick={() => nextLecture && navigate(`/course/${courseId}/lecture/${nextLecture.id}`)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground border rounded-md px-3 py-1.5 hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              다음 강의 <ArrowRight size={12} />
+            </button>
+          </div>
+
+          {/* 강의 정보 */}
+          <div className="px-7 py-5 border-b flex-shrink-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border">
+                {course.category.toUpperCase()}
+              </span>
+              {currentLecture.module_name && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border">
+                  {currentLecture.module_name}
+                </span>
+              )}
+              {currentLecture.duration && currentLecture.duration !== "—" && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Clock size={10} />{currentLecture.duration}
+                </span>
+              )}
+            </div>
+            <h2 className="text-xl font-bold leading-snug mb-3" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+              {currentLecture.title}
+            </h2>
+            {currentLecture.keywords.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Tag size={12} className="text-muted-foreground" />
+                {currentLecture.keywords.map((kw, i) => (
+                  <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border">
+                    {kw}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 탭: 노트 | 강의 정보 */}
+          <Tabs defaultValue="notes" className="flex-1 flex flex-col">
+            <TabsList className="mx-7 mt-4 w-fit">
+              <TabsTrigger value="notes" className="text-xs gap-1.5">
+                <BookOpen size={12} /> 노트
+              </TabsTrigger>
+              <TabsTrigger value="about" className="text-xs gap-1.5">
+                ℹ️ 강의 정보
+              </TabsTrigger>
+            </TabsList>
+
+            {/* 노트 탭 */}
+            <TabsContent value="notes" className="px-7 py-5 flex-1">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 작성 */}
+                <div>
+                  <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-3">새 노트 작성</p>
+                  <Input
+                    placeholder="제목"
+                    value={noteTitle}
+                    onChange={e => setNoteTitle(e.target.value)}
+                    className="mb-2 h-8 text-sm"
+                  />
+                  <Textarea
+                    placeholder="이 강의에서 배운 내용을 메모하세요..."
+                    value={noteContent}
+                    onChange={e => setNoteContent(e.target.value)}
+                    className="min-h-[180px] text-sm font-mono resize-none"
+                  />
+                  <button
+                    onClick={handleSaveNote}
+                    disabled={!noteTitle || !noteContent || noteSaving}
+                    className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold text-background bg-foreground rounded-md px-4 py-2 hover:opacity-75 transition-opacity disabled:opacity-40"
+                  >
+                    <Save size={12} />
+                    {noteSaving ? "저장 중..." : "저장"}
+                  </button>
+                </div>
+
+                {/* 저장된 노트 */}
+                <div>
+                  <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-3">
+                    저장된 노트 ({savedNotes.length})
+                  </p>
+                  {savedNotes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">아직 저장된 노트가 없습니다.</p>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
+                      {savedNotes.map(note => (
+                        <div key={note.id} className="bg-muted/40 border rounded-lg p-3.5">
+                          <p className="text-sm font-semibold mb-0.5">{note.title}</p>
+                          <p className="text-[10px] text-muted-foreground mb-2">
+                            {note.date ? new Date(note.date).toLocaleDateString("ko-KR") : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{note.content}</p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsFullscreen(!isFullscreen)}
-                >
-                  {isFullscreen ? (
-                    <Minimize2 className="w-4 h-4" />
-                  ) : (
-                    <Maximize2 className="w-4 h-4" />
-                  )}
-                </Button>
               </div>
-            </div>
+            </TabsContent>
 
-            {/* Lecture List */}
-            <div className="p-6">
-              <h3 className="font-bold mb-4 flex items-center gap-2">
-                <Video className="w-5 h-5" />
-                Course Content
-              </h3>
-              <div className="space-y-2">
-                {courseLectures.map((lecture, index) => (
-                  <Card
-                    key={lecture.id}
-                    className={`cursor-pointer transition-all ${
-                      currentLecture?.id === lecture.id
-                        ? "border-primary bg-primary/5"
-                        : "hover:border-primary/50"
-                    }`}
-                    onClick={() => navigate(`/course/${courseId}/lecture/${lecture.id}`)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-                          {index + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{lecture.title}</p>
-                          <p className="text-sm text-muted-foreground">{lecture.duration}</p>
-                        </div>
-                        {lecture.completed ? (
-                          <Badge variant="secondary" className="text-xs">
-                            ✓
-                          </Badge>
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+            {/* 강의 정보 탭 */}
+            <TabsContent value="about" className="px-7 py-5">
+              <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-4">강의 정보</p>
+              <table className="text-sm w-full max-w-md">
+                {[
+                  ["강좌", course.title],
+                  ["카테고리", course.category.toUpperCase()],
+                  ["출처", course.source],
+                  ["총 강의 수", `${courseLectures.length}강`],
+                  ["완료", `${completedCount} / ${courseLectures.length}강 (${progressPct}%)`],
+                ].map(([label, value]) => (
+                  <tr key={label} className="border-b last:border-b-0">
+                    <td className="py-2.5 pr-6 text-muted-foreground w-28">{label}</td>
+                    <td className="py-2.5 font-medium">{value}</td>
+                  </tr>
                 ))}
-              </div>
-            </div>
-          </div>
+              </table>
+            </TabsContent>
+          </Tabs>
 
-          {/* Notes Section */}
-          {!isFullscreen && (
-            <div className="border-l bg-muted/30 flex flex-col h-screen sticky top-[73px]">
-              <div className="p-6 border-b bg-background">
-                <h3 className="font-bold flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  Lecture Notes
-                </h3>
-              </div>
-
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <TabsList className="mx-6 mt-4">
-                  <TabsTrigger value="take-notes">Text</TabsTrigger>
-                  <TabsTrigger value="drawing">
-                    <Pencil className="w-4 h-4 mr-1" />
-                    Drawing
-                  </TabsTrigger>
-                  <TabsTrigger value="saved-notes">
-                    Saved ({savedNotes.length})
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="take-notes" className="flex-1 flex flex-col mt-0 p-6 space-y-4 overflow-y-auto">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Note Title</label>
-                    <Input
-                      placeholder="Enter note title..."
-                      value={noteTitle}
-                      onChange={(e) => setNoteTitle(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex-1 flex flex-col">
-                    <label className="text-sm font-medium mb-2 block">Your Notes</label>
-                    <Textarea
-                      placeholder="Take notes while watching the lecture..."
-                      value={noteContent}
-                      onChange={(e) => setNoteContent(e.target.value)}
-                      className="flex-1 min-h-[400px] font-mono resize-none"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleSaveNote}
-                    className="w-full"
-                    disabled={!noteTitle || !noteContent}
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Note
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="drawing" className="flex-1 mt-0 flex flex-col overflow-hidden">
-                  <DrawingCanvas onSave={handleSaveDrawing} />
-                </TabsContent>
-
-                <TabsContent value="saved-notes" className="flex-1 mt-0 p-6 overflow-y-auto">
-                  {savedNotes.length === 0 && savedDrawings.length === 0 ? (
-                    <div className="text-center py-12">
-                      <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No saved notes yet</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Start taking notes during lectures
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {/* Text Notes */}
-                      {savedNotes.length > 0 && (
-                        <div>
-                          <h4 className="font-medium mb-3">Text Notes</h4>
-                          <div className="space-y-4">
-                            {savedNotes.map((note) => (
-                              <Card key={note.id}>
-                                <CardHeader className="pb-3">
-                                  <CardTitle className="text-sm">{note.title}</CardTitle>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(note.date).toLocaleDateString()}
-                                  </p>
-                                </CardHeader>
-                                <CardContent>
-                                  <p className="text-sm text-muted-foreground line-clamp-3">
-                                    {note.content}
-                                  </p>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Drawings */}
-                      {savedDrawings.length > 0 && (
-                        <div>
-                          <h4 className="font-medium mb-3">Drawings</h4>
-                          <div className="grid grid-cols-1 gap-4">
-                            {savedDrawings.map((drawing, index) => (
-                              <Card key={index}>
-                                <CardContent className="p-4">
-                                  <img
-                                    src={drawing}
-                                    alt={`Drawing ${index + 1}`}
-                                    className="w-full rounded border"
-                                  />
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </div>
-          )}
+          {/* 하단 여백 */}
+          <div className="h-20" />
         </div>
       </div>
 
-      {/* 힌트 패널 — 우측 슬라이드인 */}
-      <div className={`fixed top-0 right-0 h-full w-80 bg-background border-l shadow-xl z-40 flex flex-col transition-transform duration-300 ${hintOpen ? "translate-x-0" : "translate-x-full"}`}>
-        <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground flex-shrink-0">
+      {/* ── AI 힌트 패널 ── */}
+      <div className={`fixed top-0 right-0 h-full w-80 bg-background border-l shadow-xl z-50 flex flex-col transition-transform duration-300 ${hintOpen ? "translate-x-0" : "translate-x-full"}`}>
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30 flex-shrink-0">
           <span className="flex items-center gap-2 font-semibold text-sm">
-            <Lightbulb className="w-4 h-4" /> AI 힌트
+            <Lightbulb size={15} /> AI 힌트
           </span>
-          <button onClick={() => setHintOpen(false)}><X className="w-4 h-4 opacity-70 hover:opacity-100" /></button>
+          <button onClick={() => setHintOpen(false)} className="text-muted-foreground hover:text-foreground">
+            <X size={15} />
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
           {hintMsgs.map((m, i) => (
             <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${
-                m.role === "user" ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
+                m.role === "user"
+                  ? "bg-foreground text-background rounded-br-none"
+                  : "bg-muted rounded-bl-none"
               }`}>
                 {m.text}
-                {m.role === "ai" && m.text === "" && <span className="inline-block w-1.5 h-4 bg-foreground/40 animate-pulse ml-0.5" />}
+                {m.role === "ai" && m.text === "" && (
+                  <span className="inline-block w-1.5 h-4 bg-foreground/40 animate-pulse ml-0.5" />
+                )}
               </div>
             </div>
           ))}
@@ -613,19 +624,23 @@ export function CourseLecture() {
             disabled={hintStreaming}
             className="flex-1 px-3 py-3 text-sm bg-transparent outline-none disabled:opacity-50"
           />
-          <button onClick={sendHint} disabled={!hintInput.trim() || hintStreaming} className="px-3 text-primary disabled:opacity-30">
-            <Send className="w-4 h-4" />
+          <button
+            onClick={sendHint}
+            disabled={!hintInput.trim() || hintStreaming}
+            className="px-3 text-foreground disabled:opacity-30"
+          >
+            <Send size={15} />
           </button>
         </div>
       </div>
 
-      {/* 힌트 토글 버튼 (우측 하단) */}
-      {!hintOpen && currentLecture && (
+      {/* ── AI 힌트 플로팅 버튼 ── */}
+      {!hintOpen && (
         <button
           onClick={() => setHintOpen(true)}
-          className="fixed bottom-24 right-6 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 text-white shadow-lg hover:bg-amber-600 transition-colors text-sm font-medium"
+          className="fixed bottom-6 right-7 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-foreground text-background shadow-lg hover:opacity-80 transition-all hover:-translate-y-0.5 text-sm font-semibold"
         >
-          <Lightbulb className="w-4 h-4" /> 힌트
+          <Lightbulb size={14} /> AI 힌트
         </button>
       )}
     </div>

@@ -3,14 +3,15 @@ import logging
 import openai
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete, text
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models.models import Course, Lecture, LectureNote, Progress
+from app.models.models import Course, Lecture, LectureNote, MyNote, Progress, NoteEmbedding
+from app.models.research import PaperAnnotation
 from app.core.errors import get_or_404
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,7 @@ class CourseOut(BaseModel):
     source: str
     category: str
     order_index: int
+    is_enrolled: bool = False
     description: Optional[str] = None
     objectives: list[str] = []
     lecture_count: int = 0
@@ -118,6 +120,9 @@ class CourseOut(BaseModel):
 
 
 class CourseUpdateIn(BaseModel):
+    title: Optional[str] = None
+    category: Optional[str] = None
+    source: Optional[str] = None
     description: Optional[str] = None
     objectives: Optional[list[str]] = None
 
@@ -126,6 +131,7 @@ class CourseUpdateIn(BaseModel):
 async def list_courses(
     q: Optional[str] = None,
     category: Optional[str] = None,
+    enrolled: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
@@ -135,6 +141,8 @@ async def list_courses(
         stmt = stmt.where(Course.title.ilike(f"%{q}%"))
     if category:
         stmt = stmt.where(Course.category.ilike(category))
+    if enrolled is not None:
+        stmt = stmt.where(Course.is_enrolled == enrolled)
     stmt = stmt.offset(offset).limit(limit)
     courses = (await db.execute(stmt)).scalars().all()
 
@@ -155,6 +163,7 @@ async def list_courses(
         result.append(CourseOut(
             id=c.id, code=code, title=c.title, source=c.source,
             category=c.category, order_index=c.order_index,
+            is_enrolled=c.is_enrolled,
             description=c.description, objectives=c.objectives or [],
             lecture_count=lec_count, completed_count=done_count,
             progress_pct=pct, status=status,
@@ -370,12 +379,50 @@ async def reorder_courses(items: list[CourseReorderItem], db: AsyncSession = Dep
 @router.patch("/{course_id}", status_code=200)
 async def update_course(course_id: str, body: CourseUpdateIn, db: AsyncSession = Depends(get_db)):
     course = await get_or_404(db, Course, course_id, "Course")
+    if body.title is not None:
+        course.title = body.title
+    if body.category is not None:
+        course.category = body.category
+    if body.source is not None:
+        course.source = body.source
     if body.description is not None:
         course.description = body.description
     if body.objectives is not None:
         course.objectives = body.objectives
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/{course_id}/reset-progress", status_code=200)
+async def reset_course_progress(course_id: str, db: AsyncSession = Depends(get_db)):
+    """강좌의 모든 강의 진도를 초기화합니다."""
+    await get_or_404(db, Course, course_id, "Course")
+    lectures = (await db.execute(select(Lecture).where(Lecture.course_id == course_id))).scalars().all()
+    lecture_ids = [l.id for l in lectures]
+    if lecture_ids:
+        progresses = (await db.execute(
+            select(Progress).where(Progress.lecture_id.in_(lecture_ids))
+        )).scalars().all()
+        for p in progresses:
+            await db.delete(p)
+    await db.commit()
+    return {"ok": True, "reset_count": len(lecture_ids)}
+
+
+@router.post("/{course_id}/enroll", status_code=200)
+async def enroll_course(course_id: str, db: AsyncSession = Depends(get_db)):
+    course = await get_or_404(db, Course, course_id, "Course")
+    course.is_enrolled = True
+    await db.commit()
+    return {"ok": True, "enrolled": True}
+
+
+@router.post("/{course_id}/unenroll", status_code=200)
+async def unenroll_course(course_id: str, db: AsyncSession = Depends(get_db)):
+    course = await get_or_404(db, Course, course_id, "Course")
+    course.is_enrolled = False
+    await db.commit()
+    return {"ok": True, "enrolled": False}
 
 
 class LectureMetaPatch(BaseModel):
@@ -417,10 +464,62 @@ async def batch_update_lecture_meta(
     return {"updated": len(lectures)}
 
 
+async def _delete_lectures_by_course_ids(db: AsyncSession, course_ids: list[str]) -> None:
+    """강좌 ID 목록 기준으로 연관 레코드를 서브쿼리로 한 번에 삭제 — ID 왕복 없음."""
+    if not course_ids:
+        return
+    # 파라미터 바인딩용 플레이스홀더
+    ids_literal = ", ".join(f"'{cid}'" for cid in course_ids)
+
+    await db.execute(text(f"""
+        DELETE FROM note_embeddings
+        WHERE note_id IN (
+            SELECT id FROM my_notes
+            WHERE lecture_id IN (
+                SELECT id FROM lectures WHERE course_id IN ({ids_literal})
+            )
+        )
+    """))
+    await db.execute(text(f"""
+        DELETE FROM my_notes
+        WHERE lecture_id IN (SELECT id FROM lectures WHERE course_id IN ({ids_literal}))
+    """))
+    await db.execute(text(f"""
+        DELETE FROM lecture_notes
+        WHERE lecture_id IN (SELECT id FROM lectures WHERE course_id IN ({ids_literal}))
+    """))
+    await db.execute(text(f"""
+        DELETE FROM progress
+        WHERE lecture_id IN (SELECT id FROM lectures WHERE course_id IN ({ids_literal}))
+    """))
+    await db.execute(text(f"""
+        DELETE FROM paper_annotations
+        WHERE related_lecture_id IN (SELECT id FROM lectures WHERE course_id IN ({ids_literal}))
+    """))
+    await db.execute(text(f"DELETE FROM lectures WHERE course_id IN ({ids_literal})"))
+
+
+async def _delete_lectures_by_ids(db: AsyncSession, lecture_ids: list[str]) -> None:
+    """강의 ID 목록 기준 삭제 (단일 강의 삭제용)."""
+    if not lecture_ids:
+        return
+    ids_literal = ", ".join(f"'{lid}'" for lid in lecture_ids)
+
+    await db.execute(text(f"""
+        DELETE FROM note_embeddings
+        WHERE note_id IN (SELECT id FROM my_notes WHERE lecture_id IN ({ids_literal}))
+    """))
+    await db.execute(text(f"DELETE FROM my_notes WHERE lecture_id IN ({ids_literal})"))
+    await db.execute(text(f"DELETE FROM lecture_notes WHERE lecture_id IN ({ids_literal})"))
+    await db.execute(text(f"DELETE FROM progress WHERE lecture_id IN ({ids_literal})"))
+    await db.execute(text(f"DELETE FROM paper_annotations WHERE related_lecture_id IN ({ids_literal})"))
+    await db.execute(text(f"DELETE FROM lectures WHERE id IN ({ids_literal})"))
+
+
 @router.delete("/lectures/{lecture_id}", status_code=200)
 async def delete_lecture(lecture_id: str, db: AsyncSession = Depends(get_db)):
-    lecture = await get_or_404(db, Lecture, lecture_id, "Lecture")
-    await db.delete(lecture)
+    await get_or_404(db, Lecture, lecture_id, "Lecture")
+    await _delete_lectures_by_ids(db, [lecture_id])
     await db.commit()
     return {"ok": True, "deleted": lecture_id}
 
@@ -434,27 +533,38 @@ async def bulk_delete_lectures(body: BulkDeleteIn, db: AsyncSession = Depends(ge
     """강의 일괄 삭제. body: {"ids": ["uuid", ...]}"""
     if not body.ids:
         return {"deleted": 0}
-    lectures = (await db.execute(
-        select(Lecture).where(Lecture.id.in_(body.ids))
-    )).scalars().all()
-    for lec in lectures:
-        await db.delete(lec)
+    count = len(body.ids)
+    await _delete_lectures_by_ids(db, body.ids)
     await db.commit()
-    return {"deleted": len(lectures)}
+    return {"deleted": count}
+
+
+class BulkDeleteCoursesIn(BaseModel):
+    ids: list[str]
+
+
+@router.delete("/bulk", status_code=200)
+async def bulk_delete_courses(body: BulkDeleteCoursesIn, db: AsyncSession = Depends(get_db)):
+    """강좌 여러 개 한 번에 삭제 — 서브쿼리로 ID 왕복 없이 처리."""
+    if not body.ids:
+        return {"deleted": 0}
+    ids_literal = ", ".join(f"'{cid}'" for cid in body.ids)
+    await _delete_lectures_by_course_ids(db, body.ids)
+    await db.execute(text(f"DELETE FROM progress WHERE course_id IN ({ids_literal})"))
+    await db.execute(text(f"DELETE FROM courses WHERE id IN ({ids_literal})"))
+    await db.commit()
+    return {"deleted": len(body.ids)}
 
 
 @router.delete("/{course_id}", status_code=200)
 async def delete_course(course_id: str, db: AsyncSession = Depends(get_db)):
-    """강좌 전체 삭제 (강의 포함)."""
-    course = await get_or_404(db, Course, course_id, "Course")
-    lectures = (await db.execute(
-        select(Lecture).where(Lecture.course_id == course_id)
-    )).scalars().all()
-    for lec in lectures:
-        await db.delete(lec)
-    await db.delete(course)
+    """강좌 단일 삭제."""
+    await get_or_404(db, Course, course_id, "Course")
+    await _delete_lectures_by_course_ids(db, [course_id])
+    await db.execute(text(f"DELETE FROM progress WHERE course_id = '{course_id}'"))
+    await db.execute(text(f"DELETE FROM courses WHERE id = '{course_id}'"))
     await db.commit()
-    return {"deleted": course_id, "lectures_deleted": len(lectures)}
+    return {"deleted": course_id}
 
 
 @router.post("/backfill-metadata", status_code=200)

@@ -78,7 +78,7 @@ export function YouTubeImport() {
     try {
       await api.syncPlaylists(Array.from(selectedPlaylists));
       // 202: 백그라운드에서 처리 중 — 바로 이동
-      navigate("/my-page", { state: { syncStarted: true } });
+      navigate("/course-catalog", { state: { syncing: true } });
     } catch (e) {
       console.error("sync failed", e);
     } finally {
