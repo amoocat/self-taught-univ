@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>STU — Lecture Player Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #ffffff;
+    --surface:  #f9f9fb;
+    --card:     #f3f3f5;
+    --border:   rgba(0,0,0,0.1);
+    --text:     #0d0d14;
+    --muted:    #717182;
+    --primary:  #030213;
+    --primary2: #2d2b50;
+    --green:    #16a34a;
+    --amber:    #d97706;
+    --sidebar-w: 320px;
+  }
+  body {
+    font-family: 'IBM Plex Sans', 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    height: 52px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .topbar-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background .15s;
+    text-decoration: none;
+  }
+  .topbar-back:hover { background: var(--card); color: var(--text); }
+  .topbar-back svg { width: 14px; height: 14px; }
+  .topbar-divider { width: 1px; height: 20px; background: var(--border); }
+  .topbar-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .topbar-progress-label { font-size: 12px; color: var(--muted); }
+  .topbar-progress-bar {
+    width: 120px;
+    height: 4px;
+    background: var(--card);
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+  .topbar-progress-fill {
+    height: 100%;
+    width: 38%;
+    background: var(--green);
+    border-radius: 9999px;
+  }
+  .topbar-pct { font-size: 12px; color: var(--green); font-weight: 600; }
+
+  /* ── Main layout ── */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Left sidebar ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar-header-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .sidebar-header-count {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .sidebar-header-count span { color: var(--green); font-weight: 600; }
+  .sidebar-scroll { flex: 1; overflow-y: auto; padding: 12px 0; }
+  .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+  .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+
+  .module-group { margin-bottom: 4px; }
+  .module-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .module-header:hover { background: var(--card); }
+  .module-chevron { color: var(--muted); transition: transform .2s; font-size: 11px; }
+  .module-chevron.open { transform: rotate(90deg); }
+  .module-name { font-size: 12px; font-weight: 600; color: var(--text); flex: 1; }
+  .module-badge {
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 1px 7px;
+    border-radius: 9999px;
+  }
+  .module-body { display: flex; flex-direction: column; }
+
+  .lecture-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px 9px 36px;
+    cursor: pointer;
+    position: relative;
+    transition: background .12s;
+  }
+  .lecture-item:hover { background: var(--card); }
+  .lecture-item.active {
+    background: #ececf0;
+    border-right: 2px solid var(--primary);
+  }
+  .lecture-item.active .lecture-title { color: var(--primary); font-weight: 600; }
+  .lecture-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1.5px solid #d0d0d8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .lecture-icon.done {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .lecture-icon.active-dot {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+  .lecture-icon svg { width: 10px; height: 10px; }
+  .lecture-info { flex: 1; min-width: 0; }
+  .lecture-title { font-size: 12.5px; color: #3d3d50; line-clamp: 2; line-height: 1.4; }
+  .lecture-item.done .lecture-title { color: #a0a0b0; }
+  .lecture-duration { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Player area ── */
+  .player-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+  .player-area::-webkit-scrollbar { width: 6px; }
+  .player-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+
+  .video-wrapper {
+    background: #000;
+    width: 100%;
+    aspect-ratio: 16/9;
+    max-height: 62vh;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .video-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: #111;
+  }
+  .play-btn {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.15);
+    border: 2px solid rgba(255,255,255,.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .play-btn:hover { background: rgba(255,255,255,.25); }
+  .play-btn svg { width: 28px; height: 28px; margin-left: 4px; }
+  .video-label { font-size: 13px; color: var(--muted); }
+
+  /* Nav under video */
+  .video-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .nav-btn:hover { background: var(--card); color: var(--text); }
+  .nav-btn svg { width: 13px; height: 13px; }
+  .complete-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0a0e1a;
+    background: var(--green);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .complete-btn:hover { opacity: .88; }
+  .complete-btn svg { width: 14px; height: 14px; }
+  .completed-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 600;
+    padding: 6px 12px;
+    background: color-mix(in srgb, var(--green) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+    border-radius: 8px;
+  }
+
+  /* Lecture info */
+  .lecture-info-block {
+    padding: 24px 28px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .lecture-info-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .meta-chip {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: var(--card);
+  }
+  .meta-chip.cat { border-color: #4e6de8; color: var(--primary); background: rgba(108,139,255,.1); }
+  .lecture-info-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+  .lecture-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .tag {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 9999px;
+    background: var(--card);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  /* Tabs */
+  .tabs-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .tab {
+    font-size: 13px;
+    padding: 12px 16px;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+  .tab-content { padding: 24px 28px; flex: 1; }
+
+  /* Notes panel */
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .notes-textarea {
+    width: 100%;
+    min-height: 200px;
+    background: #f3f3f5;
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 13px;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s;
+  }
+  .notes-textarea:focus { border-color: var(--primary); background: #fff; }
+  .notes-textarea::placeholder { color: #aaa; }
+  .notes-save-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #0a0e1a;
+    background: var(--primary);
+    border: none;
+    border-radius: 7px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  .saved-note {
+    background: #f3f3f5;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .saved-note-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .saved-note-date { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .saved-note-preview { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* AI hint */
+  .hint-float {
+    position: fixed;
+    bottom: 28px;
+    right: 32px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--amber);
+    color: #0a0e1a;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 9999px;
+    padding: 10px 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(251,191,36,.4);
+    transition: transform .15s, box-shadow .15s;
+    z-index: 100;
+  }
+  .hint-float:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(251,191,36,.5); }
+  .hint-float svg { width: 15px; height: 15px; }
+
+  /* resources list */
+  .resource-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #f3f3f5;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .resource-item:hover { border-color: var(--primary); background: #ececf0; }
+  .resource-icon {
+    width: 34px; height: 34px;
+    border-radius: 7px;
+    background: rgba(0,0,0,0.06);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .resource-icon svg { width: 16px; height: 16px; color: var(--primary); }
+  .resource-name { font-size: 13px; font-weight: 500; }
+  .resource-type { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* scrollbar global */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+
+  /* responsive hint */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .notes-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <a href="#" class="topbar-back">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    강좌 목록
+  </a>
+  <div class="topbar-divider"></div>
+  <div class="topbar-title">선형대수학 — MIT 18.06</div>
+  <div class="topbar-progress-wrap">
+    <span class="topbar-progress-label">진도</span>
+    <div class="topbar-progress-bar"><div class="topbar-progress-fill"></div></div>
+    <span class="topbar-pct">38%</span>
+    <span class="topbar-progress-label">· 11 / 28강</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-header-label">커리큘럼</div>
+      <div class="sidebar-header-count"><span>11</span> / 28강 완료</div>
+    </div>
+    <div class="sidebar-scroll">
+
+      <!-- Module 1 (완료) -->
+      <div class="module-group">
+        <div class="module-header">
+          <span class="module-chevron open">▶</span>
+          <span class="module-name">Module 1 · 벡터와 행렬</span>
+          <span class="module-badge">5 / 5 ✓</span>
+        </div>
+        <div class="module-body">
+          <div class="lecture-item done">
+            <div class="lecture-icon done">
+              <svg fill="white" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">The Geometry of Linear Equations</div>
+              <div class="lecture-duration">39m 49s</div>
+            </div>
+          </div>
+          <div class="lecture-item done">
+            <div class="lecture-icon done">
+              <svg fill="white" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Elimination with Matrices</div>
+              <div class="lecture-duration">47m 12s</div>
+            </div>
+          </div>
+          <div class="lecture-item done">
+            <div class="lecture-icon done">
+              <svg fill="white" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Multiplication and Inverse Matrices</div>
+              <div class="lecture-duration">46m 57s</div>
+            </div>
+          </div>
+          <div class="lecture-item done">
+            <div class="lecture-icon done">
+              <svg fill="white" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Factorization into A = LU</div>
+              <div class="lecture-duration">48m 05s</div>
+            </div>
+          </div>
+          <div class="lecture-item done">
+            <div class="lecture-icon done">
+              <svg fill="white" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Transposes, Permutations, Spaces</div>
+              <div class="lecture-duration">47m 41s</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module 2 (진행 중) -->
+      <div class="module-group">
+        <div class="module-header">
+          <span class="module-chevron open">▶</span>
+          <span class="module-name">Module 2 · 벡터 공간</span>
+          <span class="module-badge">3 / 6 진행</span>
+        </div>
+        <div class="module-body">
+          <div class="lecture-item done">
+            <div class="lecture-icon done">
+              <svg fill="white" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Column Space and Nullspace</div>
+              <div class="lecture-duration">44m 28s</div>
+            </div>
+          </div>
+          <div class="lecture-item done">
+            <div class="lecture-icon done">
+              <svg fill="white" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Solving Ax = 0: Pivot Variables</div>
+              <div class="lecture-duration">43m 10s</div>
+            </div>
+          </div>
+          <div class="lecture-item done">
+            <div class="lecture-icon done">
+              <svg fill="white" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Solving Ax = b: Row Reduced Form</div>
+              <div class="lecture-duration">47m 38s</div>
+            </div>
+          </div>
+          <!-- 현재 강의 -->
+          <div class="lecture-item active">
+            <div class="lecture-icon active-dot">
+              <svg fill="white" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Independence, Basis, and Dimension</div>
+              <div class="lecture-duration">50m 14s · 현재 수강 중</div>
+            </div>
+          </div>
+          <div class="lecture-item">
+            <div class="lecture-icon">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">The Four Fundamental Subspaces</div>
+              <div class="lecture-duration">49m 22s</div>
+            </div>
+          </div>
+          <div class="lecture-item">
+            <div class="lecture-icon">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+            <div class="lecture-info">
+              <div class="lecture-title">Matrix Spaces; Rank 1; Small World Graphs</div>
+              <div class="lecture-duration">45m 55s</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module 3 (잠김) -->
+      <div class="module-group">
+        <div class="module-header">
+          <span class="module-chevron">▶</span>
+          <span class="module-name" style="color: #4d5470">Module 3 · 직교성</span>
+          <span class="module-badge">0 / 7</span>
+        </div>
+      </div>
+
+      <!-- Module 4 (잠김) -->
+      <div class="module-group">
+        <div class="module-header">
+          <span class="module-chevron">▶</span>
+          <span class="module-name" style="color: #4d5470">Module 4 · 고유값 분해</span>
+          <span class="module-badge">0 / 10</span>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- PLAYER AREA -->
+  <div class="player-area">
+
+    <!-- Video -->
+    <div class="video-wrapper">
+      <div class="video-placeholder">
+        <div class="play-btn">
+          <svg fill="white" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+        </div>
+        <span class="video-label">Independence, Basis, and Dimension · 50:14</span>
+      </div>
+    </div>
+
+    <!-- Prev / Complete / Next -->
+    <div class="video-nav">
+      <button class="nav-btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        이전 강의
+      </button>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button class="complete-btn">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          완료로 표시
+        </button>
+        <!-- 완료됐을 때 보여줄 badge (주석 처리) -->
+        <!-- <div class="completed-badge">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="14" height="14"><path d="M5 13l4 4L19 7"/></svg>
+          완료
+        </div> -->
+      </div>
+      <button class="nav-btn">
+        다음 강의
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+
+    <!-- Lecture info -->
+    <div class="lecture-info-block">
+      <div class="lecture-info-meta">
+        <span class="meta-chip cat">MATH</span>
+        <span class="meta-chip">Module 2</span>
+        <span class="meta-chip">Lec 11</span>
+        <span class="meta-chip">⏱ 50m 14s</span>
+      </div>
+      <div class="lecture-info-title">Independence, Basis, and Dimension</div>
+      <div style="font-size:13px; color:#717182; line-height:1.6; margin-top:6px;">
+        In this lecture we cover linear independence, spanning sets, basis for a vector space, and the concept of dimension. Gilbert Strang explains why these ideas are the building blocks for all of linear algebra.
+      </div>
+      <div class="lecture-tags">
+        <span class="tag">Linear Independence</span>
+        <span class="tag">Basis</span>
+        <span class="tag">Dimension</span>
+        <span class="tag">Vector Space</span>
+        <span class="tag">Spanning Set</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-bar">
+      <div class="tab active" onclick="switchTab(this,'notes')">📝 노트</div>
+      <div class="tab" onclick="switchTab(this,'resources')">📂 자료</div>
+      <div class="tab" onclick="switchTab(this,'about')">ℹ️ 강의 정보</div>
+    </div>
+
+    <!-- Tab: Notes -->
+    <div class="tab-content" id="tab-notes">
+      <div class="notes-grid">
+        <div>
+          <div style="font-size:12px; font-weight:600; color:#717182; margin-bottom:8px; letter-spacing:.04em; text-transform:uppercase;">새 노트 작성</div>
+          <textarea class="notes-textarea" placeholder="이 강의에서 배운 내용을 메모하세요...
+
+예)
+- 선형 독립: v1, ..., vk가 서로 다른 방향일 때
+- 기저(Basis): 공간을 span하는 최소 독립 집합
+- dim(R^n) = n"></textarea>
+          <button class="notes-save-btn">
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="13" height="13"><path d="M5 13l4 4L19 7"/></svg>
+            저장
+          </button>
+        </div>
+        <div>
+          <div style="font-size:12px; font-weight:600; color:#717182; margin-bottom:8px; letter-spacing:.04em; text-transform:uppercase;">저장된 노트 (3)</div>
+          <div class="saved-note">
+            <div class="saved-note-title">행 공간 & 영공간 요약</div>
+            <div class="saved-note-date">2026. 6. 12</div>
+            <div class="saved-note-preview">Ax=0의 해 집합이 영공간. 피벗 변수와 자유 변수로 분리해서 특수해 구하는 방법 정리...</div>
+          </div>
+          <div class="saved-note">
+            <div class="saved-note-title">LU 분해 복습</div>
+            <div class="saved-note-date">2026. 6. 10</div>
+            <div class="saved-note-preview">소거 행렬 E로 A를 분해하면 A=LU. L은 하삼각, U는 상삼각 행렬. 피벗이 0이면 치환 행렬 P 필요...</div>
+          </div>
+          <div class="saved-note">
+            <div class="saved-note-title">Lecture 5 키워드</div>
+            <div class="saved-note-date">2026. 6. 9</div>
+            <div class="saved-note-preview">전치, 대칭행렬, 벡터 공간 (R^n, 함수 공간, 행렬 공간)...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Resources (hidden) -->
+    <div class="tab-content" id="tab-resources" style="display:none">
+      <div style="font-size:12px; font-weight:600; color:#717182; margin-bottom:16px; letter-spacing:.04em; text-transform:uppercase;">강의 자료</div>
+      <div class="resource-item">
+        <div class="resource-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        </div>
+        <div>
+          <div class="resource-name">Lecture 11 Slides</div>
+          <div class="resource-type">PDF · 2.4 MB</div>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        </div>
+        <div>
+          <div class="resource-name">Problem Set 4</div>
+          <div class="resource-type">PDF · 380 KB</div>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M10 9l5 3-5 3V9z"/></svg>
+        </div>
+        <div>
+          <div class="resource-name">Gilbert Strang — Textbook Ch.2</div>
+          <div class="resource-type">외부 링크 · ocw.mit.edu</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: About (hidden) -->
+    <div class="tab-content" id="tab-about" style="display:none">
+      <div style="font-size:12px; font-weight:600; color:#717182; margin-bottom:14px; letter-spacing:.04em; text-transform:uppercase;">강의 정보</div>
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <tr style="border-bottom:1px solid rgba(0,0,0,0.08);">
+          <td style="padding:10px 0; color:#717182; width:120px;">강좌</td>
+          <td style="padding:10px 0;">선형대수학 — MIT 18.06</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(0,0,0,0.08);">
+          <td style="padding:10px 0; color:#717182;">강사</td>
+          <td style="padding:10px 0;">Gilbert Strang</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(0,0,0,0.08);">
+          <td style="padding:10px 0; color:#717182;">카테고리</td>
+          <td style="padding:10px 0;">Mathematics</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(0,0,0,0.08);">
+          <td style="padding:10px 0; color:#717182;">강의 수</td>
+          <td style="padding:10px 0;">28강 · 총 21h 30m</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0; color:#717182;">출처</td>
+          <td style="padding:10px 0;">MIT OpenCourseWare</td>
+        </tr>
+      </table>
+    </div>
+
+  </div><!-- /player-area -->
+</div><!-- /main -->
+
+<!-- AI 힌트 플로팅 버튼 -->
+<button class="hint-float" onclick="alert('힌트 패널 open!')">
+  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+  </svg>
+  AI 힌트
+</button>
+
+<script>
+  function switchTab(el, name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    ['notes','resources','about'].forEach(n => {
+      const el = document.getElementById('tab-' + n);
+      if (el) el.style.display = n === name ? 'block' : 'none';
+    });
+  }
+</script>
+</body>
+</html>
